@@ -39,7 +39,7 @@ const CONFIG = {
   // ⚠️ DA COMPILARE: pagina dell'informativa privacy su profarmer.it,
   // linkata dalla spunta di consenso. Se resta vuota la spunta c'è lo stesso,
   // ma senza link.
-  urlPrivacy: '',
+  urlPrivacy: 'https://www.iubenda.com/privacy-policy/12376136',
 
   // capi in mungitura -> cuccette, quando l'allevatore non conosce il numero di cuccette.
   // 1,2 e non 1,05: arrotonda per eccesso di proposito, per tenere dentro gli spazi delle
