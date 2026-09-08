@@ -36,9 +36,11 @@ const CONFIG = {
     emailAttiva: true
   },
 
-  // ⚠️ DA COMPILARE: pagina dell'informativa privacy su profarmer.it,
-  // linkata dalla spunta di consenso. Se resta vuota la spunta c'è lo stesso,
-  // ma senza link.
+  // Informativa privacy, linkata dalla spunta di consenso. È il documento
+  // iubenda di profarmer.it (public id 12376136), che dall'8 settembre 2026
+  // dichiara anche i servizi usati dal calcolatore: modulo di contatto,
+  // mailing list, ActiveCampaign, Google Sheets, Google Cloud, GitHub Pages,
+  // WhatsApp. Se qui resta vuoto la spunta c'è lo stesso, ma senza link.
   urlPrivacy: 'https://www.iubenda.com/privacy-policy/12376136',
 
   // capi in mungitura -> cuccette, quando l'allevatore non conosce il numero di cuccette.
