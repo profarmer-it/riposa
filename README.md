@@ -10,6 +10,8 @@ della gamma, la dose per cuccetta, la frequenza, il consumo mensile e i formati
 da ordinare. Il risultato non compare a schermo: arriva su WhatsApp o via
 e-mail, e il contatto diventa un lead profilato.
 
+**Il calcolatore è online: https://profarmer-it.github.io/riposa/**
+
 ## Da dove partire
 
 - [`MAPPA.html`](MAPPA.html) — **la mappa del progetto**: flusso, strumenti,
@@ -41,17 +43,21 @@ Nessun altro file va toccato.
    script* dell'Apps Script (`AC_API_URL`, `AC_API_KEY`), sui server di Google.
 2. **Non modificare le dosi in `app.js`.** Le dosi vivono solo in `regole.js`.
 
+## Come si aggiorna il sito online
+
+Il sito è pubblicato con **GitHub Pages** dal ramo `main` di questo
+repository: ogni modifica che arriva su GitHub va online da sola in un paio
+di minuti. Non c'è niente da caricare a mano.
+
 ## Stato
 
-**Fase 1 completa e collaudata** (8 settembre 2026). I sette scenari sono
-confermati sui numeri reali. La consegna funziona su entrambi i canali,
+**Fase 1 completa, collaudata e online** (8 settembre 2026). I sette scenari
+sono confermati sui numeri reali. La consegna funziona su entrambi i canali,
 WhatsApp e e-mail, e ogni calcolo scrive una riga di 29 colonne sul foglio
 Google e crea il contatto in ActiveCampaign con il tag `riposa`.
 
 Resta da compilare, in `assets/regole.js` dentro `CONFIG`:
 
 - `urlPrivacy` — indirizzo dell'informativa privacy su profarmer.it, linkata
-  dalla spunta di consenso
-
-E resta da fare il passo grosso: **pubblicare il sito su GitHub Pages**
-(guida in `docs/GITHUB-GUIDA.md`).
+  dalla spunta di consenso. È l'ultima cosa che manca prima di mandare il
+  link a un agente.
