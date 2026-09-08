@@ -1,3 +1,29 @@
+/* I font stanno dentro il sito, non li chiediamo a Google.
+   Perche': cosi' la pagina non contatta nessun terzo prima che l'allevatore
+   abbia premuto il pulsante, e il suo indirizzo IP non finisce da Google.
+   Fraunces e Inter, licenza SIL Open Font 1.1, sottoinsieme latino.
+   L'italico del titolo lo sintetizza il browser, come faceva prima. */
+@font-face{
+  font-family:'Fraunces';font-style:normal;font-weight:400;font-display:swap;
+  src:url('font/fraunces-400.woff2') format('woff2')
+}
+@font-face{
+  font-family:'Fraunces';font-style:normal;font-weight:600;font-display:swap;
+  src:url('font/fraunces-600.woff2') format('woff2')
+}
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;
+  src:url('font/inter-400.woff2') format('woff2')
+}
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;
+  src:url('font/inter-500.woff2') format('woff2')
+}
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;
+  src:url('font/inter-600.woff2') format('woff2')
+}
+
 /* Riposa — grafica, ripresa dalla presentazione gamma piùLact 2026 */
 
 :root{
