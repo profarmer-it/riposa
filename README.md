@@ -12,19 +12,16 @@ e-mail, e il contatto diventa un lead profilato.
 
 **Il calcolatore è online: https://profarmer-it.github.io/riposa/**
 
-## Da dove partire
+## Cosa c'è in questo repository, e cosa no
 
-- [`MAPPA.html`](MAPPA.html) — **la mappa del progetto**: flusso, strumenti,
-  paletti, strade aperte, cosa manca. Aprila con un doppio clic. È il file da
-  guardare per primo dopo una pausa.
+Qui dentro c'è **solo quello che può stare online**: la pagina, gli stili, il
+motore di calcolo, i font, i materiali commerciali. Tutto ciò che è nel
+repository viene servito da GitHub Pages a un indirizzo indovinabile.
 
-## Documentazione di dettaglio
-
-- [`docs/SPEC.md`](docs/SPEC.md) — visione, le due versioni previste, roadmap in fasi
-- [`docs/REGOLE-CALCOLO.md`](docs/REGOLE-CALCOLO.md) — albero decisionale e dosi
-- [`docs/dosaggi-confermati.html`](docs/dosaggi-confermati.html) — la verifica dei sette scenari, con il metro dei kg per cuccetta al giorno
-- [`docs/GITHUB-GUIDA.md`](docs/GITHUB-GUIDA.md) — come pubblicare e aggiornare questo progetto
-- [`integrazioni/foglio-google.gs`](integrazioni/foglio-google.gs) — lo script che vive dentro il foglio Google: scrive la riga, manda l'e-mail, parla con ActiveCampaign
+I documenti interni — la mappa del progetto (`MAPPA.html`), le regole di
+dosaggio (`docs/`) e lo script del foglio Google (`integrazioni/`) — restano
+nella cartella sul Mac e sono esclusi dal `.gitignore`. Ci sono dentro il
+know-how sui dosaggi e il ragionamento commerciale: non è roba da vetrina.
 
 ## Come provarlo in locale
 
