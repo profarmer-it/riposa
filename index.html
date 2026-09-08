@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riposa — il dosaggio giusto di piùLact per la tua stalla</title>
+<meta name="description" content="Calcola in due minuti quale prodotto della gamma piùLact serve alla tua stalla, quanto ne serve e come si usa. Uno strumento Pro Farmer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="testata">
+  <div class="contenitore testata-in">
+    <img class="logo-profarmer" src="assets/logo-profarmer.png" alt="Pro Farmer" width="532" height="200">
+  </div>
+</header>
+
+<section class="eroe">
+  <div class="contenitore">
+    <p class="soprattitolo">Riposa · calcolo dosaggio</p>
+    <h1>Quanto piùLact serve<br><em>alla tua stalla?</em></h1>
+    <p class="eroe-testo">Con il tuo aiuto il calcolatore ti consiglierà:</p>
+    <ul class="eroe-elenco">
+      <li>Quale prodotto della gamma piùLact fa maggiormente al caso tuo</li>
+      <li>La tipologia di applicazione ideale</li>
+      <li>I dosaggi da utilizzare</li>
+      <li>La quantità da ordinare per ottimizzare l’incidenza del trasporto</li>
+    </ul>
+  </div>
+</section>
+
+<main class="contenitore">
+
+  <form id="modulo" class="scheda" novalidate>
+
+    <h2 class="titolo-sezione"><span class="numero">1</span> La tua zona di riposo</h2>
+
+    <fieldset class="campo">
+      <legend>Dove riposano le tue vacche?</legend>
+      <div class="scelte">
+        <label class="scelta">
+          <input type="radio" name="zona" value="materassino" required>
+          <span class="scelta-corpo">
+            <strong>Cuccette a materassino</strong>
+            <small>materassino o tappetino</small>
+          </span>
+        </label>
+        <label class="scelta">
+          <input type="radio" name="zona" value="buca">
+          <span class="scelta-corpo">
+            <strong>Cuccette a buca / riempimento</strong>
+            <small>che sia con blister (nido d’ape) o senza</small>
+          </span>
+        </label>
+        <label class="scelta">
+          <input type="radio" name="zona" value="lettiera">
+          <span class="scelta-corpo">
+            <strong>Lettiera</strong>
+            <small>lettiera in paglia o simili a rinnovo frequente</small>
+          </span>
+        </label>
+        <label class="scelta">
+          <input type="radio" name="zona" value="compost">
+          <span class="scelta-corpo">
+            <strong>Compost barn</strong>
+            <small>rinnovata di rado, si pulisce dopo diversi mesi; si aggiunge materiale e si lavora col coltivatore, a volte ogni giorno</small>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="griglia-2">
+      <div class="campo">
+        <label for="cuccette">Numero di cuccette</label>
+        <input type="number" id="cuccette" name="cuccette" min="1" max="5000" step="1" placeholder="es. 120" inputmode="numeric">
+        <p class="aiuto">Se non lo sai con precisione, indica i capi in mungitura qui a destra.</p>
+      </div>
+      <div class="campo">
+        <label for="capi">Capi in mungitura</label>
+        <input type="number" id="capi" name="capi" min="1" max="5000" step="1" placeholder="es. 115" inputmode="numeric">
+        <p class="aiuto">Se non indichi le cuccette le stimiamo da qui, arrotondando per eccesso: contiamo anche gli spazi delle asciutte e il prodotto che userai in sala parto, infermeria e gabbiette.</p>
+      </div>
+    </div>
+
+    <fieldset class="campo">
+      <legend>Come mungi?</legend>
+      <div class="scelte scelte-fila">
+        <label class="scelta scelta-piccola">
+          <input type="radio" name="mungitura" value="sala" required>
+          <span class="scelta-corpo"><strong>Sala di mungitura</strong></span>
+        </label>
+        <label class="scelta scelta-piccola">
+          <input type="radio" name="mungitura" value="robot">
+          <span class="scelta-corpo"><strong>Robot di mungitura</strong></span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="campo" id="blocco-riempimento" hidden>
+      <legend>Come riempi la buca?</legend>
+      <div class="scelte">
+        <label class="scelta">
+          <input type="radio" name="riempimento" value="miscelata">
+          <span class="scelta-corpo">
+            <strong>Preparo una miscelata e la distribuisco</strong>
+            <small>con il carro unifeed, il lanciapaglia o simili</small>
+          </span>
+        </label>
+        <label class="scelta">
+          <input type="radio" name="riempimento" value="spaglio">
+          <span class="scelta-corpo">
+            <strong>Riempio con il materiale e spaglio il prodotto sopra</strong>
+            <small>paglia lunga, separato o digestato, con piùLact distribuito a spaglio</small>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="griglia-2" id="blocco-superficie" hidden>
+      <div class="campo">
+        <label for="mq">Metri quadri di lettiera</label>
+        <input type="number" id="mq" name="mq" min="1" max="50000" step="1" placeholder="es. 900" inputmode="numeric">
+        <p class="aiuto">La superficie totale della zona a lettiera.</p>
+      </div>
+      <div class="campo">
+        <label for="capiZona">Capi presenti in quella zona</label>
+        <input type="number" id="capiZona" name="capiZona" min="1" max="5000" step="1" placeholder="es. 80" inputmode="numeric">
+        <p class="aiuto">Serve per i metri quadri a capo: sopra i 9 m² si interviene meno spesso.</p>
+      </div>
+    </div>
+
+    <fieldset class="campo">
+      <legend>Cosa usi oggi in cuccetta? <span class="opzionale">puoi indicarne più di uno</span></legend>
+      <div class="spunte">
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Paglia macinata"><span>Paglia macinata</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Paglia lunga"><span>Paglia lunga</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Paglia pellettata"><span>Paglia pellettata</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Segatura"><span>Segatura</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Separato"><span>Separato</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Digestato"><span>Digestato</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Calce Idrata"><span>Calce Idrata</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Carbonato di Calcio"><span>Carbonato di Calcio</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Altro Igienizzante"><span>Altro Igienizzante</span></label>
+        <label class="spunta"><input type="checkbox" name="lettieraAttuale" value="Niente" data-esclusiva="si"><span>Niente</span></label>
+      </div>
+    </fieldset>
+
+    <div class="griglia-2">
+      <div class="campo">
+        <label for="cellule">Cellule somatiche medie <span class="opzionale">facoltativo</span></label>
+        <input type="number" id="cellule" name="cellule" min="0" max="3000" step="1" placeholder="es. 240" inputmode="numeric">
+        <p class="aiuto">In migliaia per ml, come le leggi sull'analisi del latte.</p>
+      </div>
+    </div>
+
+    <fieldset class="campo">
+      <legend>Hai un impianto di biogas a valle?</legend>
+      <div class="scelte scelte-fila">
+        <label class="scelta scelta-piccola">
+          <input type="radio" name="biogas" value="si">
+          <span class="scelta-corpo"><strong>Sì</strong></span>
+        </label>
+        <label class="scelta scelta-piccola">
+          <input type="radio" name="biogas" value="no" checked>
+          <span class="scelta-corpo"><strong>No</strong></span>
+        </label>
+      </div>
+    </fieldset>
+
+    <p id="errore" class="errore" hidden></p>
+
+    <button type="submit" class="bottone bottone-grande">Calcola il dosaggio</button>
+    <p class="aiuto aiuto-centro">Il calcolo avviene sul tuo telefono. I tuoi dati te li chiediamo dopo, solo per mandarti il risultato.</p>
+  </form>
+
+  <section id="risultato" hidden></section>
+
+</main>
+
+<footer class="pedana">
+  <div class="contenitore pedana-in">
+    <img class="logo-piulact" src="assets/logo-piulact.png" alt="piùLact" width="300" height="300">
+    <p class="pedana-firma">un prodotto Pro Farmer</p>
+    <p class="pedana-nota">
+      I valori calcolati sono indicativi e vanno adattati alla singola stalla.
+      Per una valutazione precisa, o per qualsiasi altra informazione, chiama
+      Pro Farmer: <a href="tel:+393761296162">+39 376 129 6162</a>.
+    </p>
+  </div>
+</footer>
+
+<script src="assets/regole.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
