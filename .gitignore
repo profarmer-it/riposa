@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+*.swp
+node_modules/
+.env
+.env.*
+_da-cancellare/
+Claude outputs/
+
+# Il master della brochure per la tipografia: 10,5 MB che nessuno
+# scarica dal sito. Online va la copia leggera, brochure piuLact - web.pdf.
+materiali/brochure piùLact1.pdf

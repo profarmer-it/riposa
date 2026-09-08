@@ -1,0 +1,402 @@
+/* Riposa — grafica, ripresa dalla presentazione gamma piùLact 2026 */
+
+:root{
+  --navy:#0E2340;
+  --navy-2:#16325A;
+  --blu:#2F86E0;
+  --blu-chiaro:#8CC4F7;
+  --crema:#F4F0E7;
+  --crema-2:#EAE4D6;
+  --bianco:#FFFFFF;
+  --testo:#14243C;
+  --testo-2:#5A6A80;
+  --ambra:#B4741A;
+  --ambra-sfondo:#FBF2E2;
+  --raggio:14px;
+  --ombra:0 1px 2px rgba(14,35,64,.06), 0 8px 28px rgba(14,35,64,.07);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px;
+  line-height:1.6;
+  color:var(--testo);
+  background:var(--crema);
+}
+h1,h2,h3,.serif{font-family:Fraunces,Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:-.01em}
+em{font-style:italic}
+
+.contenitore{width:100%;max-width:760px;margin:0 auto;padding:0 20px}
+
+/* --- testata --- */
+/* In alto solo la firma di chi lo ha fatto: Pro Farmer, piccolo, nell'angolo
+   a destra. Il logo piuLact sta nel piede, dove chiude la pagina insieme al
+   numero di telefono. Altezza fissa e larghezza automatica: cambiare i file
+   sorgente non sposta il layout, purche' restino ritagliati sul segno. */
+.testata{background:var(--navy);padding:22px 0 2px}
+.testata-in{display:flex;justify-content:flex-end}
+.logo-profarmer{display:block;height:28px;width:auto}
+.logo-piulact{display:block;height:46px;width:auto}
+
+/* --- eroe --- */
+.eroe{background:var(--navy);color:#fff;padding:40px 0 56px}
+.soprattitolo{
+  margin:0 0 14px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--blu-chiaro)
+}
+.eroe h1{margin:0 0 18px;font-size:clamp(34px,8vw,54px);line-height:1.05}
+.eroe h1 em{color:var(--blu-chiaro)}
+.eroe-testo{margin:0;max-width:52ch;color:#C9D6E6;font-size:17px}
+
+/* l'elenco di cosa fa il calcolatore, in testata */
+.eroe-elenco{
+  margin:16px 0 0;padding:0;list-style:none;
+  display:grid;gap:10px;max-width:56ch
+}
+.eroe-elenco li{
+  position:relative;padding-left:26px;color:#fff;font-size:16.5px;line-height:1.5
+}
+.eroe-elenco li::before{
+  content:"";position:absolute;left:0;top:.55em;
+  width:9px;height:9px;border-radius:2px;background:var(--blu)
+}
+
+/* --- schede --- */
+main{padding:0 0 64px}
+.scheda{
+  background:var(--bianco);border-radius:var(--raggio);box-shadow:var(--ombra);
+  padding:28px 24px;margin-top:-28px;position:relative
+}
+
+.titolo-sezione{
+  display:flex;align-items:center;gap:12px;
+  margin:0 0 24px;font-size:22px
+}
+.numero{
+  display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:50%;
+  background:var(--navy);color:#fff;font-family:Inter,sans-serif;font-size:14px;font-weight:600
+}
+
+/* --- campi --- */
+.campo{margin:0 0 26px;padding:0;border:0}
+.campo>label,legend{
+  display:block;padding:0;margin:0 0 10px;
+  font-weight:600;font-size:15px;color:var(--testo)
+}
+.opzionale{
+  font-weight:400;font-size:12px;color:var(--testo-2);
+  background:var(--crema-2);border-radius:20px;padding:2px 9px;margin-left:6px
+}
+input[type=number],select{
+  width:100%;padding:13px 14px;font:inherit;color:var(--testo);
+  background:var(--bianco);border:1.5px solid var(--crema-2);border-radius:10px;
+  transition:border-color .15s
+}
+input[type=number]:focus,select:focus{outline:0;border-color:var(--blu);box-shadow:0 0 0 3px rgba(47,134,224,.14)}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--testo-2) 50%),linear-gradient(135deg,var(--testo-2) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.aiuto{margin:8px 0 0;font-size:13px;color:var(--testo-2);line-height:1.45}
+.aiuto-centro{text-align:center;margin-top:12px}
+
+.griglia-2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+@media(max-width:560px){.griglia-2{grid-template-columns:1fr}}
+
+/* --- scelte a bottoni --- */
+.scelte{display:grid;gap:10px}
+.scelte-fila{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.scelta{position:relative;display:block;cursor:pointer}
+.scelta input{position:absolute;opacity:0;width:0;height:0}
+.scelta-corpo{
+  display:block;padding:14px 16px;
+  border:1.5px solid var(--crema-2);border-radius:11px;background:var(--bianco);
+  transition:border-color .15s, background .15s
+}
+.scelta-corpo strong{display:block;font-size:15px;font-weight:600}
+.scelta-corpo small{display:block;margin-top:3px;font-size:13px;color:var(--testo-2);line-height:1.4}
+.scelta:hover .scelta-corpo{border-color:var(--blu-chiaro)}
+.scelta input:checked + .scelta-corpo{border-color:var(--blu);background:#F2F8FE;box-shadow:0 0 0 1px var(--blu) inset}
+.scelta input:focus-visible + .scelta-corpo{box-shadow:0 0 0 3px rgba(47,134,224,.2)}
+.scelta-piccola .scelta-corpo{padding:12px 14px}
+
+/* --- bottoni --- */
+.bottone{
+  display:inline-block;width:100%;padding:15px 22px;
+  font:inherit;font-weight:600;font-size:16px;text-align:center;text-decoration:none;
+  color:#fff;background:var(--navy);border:0;border-radius:11px;cursor:pointer;
+  transition:background .15s,transform .05s
+}
+.bottone:hover{background:var(--navy-2)}
+.bottone:active{transform:translateY(1px)}
+.bottone-grande{padding:17px 22px;font-size:17px}
+.bottone-whatsapp{background:#1EA855}
+.bottone-whatsapp:hover{background:#17913F}
+.bottone-fantasma{background:transparent;color:var(--navy);border:1.5px solid var(--crema-2)}
+.bottone-fantasma:hover{background:var(--crema);border-color:var(--testo-2)}
+
+.errore{
+  margin:0 0 18px;padding:13px 15px;border-radius:10px;
+  background:#FDECEC;color:#A32020;font-size:14px;font-weight:500
+}
+
+/* --- risultato --- */
+#risultato{margin-top:26px;scroll-margin-top:20px}
+.esito{
+  background:var(--navy);color:#fff;border-radius:var(--raggio);
+  padding:28px 24px;box-shadow:var(--ombra)
+}
+.esito-etichetta{margin:0 0 8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--blu-chiaro)}
+.esito-nome{margin:0;font-size:clamp(30px,7vw,42px);line-height:1.1}
+.esito-tagline{margin:6px 0 0;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--blu-chiaro)}
+.esito-sintesi{margin:18px 0 0;color:#C9D6E6;max-width:56ch}
+
+.numeri{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;
+  margin:26px 0 0;background:rgba(255,255,255,.14);border-radius:11px;overflow:hidden
+}
+.numero-cella{background:var(--navy);padding:16px 15px}
+.numero-cella dt{margin:0 0 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blu-chiaro)}
+.numero-cella dd{margin:0;font-family:Fraunces,Georgia,serif;font-size:23px;line-height:1.15}
+.numero-cella dd small{display:block;font-family:Inter,sans-serif;font-size:12px;font-weight:400;color:#9FB4CC;margin-top:3px}
+
+.blocco{
+  background:var(--bianco);border-radius:var(--raggio);box-shadow:var(--ombra);
+  padding:24px;margin-top:16px
+}
+.blocco h3{margin:0 0 14px;font-size:19px}
+.blocco p{margin:0 0 12px}
+.blocco p:last-child{margin-bottom:0}
+.passi{margin:0;padding:0;list-style:none;counter-reset:passo}
+.passi li{
+  counter-increment:passo;position:relative;padding:0 0 14px 38px;
+}
+.passi li:last-child{padding-bottom:0}
+.passi li::before{
+  content:counter(passo);position:absolute;left:0;top:1px;
+  display:grid;place-items:center;width:25px;height:25px;border-radius:50%;
+  background:var(--crema);color:var(--navy);font-size:13px;font-weight:600
+}
+
+.tabella{width:100%;border-collapse:collapse;font-size:15px}
+.tabella th,.tabella td{padding:11px 0;text-align:left;border-bottom:1px solid var(--crema-2)}
+.tabella th{font-weight:500;color:var(--testo-2)}
+.tabella td{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.tabella tr:last-child th,.tabella tr:last-child td{border-bottom:0}
+
+.avviso{
+  display:flex;gap:11px;align-items:flex-start;
+  margin:16px 0 0;padding:14px 16px;border-radius:10px;
+  background:var(--ambra-sfondo);color:#6E4710;font-size:14px;line-height:1.5
+}
+.avviso strong{color:var(--ambra)}
+.avviso-icona{flex:0 0 auto;font-size:15px;line-height:1.4}
+
+.nota-scenario{
+  margin:16px 0 0;padding:14px 16px;border-left:3px solid var(--blu);
+  background:#F2F8FE;border-radius:0 10px 10px 0;font-size:15px;color:var(--navy)
+}
+
+.potenziale-cifre{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 14px}
+.potenziale-cifre b{font-family:Fraunces,Georgia,serif;font-size:34px;font-weight:600;color:var(--blu)}
+.potenziale-cifre span{font-size:26px;color:var(--testo-2)}
+.casi{margin:14px 0 0;padding:0;list-style:none;font-size:14px;color:var(--testo-2)}
+.casi li{padding:7px 0;border-top:1px solid var(--crema-2)}
+.casi b{color:var(--navy);font-weight:600}
+
+.azioni{display:grid;gap:10px;margin-top:16px}
+.contatti{display:grid;gap:0 18px;grid-template-columns:1fr 1fr}
+@media(max-width:560px){.contatti{grid-template-columns:1fr}}
+.contatti .campo{margin-bottom:18px}
+.contatti input[type=text],.contatti input[type=tel],.contatti input[type=email]{
+  width:100%;padding:13px 14px;font:inherit;color:var(--testo);
+  background:var(--bianco);border:1.5px solid var(--crema-2);border-radius:10px
+}
+.contatti input:focus{outline:0;border-color:var(--blu);box-shadow:0 0 0 3px rgba(47,134,224,.14)}
+.pieno{grid-column:1/-1}
+.esito-ok{
+  margin:14px 0 0;padding:14px 16px;border-radius:10px;
+  background:#EAF7EE;color:#14612F;font-size:14.5px;font-weight:500
+}
+
+/* --- pedana --- */
+.pedana{background:var(--navy);color:#9FB4CC;padding:30px 0 34px;font-size:14px}
+/* Il piede chiude la pagina come un colophon: il logo del prodotto, chi lo fa,
+   poi la nota. Centrato, cosi' regge anche quando la nota cambia lunghezza. */
+.pedana-in{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.pedana-in .logo-piulact{height:52px}
+.pedana-firma{margin:0;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--blu-chiaro)}
+.pedana a{color:var(--blu-chiaro);text-decoration:none;white-space:nowrap}
+.pedana a:hover{text-decoration:underline}
+.pedana-nota{margin:8px 0 0;padding-top:16px;border-top:1px solid rgba(255,255,255,.14);font-size:13px;max-width:52ch}
+
+@media print{
+  .testata,.eroe,#modulo,.azioni,.pedana-nota{display:none}
+  body{background:#fff}
+  .esito{background:#fff;color:#000;box-shadow:none;border:1px solid #ccc}
+  .numero-cella{background:#fff}
+  .esito-nome,.esito-etichetta,.esito-tagline,.esito-sintesi,.numero-cella dt,.numero-cella dd{color:#000}
+}
+
+/* --- scelte premium e proposte di prova --- */
+.premium{
+  margin-top:18px;padding-top:18px;border-top:1px solid var(--crema-2)
+}
+.premium:first-of-type{margin-top:16px}
+.premium h4{
+  margin:0 0 4px;font-family:Fraunces,Georgia,serif;font-size:19px;font-weight:600
+}
+.premium h4 span{
+  display:block;font-family:Inter,sans-serif;font-size:11px;font-weight:500;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--blu);margin-top:3px
+}
+.premium p{margin:10px 0 14px;font-size:15px;color:var(--testo-2)}
+.blocco-prova{
+  background:#F2F8FE;border:1px solid #CFE3F8
+}
+.prova-cifra{
+  margin:14px 0 0;padding:14px 16px;background:var(--bianco);
+  border-radius:10px;font-size:16px
+}
+.prova-cifra strong{display:block;color:var(--navy)}
+.prova-cifra span{display:block;margin-top:3px;font-size:13px;color:var(--testo-2)}
+
+/* --- scelta premium --- */
+.premium-scegli{
+  margin-top:14px;background:var(--bianco);color:var(--navy);
+  border:1.5px solid var(--crema-2);font-size:15px;padding:12px 18px
+}
+.premium-scegli:hover{background:var(--crema);border-color:var(--blu-chiaro)}
+.premium.scelto{
+  background:#F2F8FE;border-radius:10px;padding:16px;margin-left:-16px;margin-right:-16px;
+  border-top:0
+}
+.premium-scegli.bottone-scelto{
+  background:var(--blu);color:#fff;border-color:var(--blu)
+}
+.premium-scegli.bottone-scelto:hover{background:#2472C4}
+
+/* --- spunta di consenso --- */
+.consenso{
+  display:flex;gap:11px;align-items:flex-start;cursor:pointer;
+  margin:0 0 18px;padding:14px 16px;border-radius:10px;background:var(--crema);
+  font-size:14px;line-height:1.5;color:var(--testo-2)
+}
+.consenso input{
+  flex:0 0 auto;width:18px;height:18px;margin:1px 0 0;accent-color:var(--blu);cursor:pointer
+}
+.consenso a{color:var(--blu)}
+
+/* [hidden] deve vincere sempre: senza questo un blocco con display:grid
+   resta visibile anche quando lo nascondiamo da JavaScript */
+[hidden]{display:none !important}
+
+/* --- scelta multipla a spunte --- */
+.spunte{
+  display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(165px,1fr))
+}
+.spunta{
+  display:flex;gap:10px;align-items:center;cursor:pointer;
+  padding:11px 13px;border:1.5px solid var(--crema-2);border-radius:10px;
+  background:var(--bianco);font-size:14.5px;transition:border-color .15s,background .15s
+}
+.spunta:hover{border-color:var(--blu-chiaro)}
+.spunta input{
+  flex:0 0 auto;width:17px;height:17px;margin:0;accent-color:var(--blu);cursor:pointer
+}
+.spunta:has(input:checked){border-color:var(--blu);background:#F2F8FE}
+.spunta input:focus-visible{outline:2px solid var(--blu);outline-offset:2px}
+
+/* ============================================================================
+   Il percorso dopo il calcolo: ragionamento → canale → contatti
+   ========================================================================== */
+
+/* --- la bovina che ragiona --- */
+.ragiona{
+  background:var(--navy);color:#fff;border-radius:var(--raggio);box-shadow:var(--ombra);
+  padding:40px 24px 34px;text-align:center
+}
+.bovina{width:140px;height:118px;display:block;margin:0 auto 18px}
+.bovina .cranio{fill:#fff}
+.bovina .orecchio{fill:#D7E3F0}
+.bovina .corno{fill:#B9C9DA}
+.bovina .macchia{fill:var(--blu)}
+.bovina .muso{fill:#8CC4F5}
+.bovina .occhio,.bovina .narice{fill:var(--navy)}
+.bovina .luce{fill:#fff}
+.bovina .pensiero{fill:var(--blu)}
+.bovina .testa{
+  transform-box:fill-box;transform-origin:center bottom;
+  animation:bovina-annuisce 2.5s ease-in-out infinite
+}
+.bovina .pensiero{transform-box:fill-box;transform-origin:center}
+.bovina .p1{animation:pensa 1.5s ease-in-out infinite}
+.bovina .p2{animation:pensa 1.5s ease-in-out .25s infinite}
+.bovina .p3{animation:pensa 1.5s ease-in-out .5s infinite}
+@keyframes bovina-annuisce{
+  0%,100%{transform:translateY(0) rotate(0)}
+  50%{transform:translateY(-3px) rotate(-2deg)}
+}
+@keyframes pensa{
+  0%,100%{opacity:.2;transform:translateY(3px) scale(.85)}
+  50%{opacity:1;transform:translateY(0) scale(1)}
+}
+.ragiona-titolo{
+  margin:0 0 6px;font-family:Fraunces,Georgia,serif;font-size:23px;font-weight:600
+}
+.ragiona-passo{
+  margin:0 auto 22px;max-width:34ch;color:var(--blu-chiaro);font-size:15.5px;
+  min-height:2.6em;transition:opacity .14s
+}
+.ragiona-barra{
+  height:4px;max-width:300px;margin:0 auto;border-radius:4px;
+  background:rgba(255,255,255,.18);overflow:hidden
+}
+.ragiona-barra span{
+  display:block;height:100%;width:0;border-radius:4px;background:var(--blu);
+  transition:width 2.5s linear
+}
+
+/* --- soluzione trovata, scelta del canale --- */
+.trovato{
+  background:var(--bianco);border-radius:var(--raggio);box-shadow:var(--ombra);
+  padding:34px 24px 30px;text-align:center
+}
+.trovato-spunta{
+  display:grid;place-items:center;width:46px;height:46px;margin:0 auto 16px;
+  border-radius:50%;background:#EAF7EE;color:#14612F;font-size:24px;font-weight:700
+}
+.trovato h2{
+  margin:0 auto 8px;max-width:26ch;font-family:Fraunces,Georgia,serif;
+  font-size:clamp(22px,4.6vw,28px);font-weight:600;line-height:1.2
+}
+.trovato p{margin:0 0 22px;color:var(--testo-2);font-size:16px}
+
+.canali{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.canale{
+  display:block;padding:18px 20px;text-align:left;cursor:pointer;
+  font:inherit;color:var(--navy);background:var(--bianco);
+  border:1.5px solid var(--crema-2);border-radius:12px;
+  transition:border-color .15s,background .15s,transform .05s
+}
+.canale:hover{border-color:var(--blu);background:#F2F8FE}
+.canale:active{transform:translateY(1px)}
+.canale strong{display:block;font-size:17px;font-weight:600}
+.canale small{display:block;margin-top:3px;font-size:13.5px;color:var(--testo-2)}
+.canale-whatsapp:hover{border-color:#1EA855;background:#EDFAF1}
+.canale:focus-visible{outline:2px solid var(--blu);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  .bovina .testa,.bovina .pensiero{animation:none}
+  .ragiona-barra span{transition:none;width:100%}
+  .ragiona-passo{transition:none}
+}
+
+/* nota d'effetto sotto ogni canale */
+.canale-nota{margin-top:8px !important;font-weight:600;color:var(--navy) !important}
+.canale-whatsapp .canale-nota{color:#12803D !important}
+.canale-email .canale-nota{color:#9A3412 !important}
+.trovato .azioni{max-width:340px;margin:0 auto}
+.conferma-nota{
+  margin:20px auto 0 !important;padding-top:16px;max-width:44ch;
+  border-top:1px solid var(--crema-2);font-size:14px !important
+}
