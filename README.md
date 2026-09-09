@@ -10,7 +10,7 @@ della gamma, la dose per cuccetta, la frequenza, il consumo mensile e i formati
 da ordinare. Il risultato non compare a schermo: arriva via e-mail, oppure su
 WhatsApp **dal numero Pro Farmer**, e il contatto diventa un lead profilato.
 
-**Il calcolatore è online: https://profarmer-it.github.io/riposa/**
+**Il calcolatore è online: https://riposa.profarmer.it**
 
 ## Cosa c'è in questo repository, e cosa no
 
