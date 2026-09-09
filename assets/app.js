@@ -509,7 +509,7 @@ function mostraCanale(r) {
   h += '<div class="canali">';
   h += '<button type="button" class="canale canale-whatsapp" data-canale="whatsapp">'
     + '<strong>WhatsApp</strong>'
-    + '<small>ti arriva subito sul telefono</small>'
+    + '<small>ti rispondiamo dal numero Pro Farmer</small>'
     + '<small class="canale-nota">⚡️ Ricevi in un lampo!</small></button>';
   if (dueVie) {
     h += '<button type="button" class="canale canale-email" data-canale="email">'
@@ -603,13 +603,15 @@ function mostraConferma(r) {
   const viaMail = canale === 'email';
   let h = '<div class="trovato">';
   h += '<span class="trovato-spunta">✓</span>';
-  h += `<h2>${viaMail ? 'Te l’abbiamo mandato per e-mail' : 'Il riepilogo è pronto su WhatsApp'}</h2>`;
+  h += `<h2>${viaMail ? 'Te l’abbiamo mandato per e-mail' : 'Manca solo il tuo invio'}</h2>`;
   h += `<p>${viaMail
     ? 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi, guarda nello SPAM.'
-    : 'Si è aperto WhatsApp con il riepilogo già scritto: ti basta premere invio per mandarlo.'}</p>`;
+    : 'Si è aperto WhatsApp con la richiesta già scritta: <strong>premi invia</strong> e ti rispondiamo dal numero Pro Farmer col calcolo per la tua stalla.'}</p>`;
   h += '<div class="azioni">';
   if (!viaMail) {
     h += '<button type="button" class="bottone bottone-whatsapp" id="btn-rinvia">Riapri WhatsApp</button>';
+    // Se non ha premuto invia, la finestra delle 24 ore non si apre e il calcolo
+    // non gli arriva: questo pulsante e' la sua seconda occasione.
   }
   h += '<button type="button" class="bottone bottone-fantasma" id="btn-ricomincia">Fai un altro calcolo</button>';
   h += '</div>';
@@ -716,8 +718,21 @@ function testoRiepilogo(dati, r) {
   return L.join('\n');
 }
 
+/* Il messaggio che il wa.me precompila NON e' piu' il calcolo: e' una richiesta
+   breve che l'allevatore manda a Pro Farmer. Why: quel suo messaggio apre la
+   finestra di 24 ore in cui WhatsApp permette a un'azienda di rispondere con
+   messaggi liberi, senza template approvati da Meta. Il calcolo completo parte
+   dopo, dal numero Pro Farmer, come messaggio normale.
+   Nome e ragione sociale servono ad agganciare la riga sul foglio. */
+function testoRichiesta(dati) {
+  const chi = [dati.nome, dati.azienda].filter(Boolean).join(' — ');
+  return 'Ciao Pro Farmer, ho usato il calcolatore Riposa per la mia stalla.\n'
+    + (chi ? chi + '\n' : '')
+    + 'Mi mandate il risultato?';
+}
+
 function apriWhatsApp(dati, r) {
-  const testo = encodeURIComponent(testoRiepilogo(dati, r));
+  const testo = encodeURIComponent(testoRichiesta(dati));
   const numero = (CONFIG.azienda.whatsapp || '').replace(/\D/g, '');
   const url = numero
     ? `https://wa.me/${numero}?text=${testo}`
