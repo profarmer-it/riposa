@@ -58,6 +58,42 @@ const CONFIG = {
 /* I tre prodotti della gamma                                                  */
 /* -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   IL TRASPORTO
+   --------------------------------------------------------------------------
+   Regole date da Giulio la sera del 9 settembre 2026. Il senso commerciale:
+   sotto una certa quantità la consegna passa da una logistica e portare 4 big
+   bag o 5 cambia poco sull'incidenza per tonnellata. Il margine da prendersi
+   compare quando il carico si avvicina a saturare un camion, e allora ha senso
+   proporre all'allevatore di arrivarci.
+
+   Il consiglio ragiona sul TRIMESTRE, non sul mese: sul mese quasi nessuno
+   arriva a un camion, sul trimestre ci arriva una stalla media.
+
+   Vale solo per i big bag. Chi prende i bancali di sacchetti è un'azienda
+   piccola e non arriverà mai a una motrice intera: per lei conta solo
+   arrotondare a bancali interi e rispettare il minimo.
+
+   Le due soglie NON si toccano senza chiederlo a Giulio: sono suo giudizio
+   commerciale, non un calcolo. Il 9 settembre gli ho proposto di abbassare la
+   soglia della motrice da 20 a 15 big bag e ha detto no. */
+const TRASPORTO = {
+  mesiOrizzonte: 3,        // il consiglio parla del fabbisogno di un trimestre
+
+  bigBagKg: 600,
+  bigBagMinimo: 4,         // ordine minimo: 4 big bag = 2,4 t
+  bancaleKg: 1200,         // 48 sacchi da 25 kg
+  bancaliMinimo: 2,        // ordine minimo: 2 bancali = 2,4 t
+
+  motrice: 26,             // big bag che saturano una motrice: 15,6 t
+  bilico: 50,              // big bag che saturano un bilico: 30 t
+
+  sogliaMotrice: 20,       // da 20 big bag (12 t) si propone la motrice
+  sogliaBilico: 35         // da 35 big bag (21 t) si propone il bilico
+};
+
+/* -------------------------------------------------------------------------- */
+
 const PRODOTTI = {
   base: {
     id: 'base',

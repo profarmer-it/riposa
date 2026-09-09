@@ -688,6 +688,66 @@ function agganciaPremium(r) {
 
 /* ------------------------------------------------------------ il riepilogo */
 
+/* Tonnellate leggibili: 15,6 resta 15,6 ma 30 non diventa "30,0". */
+function ton(kg) {
+  const t = kg / 1000;
+  return Number.isInteger(t) ? num(t) : num(t, 1);
+}
+
+/* Il consiglio sul trasporto, in una riga sola per il messaggio.
+   Ragiona sul trimestre e sul formato consigliato. Le soglie e i pesi stanno
+   in TRASPORTO (regole.js): qui c'e' solo il testo.
+   Sopra i 50 big bag continuiamo a proporre un bilico saturo: e' l'unita' di
+   carico piu' grande che ha senso nominare, e ordinarne uno pieno resta il
+   modo migliore di far viaggiare il prodotto. */
+function consiglioTrasporto(r) {
+  const c = r.confezioneConsigliata;
+  if (!c || !r.kgMese) return '';
+
+  const T = TRASPORTO;
+  const kgOrizzonte = r.kgMese * T.mesiOrizzonte;
+  const camion = '\u{1F69A}';
+
+  // Sacchetti: bancali interi, minimo 2, nessun camion da saturare.
+  if (c.kg === 25) {
+    const bancali = Math.max(T.bancaliMinimo, Math.ceil(kgOrizzonte / T.bancaleKg));
+    const minimo = bancali === T.bancaliMinimo ? ", che \u00E8 anche l'ordine minimo" : '';
+    return `${camion} Sul trimestre servono ${num(bancali)} bancali di sacchetti da 25 kg, `
+      + `${ton(bancali * T.bancaleKg)} t${minimo}. La consegna la organizza lo staff Pro Farmer`;
+  }
+
+  // Un formato che non conosciamo (per esempio i big bag da 300 kg del PRONTO):
+  // niente numeri inventati.
+  if (c.kg !== T.bigBagKg) {
+    return `${camion} Quantit\u00E0 e trasporto da valutare con lo staff Pro Farmer`;
+  }
+
+  const bb = Math.max(T.bigBagMinimo, Math.ceil(kgOrizzonte / T.bigBagKg));
+  const testa = `${camion} Sul trimestre servono ${num(bb)} Big Bag, ${ton(bb * T.bigBagKg)} t`;
+  const chiusa = "e l'incidenza del trasporto scende al minimo: da valutare con lo staff Pro Farmer";
+
+  /* Come si nomina il carico dipende da dove sta l'allevatore rispetto a esso.
+     Se gliene servono MENO di un camion pieno, la proposta e' arrivarci: "con
+     26 Big Bag". Se gliene servono di piu', il camion pieno non e' l'ordine ma
+     la spedizione: "spedendone 26 per viaggio". Senza questa distinzione, a chi
+     serve 34 avremmo detto "con 26" e sarebbe sembrato un invito a ordinare
+     meno del necessario. */
+  const proposta = (quanti, mezzo, verbo) => bb <= quanti
+    ? `Con ${num(quanti)} Big Bag ${verbo} ${mezzo}, ${ton(quanti * T.bigBagKg)} t, ${chiusa}`
+    : `Spedendone ${num(quanti)} per viaggio ${verbo} ${mezzo}, ${ton(quanti * T.bigBagKg)} t, ${chiusa}`;
+
+  if (bb >= T.sogliaBilico) {
+    return `${testa}. ` + proposta(T.bilico, 'un bilico', 'si satura');
+  }
+  if (bb >= T.sogliaMotrice) {
+    return `${testa}. ` + proposta(T.motrice, 'una motrice', 'si riempie');
+  }
+
+  const minimo = bb === T.bigBagMinimo ? ", che \u00E8 anche l'ordine minimo" : '';
+  return `${testa}${minimo}. A queste quantit\u00E0 la consegna passa dalla logistica: `
+    + 'le condizioni migliori le definisci con lo staff Pro Farmer';
+}
+
 function testoRiepilogo(dati, r) {
   const d = r.dati, s = r.scenario, p = r.prodotto;
   const L = [];
@@ -743,13 +803,13 @@ function testoRiepilogo(dati, r) {
   L.push(`Formato consigliato: ${maiuscola(r.confezioneConsigliata.etichetta)}`);
   L.push('');
 
-  /* Il quarto punto promesso in home. La quantita' per pallet e per bilico e le
-     soglie di porto franco non le sappiamo ancora, quindi qui NON mettiamo un
-     numero: diciamo che c'e' un margine da prendersi e che lo si prende
-     parlando con Pro Farmer. Meglio una riga onesta che una stima inventata,
-     e intanto e' un motivo in piu' per rispondere al messaggio. */
-  L.push('\u{1F69A} Quantit\u00E0 stimata consigliata per ottimizzare il trasporto, da definire con staff Pro Farmer');
-  L.push('');
+  /* Il quarto punto promesso in home, e dal 9 settembre sera con i numeri veri:
+     le regole stanno in TRASPORTO, dentro regole.js. */
+  const trasporto = consiglioTrasporto(r);
+  if (trasporto) {
+    L.push(trasporto);
+    L.push('');
+  }
 
   L.push("\u{1F449} Calcolo generato da *RIPOSA*, un'app ideata da Pro Farmer");
   return L.join('\n');
