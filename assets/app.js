@@ -700,9 +700,12 @@ function testoRiepilogo(dati, r) {
   if (r.miscelata) {
     L.push(`*La miscela, per cuccetta:* piùLact ${kg(r.dosePerCuccetta)} kg + paglia ${kg(r.pagliaPerCuccetta)} kg + acqua ${kg(r.acquaPerCuccetta)} litri`);
   }
-  L.push(r.superficie
-    ? `*Dose:* ${num(r.dosePerMq, 2)} kg per m²`
-    : `*Dose:* ${kg(r.dosePerCuccetta)} kg per cuccetta`);
+  // Nella miscelata la dose l'ha gia' detta la riga della miscela: non la ripetiamo.
+  if (!r.miscelata) {
+    L.push(r.superficie
+      ? `*Dose:* ${num(r.dosePerMq, 2)} kg per m²`
+      : `*Dose:* ${kg(r.dosePerCuccetta)} kg per cuccetta`);
+  }
   L.push(`*Ogni quanto:* ${r.etichettaFrequenza}`);
   L.push(`*Da distribuire a ogni passaggio:* ${kg(r.kgApplicazione)} kg`);
   L.push('');
