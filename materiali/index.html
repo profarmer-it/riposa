@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Materiali piùLact — Pro Farmer</title>
+<meta name="description" content="La brochure piùLact e il depliant della gamma, da sfogliare. Materiali Pro Farmer per l'igiene della zona di riposo delle bovine da latte.">
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  /* Questa pagina riusa i font e i colori del calcolatore: gli @font-face
+     stanno in assets/style.css e i percorsi dentro il CSS sono relativi al
+     CSS, quindi funzionano anche da questa cartella. Nessun terzo, come nel
+     resto del sito. */
+  .materiali{padding:34px 0 64px}
+  .materiali .soprattitolo{margin:0 0 6px}
+  .materiali h1{font-size:clamp(28px,6vw,40px);line-height:1.1;margin:0 0 14px}
+  .materiali .guida{color:var(--testo-2);max-width:56ch;margin:0 0 30px}
+
+  .doc{
+    background:var(--bianco);
+    border:1px solid var(--crema-2);
+    border-radius:var(--raggio);
+    box-shadow:var(--ombra);
+    padding:20px 22px;
+    margin:0 0 16px;
+  }
+  .doc h2{font-size:20px;margin:0 0 4px}
+  .doc p{margin:0;color:var(--testo-2);font-size:15px}
+  .doc .dati{
+    margin-top:4px;font-size:13px;color:var(--testo-2);
+    font-variant-numeric:tabular-nums;
+  }
+  .doc .apri{
+    display:inline-block;margin-top:14px;
+    background:var(--blu);color:var(--bianco);
+    text-decoration:none;font-weight:600;font-size:15px;
+    padding:11px 20px;border-radius:999px;
+  }
+  .doc .apri:hover{background:var(--navy-2)}
+  .doc .apri:focus-visible{outline:3px solid var(--blu-chiaro);outline-offset:2px}
+
+  /* L'anteprima incorporata solo dove ha senso: su desktop. Sui telefoni i
+     browser mostrano il PDF a modo loro e un iframe farebbe piu' danni che
+     altro, quindi li si va diretti al pulsante Sfoglia. */
+  .sfoglia{display:none}
+  @media (min-width:900px){
+    .sfoglia{display:block;margin-top:16px;border:1px solid var(--crema-2);border-radius:10px;overflow:hidden}
+    .sfoglia object{display:block;width:100%;height:520px;border:0}
+  }
+
+  .ritorno{margin:34px 0 0;font-size:15px}
+  .ritorno a{color:var(--blu);font-weight:600;text-decoration-thickness:1px;text-underline-offset:2px}
+  .nota{margin:26px 0 0;font-size:13.5px;color:var(--testo-2);max-width:60ch}
+</style>
+</head>
+<body>
+
+<header class="testata">
+  <div class="contenitore testata-in">
+    <a href="../"><img class="logo-profarmer" src="../assets/logo-profarmer.png" alt="Pro Farmer" width="532" height="200"></a>
+  </div>
+</header>
+
+<section class="materiali">
+  <div class="contenitore">
+    <p class="soprattitolo">piùLact · materiali</p>
+    <h1>Brochure e gamma,<br><em>da sfogliare</em></h1>
+    <p class="guida">Due documenti Pro Farmer sull'igiene della zona di riposo. Si aprono nel browser: non serve scaricare niente.</p>
+
+    <article class="doc">
+      <h2>Brochure piùLact</h2>
+      <p>Che cos'è piùLact, come agisce sulla lettiera e cosa cambia in stalla, con i risultati misurati sulle cellule somatiche.</p>
+      <p class="dati">PDF · 4,4 MB</p>
+      <a class="apri" href="brochure%20pi%C3%B9Lact%20-%20web.pdf" target="_blank" rel="noopener">Sfoglia la brochure</a>
+      <div class="sfoglia">
+        <object data="brochure%20pi%C3%B9Lact%20-%20web.pdf" type="application/pdf" aria-label="Brochure piùLact">
+          <p style="padding:16px;margin:0">Il tuo browser non mostra i PDF qui dentro: usa il pulsante <strong>Sfoglia la brochure</strong> qui sopra.</p>
+        </object>
+      </div>
+    </article>
+
+    <article class="doc">
+      <h2>Gamma piùLact</h2>
+      <p>Il depliant con tutta la gamma — piùLact, piùLact LA e piùLact PRONTO — con le differenze di impiego e i formati.</p>
+      <p class="dati">PDF · 2,5 MB</p>
+      <a class="apri" href="gamma%20pi%C3%B9Lact.pdf" target="_blank" rel="noopener">Sfoglia la gamma</a>
+      <div class="sfoglia">
+        <object data="gamma%20pi%C3%B9Lact.pdf" type="application/pdf" aria-label="Gamma piùLact">
+          <p style="padding:16px;margin:0">Il tuo browser non mostra i PDF qui dentro: usa il pulsante <strong>Sfoglia la gamma</strong> qui sopra.</p>
+        </object>
+      </div>
+    </article>
+
+    <p class="ritorno"><a href="../">Torna al calcolatore di dosaggio</a></p>
+
+    <p class="nota">piùLact è un prodotto commercializzato da Pro Farmer — Via Milazzo 19, 26100 Cremona (CR) — info@profarmer.it</p>
+  </div>
+</section>
+
+</body>
+</html>
