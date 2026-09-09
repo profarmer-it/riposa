@@ -558,6 +558,14 @@ function mostraContatti(r) {
     const f = ev.currentTarget;
     const err = document.getElementById('errore-contatti');
     const dati = Object.fromEntries(new FormData(f).entries());
+
+    /* Gli spazi di troppo si mangiano qui, una volta per tutte: uno spazio in
+       coda alla ragione sociale rompe il grassetto del messaggio WhatsApp
+       (*Agrinova * non diventa grassetto) e sporca la riga sul foglio. */
+    for (const chiave in dati) {
+      if (typeof dati[chiave] === 'string') dati[chiave] = dati[chiave].trim();
+    }
+
     dati.consenso = document.getElementById('c-consenso').checked;
 
     if (!dati.nome || !dati.nome.trim()) {
