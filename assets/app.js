@@ -666,60 +666,48 @@ function testoRiepilogo(dati, r) {
   const d = r.dati, s = r.scenario, p = r.prodotto;
   const L = [];
 
-  // Chi riceve il messaggio è già in una chat WhatsApp con l'allevatore:
-  // il suo numero ce l'ha. Nel testo va solo il nome dell'azienda.
-  const zonaTesto = (d.zona === 'lettiera' || d.zona === 'compost')
-    ? 'per la zona a lettiera' : 'per cuccette';
-  L.push(`*Calcolo fabbisogno igienizzante ${zonaTesto} per l'azienda: ${dati.azienda || dati.nome || '—'}*`);
+  /* Il PRIMO messaggio dice solo l'essenziale: che prodotto serve, come si
+     applica e quanto distribuirne a ogni passaggio. Niente scelte premium,
+     niente proposta di prova: quelle sono materia della conversazione che
+     l'agente apre dopo, non del messaggio che arriva per primo.
+     Why: un allevatore in stalla legge quattro righe, non una scheda. */
+
+  L.push(`*Riposa — il calcolo per ${dati.azienda || dati.nome || 'la tua stalla'}*`);
   L.push('');
 
-  L.push('*La stalla*');
-  L.push(`Zona di riposo: ${({ materassino: 'materassino', buca: 'buca a riempimento', lettiera: 'lettiera', compost: 'compost barn' })[d.zona]}`);
+  // Una riga sola di contesto: serve a riconoscere di quale stalla si parla.
+  const zone = { materassino: 'cuccette a materassino', buca: 'cuccette a buca',
+                 lettiera: 'lettiera a rinnovo frequente', compost: 'compost barn' };
+  const contesto = [zone[d.zona]];
   if (r.superficie) {
-    L.push(`Lettiera: ${num(d.mq)} m² per ${num(d.capiZona)} capi (${num(r.mqPerCapo, 1)} m²/capo)`);
-  } else {
-    if (d.cuccette) L.push(`Cuccette: ${num(d.cuccette)}${d.cuccetteStimate ? ' (stimate dai capi)' : ''}`);
-    if (d.capi)     L.push(`Capi in mungitura: ${num(d.capi)}`);
+    contesto.push(`${num(d.mq)} m²`);
+  } else if (d.cuccette) {
+    contesto.push(`${num(d.cuccette)} cuccette`);
   }
-  L.push(`Mungitura: ${d.mungitura === 'robot' ? 'robot' : 'sala'}`);
-  if (d.zona === 'buca') L.push(`Riempimento buca: ${d.riempimento === 'miscelata' ? 'miscelata col carro' : 'materiale e piùLact a spaglio'}`);
-  if (!r.superficie && d.lettieraAttuale.length) L.push(`Lettiera oggi: ${d.lettieraAttuale.join(', ')}`);
-  L.push(`Biogas a valle: ${d.biogas ? 'sì' : 'no'}`);
-  if (d.cellule) L.push(`Cellule somatiche: ${num(d.cellule)} mila/ml`);
+  if (d.mungitura === 'robot') contesto.push('mungitura con robot');
+  L.push(contesto.join(' · '));
   L.push('');
 
-  L.push(`*Prodotto: ${p.nome}*`);
   if (r.soloConsulenza) {
-    L.push('Questa zona richiede una valutazione dedicata.');
-  } else {
-    L.push(r.superficie
-      ? `${num(r.dosePerMq, 2)} kg per m², ${r.etichettaFrequenza}, ${s.distribuzione}`
-      : `${kg(r.dosePerCuccetta)} kg per cuccetta, ${r.etichettaFrequenza}, ${s.distribuzione}`);
-    L.push(`${kg(r.kgApplicazione)} kg per passaggio — ${kg(r.kgMese)} kg al mese`);
-    if (r.miscelata) {
-      L.push(`Miscelata per cuccetta: piùLact ${kg(r.dosePerCuccetta)} kg + paglia ${kg(r.pagliaPerCuccetta)} kg + acqua ${kg(r.acquaPerCuccetta)} litri`);
-    }
-    L.push(`Formato: ${r.confezioneConsigliata.etichetta}`);
-  }
-
-  // Con il muro l'allevatore non vede il risultato a schermo, quindi le scelte
-  // premium gliele mettiamo nel messaggio: sono parte della risposta.
-  if (r.premium && r.premium.length) {
+    L.push('*Questa zona richiede una valutazione dedicata:* ti ricontattiamo noi.');
     L.push('');
-    L.push('*Le scelte premium*');
-    r.premium.forEach(alt => {
-      L.push(`${alt.prodotto.nome}: ${kg(alt.dosePerCuccetta)} kg per cuccetta, ${alt.etichettaFrequenza} — ${kg(alt.kgMese)} kg al mese`);
-    });
+    L.push('Calcolo generato con Riposa — Pro Farmer');
+    return L.join('\n');
   }
 
-  if (r.proposta) {
-    L.push('');
-    L.push('*' + r.proposta.titolo + '*');
-    L.push(r.proposta.tipo === 'materassino'
-      ? `${r.proposta.sacconiPiulact} sacconi di piùLact + ${r.proposta.sacconiPronto} di piùLact PRONTO`
-      : `${r.proposta.sacconi} sacconi di piùLact PRONTO`);
+  L.push(`*Prodotto:* ${p.nome}`);
+  L.push(`*Come si applica:* ${s.distribuzione}`);
+  if (r.miscelata) {
+    L.push(`*La miscela, per cuccetta:* piùLact ${kg(r.dosePerCuccetta)} kg + paglia ${kg(r.pagliaPerCuccetta)} kg + acqua ${kg(r.acquaPerCuccetta)} litri`);
   }
+  L.push(r.superficie
+    ? `*Dose:* ${num(r.dosePerMq, 2)} kg per m²`
+    : `*Dose:* ${kg(r.dosePerCuccetta)} kg per cuccetta`);
+  L.push(`*Ogni quanto:* ${r.etichettaFrequenza}`);
+  L.push(`*Da distribuire a ogni passaggio:* ${kg(r.kgApplicazione)} kg`);
+  L.push('');
 
+  L.push(`Fanno ${kg(r.kgMese)} kg al mese — formato consigliato: ${r.confezioneConsigliata.etichetta}`);
   L.push('');
   L.push('Calcolo generato con Riposa — Pro Farmer');
   return L.join('\n');
