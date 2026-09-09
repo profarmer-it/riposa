@@ -742,6 +742,15 @@ function testoRiepilogo(dati, r) {
   L.push('');
   L.push(`Formato consigliato: ${maiuscola(r.confezioneConsigliata.etichetta)}`);
   L.push('');
+
+  /* Il quarto punto promesso in home. La quantita' per pallet e per bilico e le
+     soglie di porto franco non le sappiamo ancora, quindi qui NON mettiamo un
+     numero: diciamo che c'e' un margine da prendersi e che lo si prende
+     parlando con Pro Farmer. Meglio una riga onesta che una stima inventata,
+     e intanto e' un motivo in piu' per rispondere al messaggio. */
+  L.push('\u{1F69A} Quantit\u00E0 stimata consigliata per ottimizzare il trasporto, da definire con staff Pro Farmer');
+  L.push('');
+
   L.push("\u{1F449} Calcolo generato da *RIPOSA*, un'app ideata da Pro Farmer");
   return L.join('\n');
 }
