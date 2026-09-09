@@ -51,7 +51,7 @@ di minuti. Non c'è niente da caricare a mano.
 ## Stato
 
 **Fase 1 completa, collaudata e online** (9 settembre 2026). I sette scenari
-sono confermati sui numeri reali. Ogni calcolo scrive una riga di 31 colonne sul
+sono confermati sui numeri reali. Ogni calcolo scrive una riga di 32 colonne sul
 foglio Google e crea il contatto in ActiveCampaign con il tag `riposa`.
 
 La consegna funziona su entrambi i canali. Via e-mail la manda l'Apps Script.
