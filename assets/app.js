@@ -19,16 +19,32 @@ let datiContatto = null;
 
 /* ---------------------------------------------------------------- utilità -- */
 
+/* I numeri li formattiamo a mano, non con toLocaleString('it-IT').
+   Why: su parecchi telefoni il motore JS sa fare la virgola dei decimali ma
+   NON il punto delle migliaia, e "3600 kg" al posto di "3.600 kg" si legge
+   male. Facendolo noi il risultato e' identico su qualsiasi dispositivo. */
+function raggruppa(intero) {
+  return String(intero).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 function num(n, dec = 0) {
-  return Number(n).toLocaleString('it-IT', {
-    minimumFractionDigits: dec,
-    maximumFractionDigits: dec
-  });
+  const pezzi = Number(n).toFixed(dec).split('.');
+  return raggruppa(pezzi[0]) + (pezzi[1] ? ',' + pezzi[1] : '');
 }
 
 // arrotonda "all'italiana": sotto 10 con un decimale, sopra 10 intero
 function kg(n) {
   return n < 10 ? num(n, 1) : num(Math.round(n));
+}
+
+function migliaia(n) {
+  return raggruppa(Math.round(n));
+}
+
+// prima lettera maiuscola, con "big bag" trattato come nome proprio del formato
+function maiuscola(t) {
+  const s = String(t || '');
+  return (s.charAt(0).toUpperCase() + s.slice(1)).replace(/^Big bag/, 'Big Bag');
 }
 
 // i passaggi al mese: 15 e non 15,0, ma 4,3 quando il decimale c'è davvero
@@ -677,52 +693,56 @@ function testoRiepilogo(dati, r) {
   const L = [];
 
   /* Il PRIMO messaggio dice solo l'essenziale: che prodotto serve, come si
-     applica e quanto distribuirne a ogni passaggio. Niente scelte premium,
-     niente proposta di prova: quelle sono materia della conversazione che
-     l'agente apre dopo, non del messaggio che arriva per primo.
-     Why: un allevatore in stalla legge quattro righe, non una scheda. */
+     applica e quanto distribuirne. Niente scelte premium, niente proposta di
+     prova: quelle sono materia della conversazione che l'agente apre dopo,
+     non del messaggio che arriva per primo.
+     Why: un allevatore in stalla legge sei righe, non una scheda.
+     Il grassetto e' quello di WhatsApp (*cosi*): sull'e-mail lo traduce in
+     HTML l'Apps Script. Attenzione a non lasciare mai uno spazio prima
+     dell'asterisco di chiusura, o il grassetto non viene applicato. */
 
-  L.push(`*Riposa — il calcolo per ${dati.azienda || dati.nome || 'la tua stalla'}*`);
+  const chi = dati.azienda || dati.nome || 'la tua stalla';
+  L.push(`\u{1F4AA} *RIPOSA*, l'app Pro Farmer che calcola per *${chi}*`);
   L.push('');
 
-  // Una riga sola di contesto: serve a riconoscere di quale stalla si parla.
+  // Le caratteristiche servono a riconoscere di quale stalla si parla.
   const zone = { materassino: 'cuccette a materassino', buca: 'cuccette a buca',
                  lettiera: 'lettiera a rinnovo frequente', compost: 'compost barn' };
   const contesto = [zone[d.zona]];
   if (r.superficie) {
-    contesto.push(`${num(d.mq)} m²`);
+    contesto.push(`${num(d.mq)} m\u00B2`);
   } else if (d.cuccette) {
     contesto.push(`${num(d.cuccette)} cuccette`);
   }
   if (d.mungitura === 'robot') contesto.push('mungitura con robot');
-  L.push(contesto.join(' · '));
+  L.push(`Caratteristiche stalla: ${maiuscola(contesto.join(', '))}`);
   L.push('');
 
   if (r.soloConsulenza) {
-    L.push('*Questa zona richiede una valutazione dedicata:* ti ricontattiamo noi.');
+    L.push('\u2705 *Questa zona richiede una valutazione dedicata:* ti ricontattiamo noi.');
     L.push('');
-    L.push('Calcolo generato con Riposa — Pro Farmer');
+    L.push("\u{1F449} Calcolo generato da *RIPOSA*, un'app ideata da Pro Farmer");
     return L.join('\n');
   }
 
-  L.push(`*Prodotto:* ${p.nome}`);
-  L.push(`*Come si applica:* ${s.distribuzione}`);
-  if (r.miscelata) {
-    L.push(`*La miscela, per cuccetta:* piùLact ${kg(r.dosePerCuccetta)} kg + paglia ${kg(r.pagliaPerCuccetta)} kg + acqua ${kg(r.acquaPerCuccetta)} litri`);
-  }
-  // Nella miscelata la dose l'ha gia' detta la riga della miscela: non la ripetiamo.
-  if (!r.miscelata) {
-    L.push(r.superficie
-      ? `*Dose:* ${num(r.dosePerMq, 2)} kg per m²`
-      : `*Dose:* ${kg(r.dosePerCuccetta)} kg per cuccetta`);
-  }
-  L.push(`*Ogni quanto:* ${r.etichettaFrequenza}`);
-  L.push(`*Da distribuire a ogni passaggio:* ${kg(r.kgApplicazione)} kg`);
+  L.push(`\u2705 Prodotto consigliato: *${p.nome}*`);
   L.push('');
 
-  L.push(`Fanno ${kg(r.kgMese)} kg al mese — formato consigliato: ${r.confezioneConsigliata.etichetta}`);
+  const dose = r.superficie
+    ? `${num(r.dosePerMq, 2)} kg per m\u00B2`
+    : `${kg(r.dosePerCuccetta)} kg per cuccetta`;
+  L.push(`\u{1F91D} Modalit\u00E0 di applicazione, quantit\u00E0 e frequenza di distribuzione consigliate: distribuzione ${s.distribuzione}, ${dose}, ${r.etichettaFrequenza}. Totale per l'intera stalla: ${kg(r.kgApplicazione)} kg`);
+  if (r.miscelata) {
+    L.push('');
+    L.push(`La miscela, per cuccetta: pi\u00F9Lact ${kg(r.dosePerCuccetta)} kg + paglia ${kg(r.pagliaPerCuccetta)} kg + acqua ${kg(r.acquaPerCuccetta)} litri`);
+  }
   L.push('');
-  L.push('Calcolo generato con Riposa — Pro Farmer');
+
+  L.push(`Calcolo fabbisogno sul mese: ${migliaia(r.kgMese)} kg`);
+  L.push('');
+  L.push(`Formato consigliato: ${maiuscola(r.confezioneConsigliata.etichetta)}`);
+  L.push('');
+  L.push("\u{1F449} Calcolo generato da *RIPOSA*, un'app ideata da Pro Farmer");
   return L.join('\n');
 }
 
