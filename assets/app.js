@@ -12,7 +12,7 @@ const boxRiemp  = document.getElementById('blocco-riempimento');
 const boxSup    = document.getElementById('blocco-superficie');
 
 let ultimoRisultato = null;
-let premiumScelto = null;   // id dello scenario premium scelto dall'allevatore
+let premiumScelto = null;   // id dello scenario alternativo scelto dall'allevatore
 let canale = null;          // 'whatsapp' | 'email'
 let consegnato = false;     // il risultato è già stato inviato?
 let datiContatto = null;
@@ -130,7 +130,7 @@ function leggiModulo() {
     mq: suSuperficie ? mq : null,
     capiZona: suSuperficie ? capiZona : null,
     lettieraAttuale: f.getAll('lettieraAttuale'),
-    biogas: f.get('biogas') === 'si',
+    biogas: false,   // domanda tolta il 18 ottobre 2026: serviva solo al canapulo
     cellule: Number.isFinite(cellule) && cellule > 0 ? cellule : null
   };
 }
@@ -220,33 +220,23 @@ function calcolaScenario(idScenario, d) {
   return r;
 }
 
-/* La risposta completa: la prima scelta, le eventuali scelte premium calcolate
-   sugli stessi numeri, e la proposta di prova adatta a questa stalla. */
+/* La risposta completa: la prima scelta e l'eventuale alternativa calcolata
+   sugli stessi numeri. Il campo si chiama ancora `premium` perché così lo
+   leggono il foglio Google e la pagina; oggi contiene l'alternativa. */
 function calcola(d) {
   const r = calcolaScenario(scegliScenario(d), d);
 
-  r.premium = scenariPremium(d)
+  r.premium = scenariAlternativi(d)
     .filter(id => id !== r.idScenario)
     .map(id => calcolaScenario(id, d));
-
-  // capi in lattazione, per dimensionare la proposta di prova
-  r.capiRiferimento = d.capi
-    || (d.cuccette ? Math.round(d.cuccette / CONFIG.rapportoCuccettePerCapo) : null)
-    || d.capiZona
-    || null;
-
-  r.proposta = (d.zona === 'materassino')
-    ? Object.assign({ tipo: 'materassino' }, PROPOSTE.provaMaterassino)
-    : Object.assign({ tipo: 'gabbiette', sacconi: sacconiGabbiette(r.capiRiferimento) },
-                    PROPOSTE.gabbietteVitelli);
 
   return r;
 }
 
 /* ------------------------------------------------------------- il risultato */
-/* ⚠️ Con il muro attivo questa funzione NON è nel percorso pubblico: il
-   risultato a schermo lo vedrà l'agente dall'area riservata (Fase 3). Resta qui
-   pronta, e resta l'unico posto dove i numeri diventano pagina.               */
+/* Questa funzione NON è nel percorso pubblico, dove c'è il muro: il risultato
+   a schermo lo vede chi è entrato nell'area venditori (assets/venditori.js).
+   Resta l'unico posto dove i numeri diventano pagina.                         */
 
 function disegnaRisultato(r) {
   const s = r.scenario, p = r.prodotto, d = r.dati;
@@ -365,49 +355,39 @@ function disegnaRisultato(r) {
     h += '</div>';
   }
 
-  /* --- le scelte premium, calcolate sugli stessi numeri --- */
+  /* --- l'alternativa, calcolata sugli stessi numeri --- */
   if (r.premium && r.premium.length) {
     h += '<div class="blocco">';
-    h += '<h3>' + (r.premium.length > 1 ? 'Le scelte premium' : 'La scelta premium') + '</h3>';
-    h += '<p style="color:#5A6A80;font-size:15px">piùLact classico è la risposta giusta per la tua '
-      + 'stalla, ed è da lì che partiamo. Se però vuoi entrare in stalla meno spesso, o portare '
-      + 'dentro lettime e igienizzante in un solo passaggio, ecco cosa cambierebbe — con i tuoi numeri.</p>';
+    h += '<h3>Preferisci preparare la miscelata in azienda?</h3>';
     r.premium.forEach(a => {
-      let perche = a.scenario.perche || '';
-      if (a.scenario.perchebiogas && d.biogas) perche += ' ' + a.scenario.perchebiogas;
+      const perche = a.scenario.perche || '';
       const scelto = premiumScelto === a.idScenario;
       h += `<div class="premium${scelto ? ' scelto' : ''}">`;
       h += `<h4>${esc(a.prodotto.nome)} <span>${esc(a.prodotto.tagline)}</span></h4>`;
       if (perche) h += `<p>${esc(perche)}</p>`;
       h += '<table class="tabella"><tbody>';
-      h += riga('Per cuccetta', `${kg(a.dosePerCuccetta)} kg, ${esc(a.etichettaFrequenza)}`);
-      h += riga('Al mese', `${kg(a.kgMese)} kg`);
+      h += riga('Per cuccetta', a.miscelata
+        ? `${kg(a.dosePerCuccetta)} kg di piùLact in ${kg(a.mixPerCuccetta)} kg di mix, ${esc(a.etichettaFrequenza)}`
+        : `${kg(a.dosePerCuccetta)} kg, ${esc(a.etichettaFrequenza)}`);
+      h += riga('Al mese', `${kg(a.kgMese)} kg di piùLact`);
+      if (a.miscelata) {
+        h += riga('Da aggiungere al mese', `${kg(a.pagliaMese)} kg di paglia, ${kg(a.acquaMese)} litri di acqua`);
+      }
       h += riga(esc(a.confezioneConsigliata.etichetta), testoConfezione(a.confezioneConsigliata));
       h += '</tbody></table>';
       h += `<button type="button" class="bottone premium-scegli${scelto ? ' bottone-scelto' : ''}" `
         + `data-scenario="${esc(a.idScenario)}">`
-        + (scelto ? `✓ Ti interessa ${esc(a.prodotto.nome)}` : `Mi interessa ${esc(a.prodotto.nome)}`)
+        + (scelto ? '✓ Preferisci prepararla in azienda' : 'Preferisco prepararla in azienda')
         + '</button>';
       h += '</div>';
     });
     h += '</div>';
   }
 
-  /* --- la proposta di prova --- */
-  if (r.proposta) {
-    h += '<div class="blocco blocco-prova">';
-    h += `<h3>${esc(r.proposta.titolo)}</h3>`;
-    h += `<p>${esc(r.proposta.testo)}</p>`;
-    h += r.proposta.tipo === 'materassino'
-      ? `<p class="prova-cifra"><strong>${r.proposta.sacconiPiulact} sacconi di piùLact `
-        + `+ ${r.proposta.sacconiPronto} di piùLact PRONTO</strong></p>`
-      : `<p class="prova-cifra"><strong>${r.proposta.sacconi} sacconi di piùLact PRONTO</strong>`
-        + `<span>la quantità che proponiamo a una stalla della tua dimensione</span></p>`;
-    h += '</div>';
-  }
-
   mostra(h);
   agganciaPremium(r);
+  // nell'area venditori, sotto il risultato c'è il modulo d'ordine
+  if (typeof Venditori !== 'undefined' && Venditori.attivo()) Venditori.mostraOrdine(r);
 }
 
 /* Scrive nel riquadro risultato, scorrendoci sopra solo la prima volta. */
@@ -442,7 +422,7 @@ function testoConfezione(c) {
 
 const PASSI_RAGIONAMENTO = [
   'Leggo le caratteristiche della tua stalla…',
-  'Confronto le tre formulazioni piùLact…',
+  'Confronto piùLact e piùLact Pronto…',
   'Calcolo il dosaggio e la frequenza…',
   'Verifico i formati e la quantità da ordinare…'
 ];
@@ -708,6 +688,24 @@ function consiglioTrasporto(r) {
   const kgOrizzonte = r.kgMese * T.mesiOrizzonte;
   const camion = '\u{1F69A}';
 
+  // Ballette di piùLact Pronto: sul mese, bancali interi da 2, minimo 10.
+  if (c.kg === T.ballettaKg) {
+    const kgB = r.kgMese * T.mesiOrizzonteBallette;
+    const servono = Math.ceil(kgB / T.ballettaKg);
+    const staff = 'La consegna la organizza lo staff Pro Farmer';
+    /* Sotto il minimo il fabbisogno e l'ordine sono due numeri diversi, e vanno
+       detti tutti e due: "servono 10" a chi ne consuma 6 sarebbe falso. */
+    if (servono < T.balletteMinimo) {
+      const mesi = T.balletteMinimo * T.ballettaKg / r.kgMese;
+      return `${camion} Al mese servono ${num(servono)} ballette. L'ordine minimo \u00E8 di `
+        + `${num(T.balletteMinimo)} ballette su ${num(T.balletteMinimo / T.ballettePerBancale)} bancali, `
+        + `circa ${ton(T.balletteMinimo * T.ballettaKg)} t, e ti copre circa ${num(mesi, 1)} mesi. ${staff}`;
+    }
+    const ballette = Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale;
+    return `${camion} Al mese servono ${num(ballette)} ballette, su ${num(ballette / T.ballettePerBancale)} bancali, `
+      + `circa ${ton(ballette * T.ballettaKg)} t. ${staff}`;
+  }
+
   // Sacchetti: bancali interi, minimo 2, nessun camion da saturare.
   if (c.kg === 25) {
     const bancali = Math.max(T.bancaliMinimo, Math.ceil(kgOrizzonte / T.bancaleKg));
@@ -716,7 +714,7 @@ function consiglioTrasporto(r) {
       + `${ton(bancali * T.bancaleKg)} t${minimo}. La consegna la organizza lo staff Pro Farmer`;
   }
 
-  // Un formato che non conosciamo (per esempio i big bag da 300 kg del PRONTO):
+  // Un formato che non conosciamo:
   // niente numeri inventati.
   if (c.kg !== T.bigBagKg) {
     return `${camion} Quantit\u00E0 e trasporto da valutare con lo staff Pro Farmer`;
@@ -811,6 +809,15 @@ function testoRiepilogo(dati, r) {
     L.push('');
   }
 
+  /* L'alternativa, in due righe: chi riceve le ballette come prima scelta deve
+     sapere che, se la miscelata preferisce farla lui, gli basta piùLact. */
+  (r.premium || []).forEach(a => {
+    L.push(`\u{1F504} Se preferisci preparare la miscelata in azienda: *${a.prodotto.nome}*, `
+      + `${kg(a.dosePerCuccetta)} kg per cuccetta in ${kg(a.mixPerCuccetta)} kg di mix, ${a.etichettaFrequenza}. `
+      + `Fabbisogno sul mese: ${migliaia(a.kgMese)} kg di ${a.prodotto.nome}`);
+    L.push('');
+  });
+
   L.push("\u{1F449} Calcolo generato da *RIPOSA*, un'app ideata da Pro Farmer");
   return L.join('\n');
 }
@@ -876,11 +883,7 @@ function inviaLead(dati, r) {
     kgMese:         r.kgMese ? Math.round(r.kgMese) : '',
     formato:        r.confezioneConsigliata ? r.confezioneConsigliata.etichetta : '',
     premium:        scelta ? scelta.prodotto.nome : '',
-    prova:          r.proposta
-                      ? (r.proposta.tipo === 'materassino'
-                          ? `${r.proposta.sacconiPiulact} piùLact + ${r.proposta.sacconiPronto} PRONTO`
-                          : `${r.proposta.sacconi} sacconi PRONTO (gabbiette)`)
-                      : ''
+    prova:          ''   // le proposte di prova sono uscite il 18 ottobre 2026
   });
 
   q.set('canale', canale || '');
@@ -913,5 +916,11 @@ modulo.addEventListener('submit', ev => {
   consegnato = false;
   datiContatto = null;
   ultimoRisultato = calcola(d);
+  /* Il venditore vede il risultato subito, a schermo: il muro dei lead vale
+     per l'allevatore, non per chi gli sta facendo il conto davanti. */
+  if (typeof Venditori !== 'undefined' && Venditori.attivo()) {
+    disegnaRisultato(ultimoRisultato);
+    return;
+  }
   mostraRagionamento(ultimoRisultato);
 });
