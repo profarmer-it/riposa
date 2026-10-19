@@ -426,3 +426,31 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   margin:20px auto 0 !important;padding-top:16px;max-width:44ch;
   border-top:1px solid var(--crema-2);font-size:14px !important
 }
+
+/* ---------------------------------------------------------- area venditori */
+.venditori{margin-bottom:24px}
+.venditori-accesso{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.venditori-accesso .campo{flex:1 1 200px;margin:0}
+.venditori-accesso input{text-transform:uppercase;letter-spacing:.08em}
+.venditori-testa{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.venditori-testa p{margin:0;font-size:18px}
+.venditori-ruolo{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:99px;
+  background:var(--crema-2);color:var(--testo-2);font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.venditori-azioni{display:flex;gap:8px}
+.venditori-azioni .bottone{padding:10px 16px;font-size:14px}
+.ordine-righe input{width:90px;padding:8px 10px;font:inherit;border:1px solid var(--crema-2);border-radius:8px;text-align:right}
+.ordine-conto{font-size:14px}
+.ordine-scorri{overflow-x:auto;margin-top:16px}
+.ordine-conto th,.ordine-conto td{vertical-align:top}
+.ordine-conto td{white-space:nowrap;padding-left:10px}
+.ordine-conto thead th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--testo-2)}
+.ordine-conto td small{display:block;color:var(--testo-2);font-size:12px}
+.ordine-conto .totale th,.ordine-conto .totale td{border-top:2px solid var(--testo);font-weight:600}
+.sotto-minimo{display:block;color:var(--ambra);font-size:12px;font-weight:500}
+.venditori-ordine textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--crema-2);border-radius:8px}
+@media (max-width:560px){
+  .ordine-conto{font-size:12px}
+  .ordine-conto th,.ordine-conto td{padding:8px 0 8px 6px}
+  .ordine-conto th:first-child{padding-left:0}
+  .ordine-conto td small{font-size:11px}
+}

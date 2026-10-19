@@ -55,8 +55,11 @@ const CONFIG = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* I tre prodotti della gamma                                                  */
+/* I due prodotti della gamma                                                  */
 /* -------------------------------------------------------------------------- */
+/* Dal 18 ottobre 2026 la gamma proposta è di due prodotti: piùLact e piùLact
+   Pronto in ballette. piùLact LA e il PRONTO col canapulo escono dall'app:
+   decisione di Giulio. */
 
 /* --------------------------------------------------------------------------
    IL TRASPORTO
@@ -70,7 +73,8 @@ const CONFIG = {
    Il consiglio ragiona sul TRIMESTRE, non sul mese: sul mese quasi nessuno
    arriva a un camion, sul trimestre ci arriva una stalla media.
 
-   Vale solo per i big bag. Chi prende i bancali di sacchetti è un'azienda
+   Vale per i big bag. Le ballette di piùLact Pronto hanno regole loro, in
+   fondo a questo blocco. Chi prende i bancali di sacchetti è un'azienda
    piccola e non arriverà mai a una motrice intera: per lei conta solo
    arrotondare a bancali interi e rispettare il minimo.
 
@@ -89,7 +93,19 @@ const TRASPORTO = {
   bilico: 50,              // big bag che saturano un bilico: 30 t
 
   sogliaMotrice: 20,       // da 20 big bag (12 t) si propone la motrice
-  sogliaBilico: 35         // da 35 big bag (21 t) si propone il bilico
+  sogliaBilico: 35,        // da 35 big bag (21 t) si propone il bilico
+
+  /* piùLact Pronto in ballette. Dati di Giulio, 18 ottobre 2026: ordine minimo
+     10 ballette, disposte su 5 bancali (2 ballette per bancale). Quante ne sta
+     su una motrice o su un bilico non lo sappiamo ancora: finché manca, il
+     consiglio non nomina il camion. Il fabbisogno si dà sul MESE e non sul
+     trimestre: con 35 kg a cuccetta a settimana una stalla media consuma una
+     ventina di ballette al mese, e tre mesi di ballette sono un fienile.
+     DA CONFERMARE CON GIULIO. */
+  ballettaKg: 850,
+  balletteMinimo: 10,
+  ballettePerBancale: 2,
+  mesiOrizzonteBallette: 1
 };
 
 /* -------------------------------------------------------------------------- */
@@ -106,24 +122,15 @@ const PRODOTTI = {
     ]
   },
 
-  la: {
-    id: 'la',
-    nome: 'piùLact LA',
-    tagline: 'long action',
-    sintesi: 'Formulazione dedicata alle stalle con mungitura robotizzata e cuccette a materassino, dove entrare in stalla il meno possibile fa la differenza. Il potere alcalinizzante viene ceduto in modo graduale, come un concime a lenta cessione.',
-    confezioni: [
-      { etichetta: 'sacchi da 25 kg', kg: 25 },
-      { etichetta: 'big bag da 600 kg', kg: 600 }
-    ]
-  },
-
+  /* Le percentuali della miscela NON vanno scritte qui: questo file è pubblico.
+     Si dicono solo gli ingredienti. Regola di riservatezza di Giulio. */
   pronto: {
     id: 'pronto',
-    nome: 'piùLact PRONTO',
-    tagline: 'già miscelato — canapulo + piùLact 80/20',
-    sintesi: 'Un solo ingresso in stalla al posto di due. Arriva in big bag già miscelato: canapulo fine e piùLact nelle proporzioni corrette, senza possibilità di errore in azienda. Il canapulo tiene la cuccetta più asciutta più a lungo.',
+    nome: 'piùLact Pronto',
+    tagline: 'in ballette, pronto all’uso',
+    sintesi: 'La miscelata per la cuccetta a buca, già fatta. piùLact, paglia macinata depolverizzata, acqua e acqua di calce, miscelati da noi con il carro e confezionati in ballette fasciate. In azienda non si prepara niente: si apre la balletta e si distribuisce.',
     confezioni: [
-      { etichetta: 'big bag da circa 300 kg', kg: 300 }
+      { etichetta: 'ballette da circa 850 kg', kg: 850 }
     ]
   }
 };
@@ -134,12 +141,37 @@ const PRODOTTI = {
 
 const SCENARI = {
 
-  /* ---- CUCCETTE A BUCA, con carro unifeed ------------------------- CONFERMATO */
+  /* ---- CUCCETTE A BUCA, con piùLact Pronto in ballette ------------ CONFERMATO */
+  /* La prima proposta per chi riempie la buca con una miscelata. Stessa dose
+     della miscelata fatta in casa: 35 kg a cuccetta, una volta a settimana.
+     Decisione di Giulio, 18 ottobre 2026.                                      */
+  'buca-pronto': {
+    prodotto: 'pronto',
+    confermato: true,
+    tipoCalcolo: 'spaglio',
+    titolo: 'piùLact Pronto in buca, una volta a settimana',
+    dosePerCuccettaKg: 35,
+    frequenzaGiorni: 7,
+    etichettaFrequenza: 'una volta a settimana',
+    distribuzione: 'con il carro unifeed o il lanciapaglia',
+    perche: 'La miscelata arriva già pronta: niente carro da caricare, niente dosi da pesare, niente acqua da aggiungere. Le proporzioni sono sempre quelle giuste, perché la miscelata la facciamo noi.',
+    metodologia: [
+      'Apri la balletta e caricala nel carro unifeed o nel lanciapaglia: è già miscelata, non serve aggiungere nulla.',
+      'Distribuisci 35 kg di piùLact Pronto per cuccetta, riempiendo la buca.',
+      'Ripeti ogni 7 giorni: la cuccetta resta piena e il pH resta alto per tutto l’intervallo.',
+      'Nel quotidiano continua a pulire la cuccetta come fai normalmente, senza aggiungere prodotto.'
+    ],
+    nota: 'Un passaggio a settimana, quattro al mese, e nessuna preparazione in azienda: il tempo che oggi passi a fare la miscelata lo recuperi tutto.',
+    alternativa: 'buca-carro'
+  },
+
+  /* ---- CUCCETTE A BUCA, miscelata fatta in azienda --------------- CONFERMATO */
+  /* Per chi preferisce prepararsi la miscelata da solo: basta piùLact.         */
   'buca-carro': {
     prodotto: 'base',
     confermato: true,
     tipoCalcolo: 'miscelata',
-    titolo: 'Miscelata in buca, distribuita con il carro',
+    titolo: 'Miscelata in buca preparata in azienda',
     mixPerCuccettaKg: 35,
     quote: { piulact: 0.20, paglia: 0.40, acqua: 0.40 },
     // 7 giorni e non 9: la scheda prodotto dice 9, ma la settimana è il ritmo con cui
@@ -147,13 +179,14 @@ const SCENARI = {
     frequenzaGiorni: 7,
     etichettaFrequenza: 'una volta a settimana',
     distribuzione: 'carro unifeed o lanciapaglia',
+    perche: 'Se hai il carro e preferisci prepararla tu, ti basta piùLact: la miscelata la fai in azienda con la tua paglia e la tua acqua.',
     metodologia: [
       'Prepara la miscelata nel carro unifeed: 20% piùLact, 40% paglia macinata, 40% acqua.',
       'Distribuisci 35 kg di mix per cuccetta con il carro o il lanciapaglia, riempiendo la buca.',
       'Ripeti ogni 7 giorni: la cuccetta resta piena e il pH resta oltre 11 per tutto l’intervallo.',
       'Nel quotidiano continua a pulire la cuccetta come fai normalmente, senza aggiungere prodotto.'
     ],
-    nota: 'È la configurazione documentata con i risultati migliori: pH della miscelata oltre 11 e cuccetta piena per tutto l’intervallo. Un passaggio a settimana, quattro al mese.'
+    nota: 'Un passaggio a settimana, quattro al mese. Se un giorno vuoi risparmiarti la preparazione, piùLact Pronto è la stessa miscelata già fatta, in ballette.'
   },
 
   /* ---- CUCCETTE A BUCA riempite di paglia lunga ------------------- CONFERMATO */
@@ -171,53 +204,10 @@ const SCENARI = {
       'Distribuisci 0,5 kg di piùLact per cuccetta a spaglio, sopra il materiale.',
       'Ripeti un giorno sì e uno no.'
     ],
-    nota: 'Se hai accesso a un carro miscelatore, anche in conto lavoro, vale la pena valutarlo: con la miscelata 20/40/40 il pH resta oltre 11 e la cuccetta resta piena per tutta la settimana, con quattro passaggi al mese invece di quindici.'
+    nota: 'Se un giorno vuoi passare alla miscelata in buca, con la cuccetta piena per tutta la settimana e quattro passaggi al mese invece di quindici, piùLact Pronto te la porta già fatta, in ballette.'
   },
 
-  /* ---- MATERASSINO + ROBOT · PREMIUM ------------------------------ CONFERMATO */
-  'materassino-robot': {
-    prodotto: 'la',
-    confermato: true,
-    premium: true,
-    perche: 'Granulometria più grossolana e rilascio lento: si passa da quindici distribuzioni al mese a dieci. Meno manodopera, meno disturbo agli animali, e meno rischio di vacche che arrivano in ritardo al robot.',
-    tipoCalcolo: 'spaglio',
-    titolo: 'piùLact LA a spaglio sul materassino',
-    dosePerCuccettaKg: 0.5,
-    frequenzaGiorni: 3,
-    etichettaFrequenza: 'ogni 3 giorni',
-    distribuzione: 'a spaglio',
-    metodologia: [
-      'Distribuisci 0,5 kg di piùLact LA per cuccetta, a spaglio sul materassino.',
-      'Ripeti ogni 3 giorni.',
-      'La cessione graduale del potere alcalinizzante ti permette di entrare in stalla meno spesso, senza perdere protezione della mammella.'
-    ],
-    nota: 'Con la mungitura robotizzata ogni ingresso in stalla è un’interferenza sul traffico delle vacche: LA è nato per questo.',
-    alternativa: 'pronto'
-  },
-
-  /* ---- MATERASSINO + PRONTO · PREMIUM ----------------------------- CONFERMATO */
-  'materassino-pronto': {
-    prodotto: 'pronto',
-    confermato: true,
-    premium: true,
-    perche: 'Un solo ingresso in stalla al posto di due: nella stessa passata distribuisci l’igienizzante e il lettime. Il canapulo assorbe fino a cinque volte il proprio peso e tiene la cuccetta asciutta più a lungo.',
-    perchebiogas: 'E con il biogas o il biometano a valle c’è un motivo in più: nel digestore il canapulo rende più del doppio della paglia.',
-    tipoCalcolo: 'spaglio',
-    titolo: 'piùLact PRONTO sul materassino',
-    dosePerCuccettaKg: 3,
-    frequenzaGiorni: 7,
-    etichettaFrequenza: 'una volta a settimana',
-    distribuzione: 'a spaglio o con il carro',
-    metodologia: [
-      'Distribuisci 3 kg di piùLact PRONTO per cuccetta, a spaglio o con il carro.',
-      'Ripeti una volta a settimana.',
-      'Non serve preparare nulla: canapulo e piùLact arrivano già miscelati nelle proporzioni corrette.'
-    ],
-    nota: 'Lettiera e igienizzante in un solo passaggio: un ingresso in stalla al posto di due. Il canapulo assorbe fino a cinque volte il proprio peso e tiene la cuccetta asciutta, il piùLact la alcalinizza. Con un impianto di biogas o biometano a valle, il canapulo rende nel digestore più del doppio della paglia.',
-    alternativa: 'la'
-  },
-
-  /* ---- MATERASSINO, lettiera propria già in uso ------------------- CONFERMATO */
+  /* ---- MATERASSINO ------------------------------------------------ CONFERMATO */
   'materassino-base': {
     prodotto: 'base',
     confermato: true,
@@ -231,8 +221,7 @@ const SCENARI = {
       'Distribuisci 0,5 kg di piùLact per cuccetta a spaglio sul materassino, sopra o insieme alla lettiera che usi già.',
       'Ripeti un giorno sì e uno no.'
     ],
-    nota: 'Se preferisci un solo passaggio invece di due, piùLact PRONTO porta lettiera e igienizzante già miscelati, con una distribuzione a settimana invece di quindici al mese.',
-    alternativa: 'pronto'
+    nota: 'Tal quale o insieme alla lettiera che usi già: piùLact alcalinizza la superficie del materassino e la tiene asciutta.'
   },
 
   /* ---- LETTIERA A RINNOVO FREQUENTE ------------------------------- CONFERMATO */
@@ -284,55 +273,20 @@ function scegliScenario(d) {
   if (d.zona === 'lettiera') return 'lettiera-permanente';
 
   if (d.zona === 'buca') {
-    // non conta l'attrezzatura che possiede, conta come riempie la cuccetta:
-    // chi prepara una miscelata la distribuisce comunque con carro o lanciapaglia
-    return d.riempimento === 'miscelata' ? 'buca-carro' : 'buca-spaglio';
+    // Chi riempie la buca con una miscelata: prima proposta piùLact Pronto in
+    // ballette, la miscelata già fatta. Chi riempie con paglia lunga e spaglia
+    // il prodotto sopra: piùLact. Decisione di Giulio, 18 ottobre 2026.
+    return d.riempimento === 'miscelata' ? 'buca-pronto' : 'buca-spaglio';
   }
 
-  // Materassino: il piùLact classico è sempre la prima scelta proposta.
-  // LA e PRONTO sono scelte premium, e come tali le decide l'allevatore:
-  // arrivano dopo, calcolate, in scenariPremium().
   return 'materassino-base';
 }
 
-/* Le scelte premium proponibili su questa stalla, nell'ordine in cui mostrarle. */
-function scenariPremium(d) {
-  if (d.zona !== 'materassino') return [];
-  // PRONTO è sempre proponibile su materassino; LA solo con la mungitura robotizzata.
-  // Con il robot mettiamo LA per primo: è la ragione per cui esiste.
-  return d.mungitura === 'robot'
-    ? ['materassino-robot', 'materassino-pronto']
-    : ['materassino-pronto'];
-}
-
-/* -------------------------------------------------------------------------- */
-/* Proposte di prova                                                           */
-/* -------------------------------------------------------------------------- */
-
-const PROPOSTE = {
-  /* Stalle con cuccette a materassino: fornitura composta, per far entrare
-     piùLact PRONTO in stalla insieme all'ordine di piùLact classico. */
-  provaMaterassino: {
-    sacconiPiulact: 6,
-    sacconiPronto: 2,
-    titolo: 'Prova piùLact PRONTO in cuccetta',
-    testo: 'Una fornitura composta: 6 sacconi di piùLact e 2 di piùLact PRONTO da provare. Due sacconi bastano per vedere come si comporta la cuccetta con il canapulo, senza cambiare tutta la gestione.'
-  },
-
-  /* Tutte le altre stalle: piùLact PRONTO nelle gabbiette dei vitelli.
-     Quantità per dimensione dell'allevamento, in capi in lattazione. */
-  gabbietteVitelli: {
-    titolo: 'Prova piùLact PRONTO nelle gabbiette dei vitelli',
-    testo: 'Non serve avere il materassino per usare PRONTO. Nelle gabbiette dei vitelli riempi in modo comodo con un materiale che ha un grande potere assorbente e che contrasta la proliferazione dei patogeni: un solo prodotto, due benefici per il vitello.'
-  }
-};
-
-/* sotto i 300 capi in lattazione: 2 sacconi · da 300 a 600: 4 · oltre 600: 6 */
-function sacconiGabbiette(capiInLattazione) {
-  if (!capiInLattazione) return 2;
-  if (capiInLattazione < 300) return 2;
-  if (capiInLattazione <= 600) return 4;
-  return 6;
+/* L'alternativa calcolata sugli stessi numeri, quando c'è. Oggi una sola: chi
+   ha la buca a miscelata e preferisce prepararsela in azienda usa piùLact. */
+function scenariAlternativi(d) {
+  const s = SCENARI[scegliScenario(d)];
+  return s.alternativa ? [s.alternativa] : [];
 }
 
 /* -------------------------------------------------------------------------- */
