@@ -2,13 +2,21 @@
 
 Calcolatore di dosaggio per la gamma **piùLact** — igienizzante minerale per la
 zona di riposo delle bovine da latte, prodotto e commercializzato da
-**Pro Farmer** (Cremona).
+**Pro Farmer** (Cremona). La gamma è di due prodotti: **piùLact**, in big bag o
+in sacchi da 25 kg, e **piùLact Pronto**, la miscelata per la cuccetta a buca
+già pronta, in ballette.
 
 Dalle caratteristiche della stalla — dove riposano le vacche, quante cuccette,
-che tipo di mungitura, come si riempie la buca — restituisce il prodotto giusto
-della gamma, la dose per cuccetta, la frequenza, il consumo mensile e i formati
-da ordinare. Il risultato non compare a schermo: arriva via e-mail, oppure su
-WhatsApp **dal numero Pro Farmer**, e il contatto diventa un lead profilato.
+come si riempie la buca — restituisce il prodotto giusto, la dose per cuccetta,
+la frequenza, il consumo mensile e quanto ordinare. Il risultato non compare a
+schermo: arriva via e-mail, oppure su WhatsApp **dal numero Pro Farmer**, e il
+contatto diventa un lead profilato.
+
+Agenti, rivenditori e commerciali Pro Farmer hanno un'**area venditori** su
+`riposa.profarmer.it/#venditori`: entrano con un codice personale, vedono il
+risultato a schermo e mandano l'ordine a Pro Farmer dallo stesso calcolo. Nel
+codice di questo repository non ci sono né codici né condizioni commerciali:
+arrivano dallo script del foglio Google, solo dopo l'accesso.
 
 **Il calcolatore è online: https://riposa.profarmer.it**
 
@@ -48,10 +56,14 @@ Il sito è pubblicato con **GitHub Pages** dal ramo `main` di questo
 repository: ogni modifica che arriva su GitHub va online da sola in un paio
 di minuti. Non c'è niente da caricare a mano.
 
+Quando cambiano insieme il sito e lo script del foglio Google, l'ordine è
+sempre lo stesso: **prima lo script Google, poi il sito**.
+
 ## Stato
 
-**Fase 1 completa, collaudata e online** (9 settembre 2026). I sette scenari
-sono confermati sui numeri reali. Ogni calcolo scrive una riga di 32 colonne sul
+**Fase 1 e area venditori online** (19 ottobre 2026). Il calcolatore è online
+dal 9 settembre 2026; dal 18 ottobre propone la gamma di due prodotti, e i sei
+scenari sono confermati sui numeri reali. Ogni calcolo scrive una riga di 32 colonne sul
 foglio Google e crea il contatto in ActiveCampaign con il tag `riposa`.
 
 La consegna funziona su entrambi i canali. Via e-mail la manda l'Apps Script.
