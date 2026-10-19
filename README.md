@@ -3,8 +3,8 @@
 Calcolatore di dosaggio per la gamma **piùLact** — igienizzante minerale per la
 zona di riposo delle bovine da latte, prodotto e commercializzato da
 **Pro Farmer** (Cremona). La gamma è di due prodotti: **piùLact**, in big bag o
-in sacchi da 25 kg, e **piùLact Pronto**, la miscelata per la cuccetta a buca
-già pronta, in ballette.
+in sacchi da 25 kg, e **piùLact Pronto**, paglia e piùLact già miscelati in
+ballette, per la cuccetta a buca e per il materassino.
 
 Dalle caratteristiche della stalla — dove riposano le vacche, quante cuccette,
 come si riempie la buca — restituisce il prodotto giusto, la dose per cuccetta,
@@ -62,8 +62,8 @@ sempre lo stesso: **prima lo script Google, poi il sito**.
 ## Stato
 
 **Fase 1 e area venditori online** (19 ottobre 2026). Il calcolatore è online
-dal 9 settembre 2026; dal 18 ottobre propone la gamma di due prodotti, e i sei
-scenari sono confermati sui numeri reali. Ogni calcolo scrive una riga di 32 colonne sul
+dal 9 settembre 2026; dal 18 ottobre propone la gamma di due prodotti, e i sette
+scenari sono confermati sui numeri reali (il settimo, il Pronto sul materassino, dal 19 ottobre). Ogni calcolo scrive una riga di 32 colonne sul
 foglio Google e crea il contatto in ActiveCampaign con il tag `riposa`.
 
 La consegna funziona su entrambi i canali. Via e-mail la manda l'Apps Script.

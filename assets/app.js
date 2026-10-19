@@ -357,9 +357,10 @@ function disegnaRisultato(r) {
 
   /* --- l'alternativa, calcolata sugli stessi numeri --- */
   if (r.premium && r.premium.length) {
-    h += '<div class="blocco">';
-    h += '<h3>Preferisci preparare la miscelata in azienda?</h3>';
     r.premium.forEach(a => {
+      const t = a.scenario.alternativaTesti;
+      h += '<div class="blocco">';
+      h += `<h3>${esc(t.domanda)}</h3>`;
       const perche = a.scenario.perche || '';
       const scelto = premiumScelto === a.idScenario;
       h += `<div class="premium${scelto ? ' scelto' : ''}">`;
@@ -369,7 +370,7 @@ function disegnaRisultato(r) {
       h += riga('Per cuccetta', a.miscelata
         ? `${kg(a.dosePerCuccetta)} kg di piùLact in ${kg(a.mixPerCuccetta)} kg di mix, ${esc(a.etichettaFrequenza)}`
         : `${kg(a.dosePerCuccetta)} kg, ${esc(a.etichettaFrequenza)}`);
-      h += riga('Al mese', `${kg(a.kgMese)} kg di piùLact`);
+      h += riga('Al mese', `${kg(a.kgMese)} kg di ${esc(a.prodotto.nome)}`);
       if (a.miscelata) {
         h += riga('Da aggiungere al mese', `${kg(a.pagliaMese)} kg di paglia, ${kg(a.acquaMese)} litri di acqua`);
       }
@@ -377,11 +378,11 @@ function disegnaRisultato(r) {
       h += '</tbody></table>';
       h += `<button type="button" class="bottone premium-scegli${scelto ? ' bottone-scelto' : ''}" `
         + `data-scenario="${esc(a.idScenario)}">`
-        + (scelto ? '✓ Preferisci prepararla in azienda' : 'Preferisco prepararla in azienda')
+        + esc(scelto ? '✓ ' + t.scelto : t.scegli)
         + '</button>';
       h += '</div>';
+      h += '</div>';
     });
-    h += '</div>';
   }
 
   mostra(h);
@@ -810,10 +811,14 @@ function testoRiepilogo(dati, r) {
   }
 
   /* L'alternativa, in due righe: chi riceve le ballette come prima scelta deve
-     sapere che, se la miscelata preferisce farla lui, gli basta piùLact. */
+     sapere che, se la miscelata preferisce farla lui, gli basta piùLact; chi
+     ha il materassino, che con le ballette mette paglia e piùLact insieme. */
   (r.premium || []).forEach(a => {
-    L.push(`\u{1F504} Se preferisci preparare la miscelata in azienda: *${a.prodotto.nome}*, `
-      + `${kg(a.dosePerCuccetta)} kg per cuccetta in ${kg(a.mixPerCuccetta)} kg di mix, ${a.etichettaFrequenza}. `
+    const dose = a.miscelata
+      ? `${kg(a.dosePerCuccetta)} kg per cuccetta in ${kg(a.mixPerCuccetta)} kg di mix`
+      : `${kg(a.dosePerCuccetta)} kg per cuccetta`;
+    L.push(`\u{1F504} ${a.scenario.alternativaTesti.riepilogo}: *${a.prodotto.nome}*, `
+      + `${dose}, ${a.etichettaFrequenza}. `
       + `Fabbisogno sul mese: ${migliaia(a.kgMese)} kg di ${a.prodotto.nome}`);
     L.push('');
   });
