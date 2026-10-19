@@ -10,6 +10,8 @@ const boxErrore = document.getElementById('errore');
 const boxRis    = document.getElementById('risultato');
 const boxRiemp  = document.getElementById('blocco-riempimento');
 const boxSup    = document.getElementById('blocco-superficie');
+const boxCucc   = document.getElementById('blocco-cuccette');
+const titoloLettiera = document.getElementById('titolo-lettiera-attuale');
 
 let ultimoRisultato = null;
 let premiumScelto = null;   // id dello scenario alternativo scelto dall'allevatore
@@ -32,9 +34,10 @@ function num(n, dec = 0) {
   return raggruppa(pezzi[0]) + (pezzi[1] ? ',' + pezzi[1] : '');
 }
 
-// arrotonda "all'italiana": sotto 10 con un decimale, sopra 10 intero
+// arrotonda "all'italiana": sotto 10 con un decimale, sopra 10 intero.
+// Il decimale solo quando c'è davvero: 0,5 kg sì, "4,0 kg" no.
 function kg(n) {
-  return n < 10 ? num(n, 1) : num(Math.round(n));
+  return n < 10 && Math.round(n * 10) % 10 !== 0 ? num(n, 1) : num(Math.round(n));
 }
 
 function migliaia(n) {
@@ -64,8 +67,13 @@ modulo.addEventListener('change', e => {
   // le domande che compaiono solo dove hanno senso
   if (e.target.name === 'zona') {
     const z = e.target.value;
+    const suSuperficie = z === 'lettiera' || z === 'compost';
     boxRiemp.hidden = z !== 'buca';
-    boxSup.hidden   = !(z === 'lettiera' || z === 'compost');
+    boxSup.hidden   = !suSuperficie;
+    // su lettiera e compost barn si ragiona a metri quadri: le cuccette non servono
+    boxCucc.hidden  = suSuperficie;
+    titoloLettiera.firstChild.textContent = suSuperficie
+      ? 'Cosa usi oggi in lettiera? ' : 'Cosa usi oggi in cuccetta? ';
     return;
   }
 
@@ -100,6 +108,9 @@ function leggiModulo() {
   }
 
   const suSuperficie = (zona === 'lettiera' || zona === 'compost');
+  // i campi delle cuccette sono nascosti: se erano stati compilati prima di
+  // cambiare zona, non devono finire nel calcolo né sul foglio
+  if (suSuperficie) cuccette = null;
   const mq       = parseInt(f.get('mq'), 10);
   const capiZona = parseInt(f.get('capiZona'), 10);
 
@@ -123,8 +134,8 @@ function leggiModulo() {
   return {
     zona,
     cuccette,
-    cuccetteStimate: !(Number.isFinite(cuccetteInput) && cuccetteInput > 0),
-    capi: Number.isFinite(capiInput) ? capiInput : null,
+    cuccetteStimate: !suSuperficie && !(Number.isFinite(cuccetteInput) && cuccetteInput > 0),
+    capi: !suSuperficie && Number.isFinite(capiInput) ? capiInput : null,
     mungitura: f.get('mungitura'),
     riempimento: f.get('riempimento'),
     mq: suSuperficie ? mq : null,
@@ -531,7 +542,7 @@ function mostraContatti(r) {
   const viaMail = canale === 'email';
   let h = '<div class="blocco">';
   h += `<h3>${viaMail ? 'Dove te lo mandiamo?' : 'Su quale numero te lo mandiamo?'}</h3>`;
-  h += '<p style="color:#5A6A80;font-size:15px">Tre dati e il risultato è tuo.</p>';
+  h += '<p style="color:#5A6A80;font-size:15px">Quattro dati e il risultato è tuo.</p>';
   h += '<form id="modulo-contatti" class="contatti" novalidate>';
   h += campoTesto('nome', 'Nome e cognome', 'text', true);
   h += campoTesto('azienda', 'Ragione sociale', 'text', true);
@@ -639,7 +650,10 @@ function spuntaConsenso() {
     ? `<a href="${esc(CONFIG.urlPrivacy)}" target="_blank" rel="noopener">informativa privacy</a>`
     : 'informativa privacy';
   return '<label class="consenso pieno">'
-    + '<input type="checkbox" id="c-consenso" name="consenso" checked>'
+    // non spuntata in partenza: il consenso al ricontatto commerciale va dato
+    // con un gesto, non trovato già fatto (GDPR). Senza spunta il risultato
+    // arriva lo stesso; lo script non crea il contatto in ActiveCampaign.
+    + '<input type="checkbox" id="c-consenso" name="consenso">'
     + '<span>Acconsento a essere ricontattato da Pro Farmer e a ricevere '
     + 'informazioni su piùLact. Ho letto l’' + link + '.</span>'
     + '</label>';
@@ -707,12 +721,26 @@ function consiglioTrasporto(r) {
       + `circa ${ton(ballette * T.ballettaKg)} t. ${staff}`;
   }
 
+  /* Sotto il minimo, come per le ballette, fabbisogno e ordine sono due numeri
+     diversi e si dicono tutti e due: "sul trimestre servono 2,4 t" a chi ne
+     consuma 0,7 sarebbe falso. */
+  const sottoMinimo = (minimoKg, testoMinimo, chiusa) => {
+    const mesi = minimoKg / r.kgMese;
+    return `${camion} Sul trimestre servono circa ${migliaia(kgOrizzonte)} kg. `
+      + `L'ordine minimo \u00E8 di ${testoMinimo}, ${ton(minimoKg)} t, e ti copre circa ${num(mesi, 1)} mesi. ${chiusa}`;
+  };
+
   // Sacchetti: bancali interi, minimo 2, nessun camion da saturare.
   if (c.kg === 25) {
-    const bancali = Math.max(T.bancaliMinimo, Math.ceil(kgOrizzonte / T.bancaleKg));
-    const minimo = bancali === T.bancaliMinimo ? ", che \u00E8 anche l'ordine minimo" : '';
-    return `${camion} Sul trimestre servono ${num(bancali)} bancali di sacchetti da 25 kg, `
-      + `${ton(bancali * T.bancaleKg)} t${minimo}. La consegna la organizza lo staff Pro Farmer`;
+    const staff = 'La consegna la organizza lo staff Pro Farmer';
+    const servono = Math.ceil(kgOrizzonte / T.bancaleKg);
+    if (servono < T.bancaliMinimo) {
+      return sottoMinimo(T.bancaliMinimo * T.bancaleKg,
+        `${num(T.bancaliMinimo)} bancali di sacchetti da 25 kg`, staff);
+    }
+    const minimo = servono === T.bancaliMinimo ? ", che \u00E8 anche l'ordine minimo" : '';
+    return `${camion} Sul trimestre servono ${num(servono)} bancali di sacchetti da 25 kg, `
+      + `${ton(servono * T.bancaleKg)} t${minimo}. ${staff}`;
   }
 
   // Un formato che non conosciamo:
@@ -721,7 +749,12 @@ function consiglioTrasporto(r) {
     return `${camion} Quantit\u00E0 e trasporto da valutare con lo staff Pro Farmer`;
   }
 
-  const bb = Math.max(T.bigBagMinimo, Math.ceil(kgOrizzonte / T.bigBagKg));
+  const bbServono = Math.ceil(kgOrizzonte / T.bigBagKg);
+  if (bbServono < T.bigBagMinimo) {
+    return sottoMinimo(T.bigBagMinimo * T.bigBagKg, `${num(T.bigBagMinimo)} Big Bag`,
+      'A queste quantit\u00E0 la consegna passa dalla logistica: le condizioni migliori le definisci con lo staff Pro Farmer');
+  }
+  const bb = bbServono;
   const testa = `${camion} Sul trimestre servono ${num(bb)} Big Bag, ${ton(bb * T.bigBagKg)} t`;
   const chiusa = "e l'incidenza del trasporto scende al minimo: da valutare con lo staff Pro Farmer";
 
