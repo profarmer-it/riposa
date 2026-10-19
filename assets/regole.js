@@ -128,7 +128,7 @@ const PRODOTTI = {
     id: 'pronto',
     nome: 'piùLact Pronto',
     tagline: 'in ballette, pronto all’uso',
-    sintesi: 'La miscelata per la cuccetta a buca, già fatta. piùLact, paglia macinata depolverizzata, acqua e acqua di calce, miscelati da noi con il carro e confezionati in ballette fasciate. In azienda non si prepara niente: si apre la balletta e si distribuisce.',
+    sintesi: 'Paglia e piùLact già miscelati, per la cuccetta a buca e per il materassino. piùLact, paglia macinata depolverizzata, acqua e acqua di calce, miscelati da noi con il carro e confezionati in ballette fasciate. In azienda non si prepara niente: si apre la balletta e si distribuisce.',
     confezioni: [
       { etichetta: 'ballette da circa 850 kg', kg: 850 }
     ]
@@ -186,7 +186,14 @@ const SCENARI = {
       'Ripeti ogni 7 giorni: la cuccetta resta piena e il pH resta oltre 11 per tutto l’intervallo.',
       'Nel quotidiano continua a pulire la cuccetta come fai normalmente, senza aggiungere prodotto.'
     ],
-    nota: 'Un passaggio a settimana, quattro al mese. Se un giorno vuoi risparmiarti la preparazione, piùLact Pronto è la stessa miscelata già fatta, in ballette.'
+    nota: 'Un passaggio a settimana, quattro al mese. Se un giorno vuoi risparmiarti la preparazione, piùLact Pronto è la stessa miscelata già fatta, in ballette.',
+    // quando compare come alternativa al Pronto in buca
+    alternativaTesti: {
+      domanda: 'Preferisci preparare la miscelata in azienda?',
+      scegli: 'Preferisco prepararla in azienda',
+      scelto: 'Preferisci prepararla in azienda',
+      riepilogo: 'Se preferisci preparare la miscelata in azienda'
+    }
   },
 
   /* ---- CUCCETTE A BUCA riempite di paglia lunga ------------------- CONFERMATO */
@@ -221,7 +228,38 @@ const SCENARI = {
       'Distribuisci 0,5 kg di piùLact per cuccetta a spaglio sul materassino, sopra o insieme alla lettiera che usi già.',
       'Ripeti un giorno sì e uno no.'
     ],
-    nota: 'Tal quale o insieme alla lettiera che usi già: piùLact alcalinizza la superficie del materassino e la tiene asciutta.'
+    nota: 'Tal quale o insieme alla lettiera che usi già: piùLact alcalinizza la superficie del materassino e la tiene asciutta. Si sparge a mano con la paletta o con un semplice carrellino spandi polveri.',
+    alternativa: 'materassino-pronto'
+  },
+
+  /* ---- MATERASSINO, con piùLact Pronto in ballette --------------- CONFERMATO */
+  /* Alternativa per chi ha una pala distributrice, un lanciapaglia o il carro:
+     di solito sul materassino si entra una volta per la paglia e un'altra per
+     l'igienizzante, con le ballette si portano in cuccetta tutti e due con un
+     solo ingresso. 4 kg a cuccetta a passaggio, due volte a settimana: dati di
+     Giulio, 19 ottobre 2026. 3,5 giorni = due passaggi a settimana.             */
+  'materassino-pronto': {
+    prodotto: 'pronto',
+    confermato: true,
+    tipoCalcolo: 'spaglio',
+    titolo: 'piùLact Pronto sul materassino, due volte a settimana',
+    dosePerCuccettaKg: 4,
+    frequenzaGiorni: 3.5,
+    etichettaFrequenza: 'due volte a settimana',
+    distribuzione: 'con la pala distributrice, il lanciapaglia o il carro unifeed',
+    perche: 'Di solito sul materassino si entra una volta per la paglia e un’altra per l’igienizzante. Con le ballette porti in cuccetta paglia macinata e piùLact insieme, con un solo ingresso: il lavoro si dimezza. Serve una pala distributrice, un lanciapaglia o il carro.',
+    metodologia: [
+      'Apri la balletta e caricala nella pala distributrice, nel lanciapaglia o nel carro unifeed: è già miscelata, non serve aggiungere nulla.',
+      'Distribuisci 4 kg di piùLact Pronto per cuccetta sul materassino.',
+      'Ripeti due volte a settimana: con un solo ingresso metti paglia e igienizzante.'
+    ],
+    nota: 'Paglia e piùLact in un solo passaggio: un ingresso in stalla al posto di due.',
+    alternativaTesti: {
+      domanda: 'Vuoi mettere paglia e piùLact con un solo ingresso?',
+      scegli: 'Preferisco le ballette',
+      scelto: 'Preferisci le ballette',
+      riepilogo: 'Se vuoi portare paglia e piùLact in cuccetta con un solo ingresso'
+    }
   },
 
   /* ---- LETTIERA A RINNOVO FREQUENTE ------------------------------- CONFERMATO */
@@ -282,8 +320,10 @@ function scegliScenario(d) {
   return 'materassino-base';
 }
 
-/* L'alternativa calcolata sugli stessi numeri, quando c'è. Oggi una sola: chi
-   ha la buca a miscelata e preferisce prepararsela in azienda usa piùLact. */
+/* L'alternativa calcolata sugli stessi numeri, quando c'è. Oggi due: chi ha
+   la buca a miscelata e preferisce prepararsela in azienda usa piùLact; chi ha
+   il materassino e vuole mettere paglia e igienizzante con un solo ingresso
+   usa piùLact Pronto in ballette. I testi stanno in `alternativaTesti`. */
 function scenariAlternativi(d) {
   const s = SCENARI[scegliScenario(d)];
   return s.alternativa ? [s.alternativa] : [];
