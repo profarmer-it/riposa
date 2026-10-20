@@ -454,3 +454,37 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   .ordine-conto th:first-child{padding-left:0}
   .ordine-conto td small{font-size:11px}
 }
+
+/* ------------------------------------------------------------ area agente */
+body.in-area-venditori .eroe{display:none}
+.venditori-schede{display:flex;gap:6px;flex-wrap:wrap;margin-top:18px}
+.venditori-schede button{font:inherit;font-size:14px;font-weight:500;padding:9px 14px;border-radius:99px;
+  border:1px solid var(--crema-2);background:var(--bianco);color:var(--testo);cursor:pointer}
+.venditori-schede button[aria-selected="true"]{background:var(--navy);border-color:var(--navy);color:var(--bianco)}
+.venditori-pannello{margin-bottom:24px}
+.venditori-diretto{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--crema-2)}
+.venditori-diretto .aiuto{margin:0;flex:1 1 260px}
+.pannello-testa{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.pannello-testa h3{margin:0}
+.lista-clienti,.lista-materiali{list-style:none;padding:0;margin:18px 0 0}
+.lista-clienti li,.lista-materiali li{padding:16px 0;border-top:1px solid var(--crema-2)}
+.cliente-testa{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cliente-testa span{color:var(--testo-2);font-size:14px}
+.cliente-dati,.cliente-note,.lista-materiali p{margin:6px 0 0;color:var(--testo-2);font-size:14px}
+.cliente-dati a{color:var(--blu)}
+.lista-clienti .azioni,.lista-materiali .azioni{margin-top:10px}
+.lista-clienti .bottone,.lista-materiali .bottone{padding:9px 14px;font-size:14px;text-decoration:none}
+.cliente-modulo{margin:18px 0;padding:18px;border:1px solid var(--crema-2);border-radius:12px;background:var(--crema)}
+.cliente-modulo h4{margin:0 0 12px}
+.cliente-modulo select,.venditori-ordine select{width:100%;padding:12px;font:inherit;border:1px solid var(--crema-2);border-radius:10px;background:var(--bianco)}
+.ordini-storico td small,.ordini-storico th small{display:block;color:var(--testo-2);font-size:12px;font-weight:400}
+.ordini-storico td{white-space:normal}
+.ordini-storico tr.annullato{opacity:.5}
+.stato{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;background:var(--crema-2);color:var(--testo)}
+.stato-confermato,.stato-consegnato{background:#E3EEFB;color:var(--navy)}
+.stato-pagato{background:#E2F3E6;color:#1F6B35}
+.stato-annullato{background:var(--crema-2);color:var(--testo-2)}
+.numeri.soldi{margin:12px 0}
+.numeri.soldi .numero-cella dd{color:var(--bianco)}
+.tabella.profilo td{white-space:normal;text-align:right}
