@@ -58,13 +58,76 @@ const Venditori = (() => {
 
   /* ---------------------------------------------------------------- utilità */
 
+  /* Il codice resta sul telefono finché il venditore non preme "Esci": con
+     l'app installata la apre e c'è già, senza ridigitarlo ogni volta.
+     Decisione di Giulio, 22 ottobre 2026. Prima stava in sessionStorage e si
+     perdeva a ogni chiusura. */
   function memoria(azione, valore) {
     try {
-      if (azione === 'leggi') return sessionStorage.getItem(CHIAVE);
-      if (azione === 'scrivi') sessionStorage.setItem(CHIAVE, valore);
-      if (azione === 'togli') sessionStorage.removeItem(CHIAVE);
+      if (azione === 'leggi') return localStorage.getItem(CHIAVE) || sessionStorage.getItem(CHIAVE);
+      if (azione === 'scrivi') localStorage.setItem(CHIAVE, valore);
+      if (azione === 'togli') { localStorage.removeItem(CHIAVE); sessionStorage.removeItem(CHIAVE); }
     } catch (e) { /* navigazione privata: si rientra col codice, pazienza */ }
     return null;
+  }
+
+  /* ------------------------------------------------- l'app sul telefono */
+
+  const CHIAVE_INSTALLA = 'riposa-installa-no';
+  let promptAndroid = null;   // l'invito "Installa" di Chrome, quando il telefono lo offre
+  window.addEventListener('beforeinstallprompt', ev => {
+    ev.preventDefault();
+    promptAndroid = ev;
+    if (cond) disegnaBarra();
+  });
+  window.addEventListener('appinstalled', () => { promptAndroid = null; if (cond) disegnaBarra(); });
+
+  function installata() {
+    return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  }
+  function suIPhone() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPad recenti
+  }
+  function nonOra() {
+    try { return localStorage.getItem(CHIAVE_INSTALLA) === '1'; } catch (e) { return false; }
+  }
+
+  /* Il riquadro "Installa Riposa": solo nell'area venditori, solo se l'app non
+     è già installata e se il venditore non ha detto "Non ora". Su iPhone non
+     esiste un invito automatico, quindi spieghiamo i due tocchi in Safari. */
+  function riquadroInstalla() {
+    if (installata() || nonOra()) return '';
+    let corpo = '';
+    if (suIPhone()) {
+      const disp = /ipad/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1 && !/iphone/i.test(navigator.userAgent) ? 'iPad' : 'iPhone';
+      corpo = `<strong>Metti Riposa sul tuo ${disp}, come un'app.</strong> In Safari tocca `
+        + '<span class="icona-condividi" aria-label="Condividi">Condividi <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true">'
+        + '<path d="M10 2v11M6 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<path d="M5 9H4v9h12V9h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>'
+        + ' e poi <strong>«Aggiungi alla schermata Home»</strong>. Dieci secondi, una volta sola: poi Riposa si apre dall’icona, a schermo intero, '
+        + 'e il codice resta ricordato.';
+    } else if (promptAndroid) {
+      corpo = '<strong>Metti Riposa sul telefono, come un’app.</strong> Si apre dall’icona, a schermo intero, e il codice resta ricordato.';
+    } else {
+      return '';   // computer o browser che non sa installare: niente riquadro
+    }
+    return '<div class="installa">' + '<p>' + corpo + '</p><div class="azioni">'
+      + (promptAndroid && !suIPhone() ? '<button type="button" class="bottone" id="v-installa">Installa l’app</button>' : '')
+      + '<button type="button" class="bottone bottone-fantasma" id="v-installa-no">Non ora</button></div></div>';
+  }
+
+  function agganciaInstalla() {
+    const si = document.getElementById('v-installa');
+    if (si) si.addEventListener('click', () => {
+      promptAndroid.prompt();
+      promptAndroid.userChoice.finally(() => { promptAndroid = null; disegnaBarra(); });
+    });
+    const no = document.getElementById('v-installa-no');
+    if (no) no.addEventListener('click', () => {
+      try { localStorage.setItem(CHIAVE_INSTALLA, '1'); } catch (e) {}
+      disegnaBarra();
+    });
   }
 
   function euro(n) {
@@ -165,7 +228,7 @@ const Venditori = (() => {
     return el;
   }
 
-  function mostraAccesso(messaggio) {
+  function mostraAccesso(messaggio, codiceDaRiprovare) {
     const el = barra();
     el.innerHTML = '<h2 class="titolo-sezione">Area venditori</h2>'
       + '<p class="aiuto">Per agenti, rivenditori e commerciali Pro Farmer. Entra con il tuo codice personale: '
@@ -175,7 +238,11 @@ const Venditori = (() => {
       + '<input id="v-codice" name="codice" autocomplete="off" autocapitalize="characters" placeholder="es. ABCD-1234"></div>'
       + '<button type="submit" class="bottone">Entra</button>'
       + '</form>'
-      + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '');
+      + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
+      + (codiceDaRiprovare ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '');
+    const riprova = document.getElementById('v-riprova');
+    if (riprova) riprova.addEventListener('click', () => entra(codiceDaRiprovare));
+    if (codiceDaRiprovare) document.getElementById('v-codice').value = codiceDaRiprovare;
     document.getElementById('form-accesso').addEventListener('submit', ev => {
       ev.preventDefault();
       const c = document.getElementById('v-codice').value.trim();
@@ -202,7 +269,13 @@ const Venditori = (() => {
       document.body.classList.add('in-area-venditori');
       disegnaBarra();
       apri(scheda);
-    }).catch(() => mostraAccesso('Non riesco a collegarmi: controlla la connessione e riprova.'));
+    }).catch(() => {
+      /* Senza rete il codice NON si cancella: appena torna il segnale basta
+         "Riprova". Il calcolo per la stalla intanto funziona lo stesso. */
+      mostraAccesso(navigator.onLine === false
+        ? 'Sei senza rete. Il calcolo qui sotto funziona lo stesso; l’area venditori si carica quando torna il segnale.'
+        : 'Non riesco a collegarmi: controlla la connessione e riprova.', c);
+    });
   }
 
   function ricevi(r) {
@@ -240,6 +313,7 @@ const Venditori = (() => {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
         + `erano valide fino al ${esc(cond.validoFino)} e sono da aggiornare con Pro Farmer. Intanto restano quelle.</span></div>`;
     }
+    h += riquadroInstalla();
     h += '<nav class="venditori-schede" role="tablist">';
     schede.forEach(([id, et]) => {
       h += `<button type="button" role="tab" data-scheda="${id}" aria-selected="${scheda === id}">${esc(et)}</button>`;
@@ -247,6 +321,7 @@ const Venditori = (() => {
     h += '</nav>';
     el.innerHTML = h;
     document.getElementById('v-esci').addEventListener('click', esci);
+    agganciaInstalla();
     el.querySelectorAll('[data-scheda]').forEach(b => b.addEventListener('click', () => apri(b.dataset.scheda)));
   }
 
@@ -752,7 +827,9 @@ const Venditori = (() => {
       bottone.disabled = false;
       bottone.textContent = 'Manda l’ordine a Pro Farmer';
       errore(e.message === 'manca il cliente' ? 'Serve la ragione sociale del cliente.'
-        : 'L’ordine non è partito: riprova tra poco. Se continua, chiama Pro Farmer.');
+        : navigator.onLine === false
+          ? 'Sei senza rete: l’ordine non è partito. I dati restano qui: premi di nuovo quando torna il segnale.'
+          : 'L’ordine non è partito: riprova tra poco. Se continua, chiama Pro Farmer.');
     });
   }
 
