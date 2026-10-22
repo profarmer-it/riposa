@@ -236,21 +236,22 @@ const SCENARI = {
   /* Alternativa per chi ha una pala distributrice, un lanciapaglia o il carro:
      di solito sul materassino si entra una volta per la paglia e un'altra per
      l'igienizzante, con le ballette si portano in cuccetta tutti e due con un
-     solo ingresso. 4 kg a cuccetta a passaggio, due volte a settimana: dati di
-     Giulio, 19 ottobre 2026. 3,5 giorni = due passaggi a settimana.             */
+     solo ingresso. 5 kg a cuccetta a passaggio, due volte a settimana: dati di
+     Giulio, 22 ottobre 2026 (il 19 erano 4 kg). 3,5 giorni = due passaggi a
+     settimana.                                                                  */
   'materassino-pronto': {
     prodotto: 'pronto',
     confermato: true,
     tipoCalcolo: 'spaglio',
     titolo: 'piùLact Pronto sul materassino, due volte a settimana',
-    dosePerCuccettaKg: 4,
+    dosePerCuccettaKg: 5,
     frequenzaGiorni: 3.5,
     etichettaFrequenza: 'due volte a settimana',
     distribuzione: 'con la pala distributrice, il lanciapaglia o il carro unifeed',
     perche: 'Di solito sul materassino si entra una volta per la paglia e un’altra per l’igienizzante. Con le ballette porti in cuccetta paglia macinata e piùLact insieme, con un solo ingresso: il lavoro si dimezza. Serve una pala distributrice, un lanciapaglia o il carro.',
     metodologia: [
       'Apri la balletta e caricala nella pala distributrice, nel lanciapaglia o nel carro unifeed: è già miscelata, non serve aggiungere nulla.',
-      'Distribuisci 4 kg di piùLact Pronto per cuccetta sul materassino.',
+      'Distribuisci 5 kg di piùLact Pronto per cuccetta sul materassino.',
       'Ripeti due volte a settimana: con un solo ingresso metti paglia e igienizzante.'
     ],
     nota: 'Paglia e piùLact in un solo passaggio: un ingresso in stalla al posto di due.',
