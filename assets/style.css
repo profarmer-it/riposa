@@ -488,3 +488,13 @@ body.in-area-venditori .eroe{display:none}
 .numeri.soldi{margin:12px 0}
 .numeri.soldi .numero-cella dd{color:var(--bianco)}
 .tabella.profilo td{white-space:normal;text-align:right}
+
+/* ------------------------------------------------------- app installabile */
+.installa{margin-top:16px;padding:14px 16px;border-radius:12px;background:#EAF3FD;border:1px solid #CFE3F8;font-size:15px}
+.installa p{margin:0}
+.installa .azioni{margin-top:10px}
+.installa .bottone{padding:9px 14px;font-size:14px}
+.icona-condividi{display:inline-flex;align-items:center;gap:3px;font-weight:600;color:var(--blu)}
+.icona-condividi svg{vertical-align:-2px}
+/* app aperta dall'icona: niente margine sotto la barra di stato dell'iPhone */
+@media (display-mode: standalone){ body{padding-top:env(safe-area-inset-top)} }
