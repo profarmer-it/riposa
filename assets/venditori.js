@@ -1,24 +1,36 @@
 /* ============================================================================
    Riposa — AREA VENDITORI
    ----------------------------------------------------------------------------
-   Agenti, rivenditori e commerciali Pro Farmer entrano con il codice personale
-   (riposa.profarmer.it/#venditori) e trovano la loro area, in sei schede:
+   Agenti, rivenditori e commerciali Pro Farmer entrano con la loro e-mail e
+   un codice di 6 cifre che arriva per e-mail (riposa.profarmer.it/#venditori)
+   e trovano la loro area, in sei schede:
      Calcolo e ordine · Clienti · Ordini · Provvigioni (o Margini) · Materiali · Profilo
+   Pro Farmer (ruolo interno) ha in più la Gestione: vedi profarmer.js.
    Il calcolo è quello dell'allevatore, ma il risultato si vede subito a
    schermo, senza il muro dei lead, e sotto c'è il modulo d'ordine.
 
-   In questo file NON ci sono condizioni, codici né dati di clienti: il sito è
-   pubblico. Tutto arriva dallo script Google dopo l'accesso, e ognuno riceve
-   solo le sue righe. Il conto che fa fede è quello che rifà lo script quando
-   riceve l'ordine: qui è un'anteprima.
+   Dal novembre 2026 i dati stanno su Supabase (prima: script Google + foglio).
+   In questo file NON ci sono condizioni né dati di clienti: il sito è
+   pubblico, e la chiave qui sotto è quella pubblica. Quello che ognuno vede
+   lo decide il database (Row Level Security): ognuno riceve solo le sue
+   righe. Il conto che fa fede è quello che rifà invia_ordine() nel database
+   quando riceve l'ordine: qui è un'anteprima.
+   Lo schema del database sta in integrazioni/supabase/ (fuori da GitHub).
    ========================================================================== */
 
 'use strict';
 
 const Venditori = (() => {
 
-  const CHIAVE = 'riposa-codice';
-  let codice = null;
+  /* Il progetto Supabase "riposa" (Francoforte). La chiave è quella
+     pubblica: può stare nel sito, la sicurezza la fa il database. */
+  const SUPABASE = {
+    url: 'https://gmhmxybqmkcmnbjdnslz.supabase.co',
+    chiave: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaG14eWJxbWtjbW5iamRuc2x6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NjM4OTgsImV4cCI6MjEwODIzOTg5OH0.af0OZrnCjJ6Wznmv0vmimnUSOPeLcrRSU5AhyvIRNBc'
+  };
+  const CHIAVE_VECCHIA = 'riposa-codice';   // il codice personale di prima di novembre 2026
+  let sb = null;            // il collegamento a Supabase
+  let emailAccesso = '';    // l'e-mail a cui è stato mandato il codice
   let cond = null;          // le condizioni di chi è entrato
   let area = null;          // profilo, clienti, ordini, materiali (dallo script)
   let scheda = 'home';      // la sezione aperta: 'home' è "La mia area"
@@ -88,17 +100,30 @@ const Venditori = (() => {
 
   /* ---------------------------------------------------------------- utilità */
 
-  /* Il codice resta sul telefono finché il venditore non preme "Esci": con
-     l'app installata la apre e c'è già, senza ridigitarlo ogni volta.
-     Decisione di Giulio, 22 ottobre 2026. Prima stava in sessionStorage e si
-     perdeva a ogni chiusura. */
-  function memoria(azione, valore) {
-    try {
-      if (azione === 'leggi') return localStorage.getItem(CHIAVE) || sessionStorage.getItem(CHIAVE);
-      if (azione === 'scrivi') localStorage.setItem(CHIAVE, valore);
-      if (azione === 'togli') { localStorage.removeItem(CHIAVE); sessionStorage.removeItem(CHIAVE); }
-    } catch (e) { /* navigazione privata: si rientra col codice, pazienza */ }
-    return null;
+  /* L'accesso resta sul telefono finché il venditore non preme "Esci":
+     con l'app installata la apre ed è già dentro (decisione di Giulio,
+     22 ottobre 2026). Lo tiene Supabase in localStorage. */
+  function collegamento() {
+    if (sb) return sb;
+    if (!window.supabase || /^__/.test(SUPABASE.url)) return null;
+    sb = window.supabase.createClient(SUPABASE.url, SUPABASE.chiave, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'riposa-accesso' }
+    });
+    return sb;
+  }
+
+  /* Il vecchio codice personale non serve più: via dal telefono. */
+  function togliCodiceVecchio() {
+    try { localStorage.removeItem(CHIAVE_VECCHIA); sessionStorage.removeItem(CHIAVE_VECCHIA); } catch (e) {}
+  }
+
+  /* Le chiamate al database. Un errore scritto dal database (raise
+     exception) arriva col suo messaggio, già in italiano. */
+  function rpc(nome, parametri) {
+    return collegamento().rpc(nome, parametri).then(({ data, error }) => {
+      if (error) throw Object.assign(new Error(error.message), { delDatabase: error.code === 'P0001' });
+      return data;
+    });
   }
 
   /* ------------------------------------------------- l'app sul telefono */
@@ -136,9 +161,9 @@ const Venditori = (() => {
         + '<path d="M10 2v11M6 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
         + '<path d="M5 9H4v9h12V9h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>'
         + ' e poi <strong>«Aggiungi alla schermata Home»</strong>. Dieci secondi, una volta sola: poi Riposa si apre dall’icona, a schermo intero, '
-        + 'e il codice resta ricordato.';
+        + 'e resti dentro finché non premi «Esci».';
     } else if (promptAndroid) {
-      corpo = '<strong>Metti Riposa sul telefono, come un’app.</strong> Si apre dall’icona, a schermo intero, e il codice resta ricordato.';
+      corpo = '<strong>Metti Riposa sul telefono, come un’app.</strong> Si apre dall’icona, a schermo intero, e resti dentro finché non premi «Esci».';
     } else {
       return '';   // computer o browser che non sa installare: niente riquadro
     }
@@ -169,26 +194,11 @@ const Venditori = (() => {
     return x === null || x === undefined ? 'da definire' : num(x * 100, Number.isInteger(x * 100) ? 0 : 1) + '%';
   }
 
-  /* Chiamata allo script Google in JSONP, come fa il calcolatore per i lead. */
-  function chiama(parametri) {
-    return new Promise((ok, ko) => {
-      const url = CONFIG.raccoltaLead && CONFIG.raccoltaLead.url;
-      if (!url) return ko(new Error('script non configurato'));
-      const cb = 'venditoriCallback' + Date.now() + Math.floor(Math.random() * 1000);
-      const el = document.createElement('script');
-      const timer = setTimeout(() => { pulisci(); ko(new Error('nessuna risposta')); }, 20000);
-      function pulisci() { clearTimeout(timer); delete window[cb]; el.remove(); }
-      window[cb] = risposta => { pulisci(); ok(risposta); };
-      el.onerror = () => { pulisci(); ko(new Error('rete')); };
-      el.src = `${url}?${new URLSearchParams(parametri).toString()}&callback=${cb}`;
-      document.body.appendChild(el);
-    });
-  }
-
   /* --------------------------------------------------------------------------
      IL CONTO DI UN ORDINE
-     ATTENZIONE: copia UGUALE di contoOrdine() in integrazioni/foglio-google.gs.
-     Se cambi una, cambia l'altra. Fa fede quella dello script.
+     ATTENZIONE: stessa logica di conto_ordine() nel database
+     (integrazioni/supabase/01-schema.sql). Se cambi una, cambia l'altra.
+     Fa fede quella del database.
      -------------------------------------------------------------------------- */
   function contoOrdine(c, righe, opz) {
     opz = opz || {};
@@ -259,8 +269,10 @@ const Venditori = (() => {
   }
 
   /* La schermata di accesso è una pagina a sé: niente calcolatore sotto, un
-     campo grande (sopra i 16 px, così l'iPhone non zooma quando lo tocchi). */
-  function mostraAccesso(messaggio, codiceDaRiprovare) {
+     campo grande (sopra i 16 px, così l'iPhone non zooma quando lo tocchi).
+     Due passi: l'e-mail, poi il codice di 6 cifre che arriva per e-mail.
+     Niente link magico: su iPhone aprirebbe Safari e non l'app installata. */
+  function mostraAccesso(messaggio, conRiprova) {
     document.body.classList.add('accesso-venditori');
     document.body.classList.remove('in-area-venditori');
     const p = document.getElementById('area-pannello');
@@ -272,32 +284,86 @@ const Venditori = (() => {
       + '<p class="aiuto">Per agenti, rivenditori e commerciali Pro Farmer: i tuoi clienti, i tuoi ordini, '
       + 'le tue provvigioni e i materiali da mandare ai clienti.</p>'
       + '<form id="form-accesso" class="venditori-accesso" novalidate>'
-      + '<label for="v-codice">Il tuo codice personale</label>'
-      + '<input id="v-codice" name="codice" autocomplete="off" autocorrect="off" spellcheck="false" '
-      + 'autocapitalize="characters" enterkeyhint="go" placeholder="ABCD-1234">'
-      + '<button type="submit" class="bottone bottone-grande">Entra</button>'
+      + '<label for="v-email">La tua e-mail</label>'
+      + '<input id="v-email" name="email" type="email" autocomplete="email" autocapitalize="off" autocorrect="off" '
+      + `spellcheck="false" enterkeyhint="send" inputmode="email" placeholder="nome@esempio.it" value="${esc(emailAccesso)}">`
+      + '<button type="submit" class="bottone bottone-grande">Mandami il codice</button>'
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
-      + (codiceDaRiprovare ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '')
-      + '<p class="accesso-piede">Non hai il codice? Chiedilo a Pro Farmer: '
+      + (conRiprova ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '')
+      + '<p class="accesso-piede">Usa l’e-mail che hai dato a Pro Farmer. Non sei registrato? Chiama Pro Farmer: '
       + `<a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a></p>`
       + '<p class="accesso-piede"><a href="./" id="v-al-calcolatore">← Torna al calcolatore per l’allevatore</a></p>'
       + '</div>';
     const riprova = document.getElementById('v-riprova');
-    if (riprova) riprova.addEventListener('click', () => entra(codiceDaRiprovare));
-    if (codiceDaRiprovare) document.getElementById('v-codice').value = codiceDaRiprovare;
+    if (riprova) riprova.addEventListener('click', () => caricaArea());
     document.getElementById('v-al-calcolatore').addEventListener('click', ev => {
       ev.preventDefault();
       chiudiAccesso();
     });
     document.getElementById('form-accesso').addEventListener('submit', ev => {
       ev.preventDefault();
-      const c = document.getElementById('v-codice').value.trim();
-      if (!c) return;
-      entra(c);
+      const e = document.getElementById('v-email').value.trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return mostraAccesso('Scrivi un’e-mail completa, per esempio nome@libero.it.');
+      chiediCodice(e, ev.currentTarget.querySelector('button'));
     });
     // dopo che il browser ha rimesso la posizione di scorrimento della visita prima
     setTimeout(() => window.scrollTo(0, 0), 0);
+  }
+
+  function chiediCodice(e, bottone) {
+    if (!collegamento()) return mostraAccesso('L’area venditori non è raggiungibile: riprova tra poco.');
+    if (bottone) { bottone.disabled = true; bottone.textContent = 'Mando il codice…'; }
+    emailAccesso = e;
+    sb.auth.signInWithOtp({ email: e, options: { shouldCreateUser: false } }).then(({ error }) => {
+      if (!error) return mostraCodice();
+      const m = String(error.message || '');
+      if (error.status === 429 || /rate|seconds|too many/i.test(m)) {
+        return mostraAccesso('Hai chiesto il codice da poco: aspetta un minuto e riprova.');
+      }
+      if (/signup|not allowed|not found|user/i.test(m)) {
+        return mostraAccesso('Questa e-mail non è registrata. Controlla di averla scritta bene, o chiedi a Pro Farmer di aggiungerla.');
+      }
+      mostraAccesso(navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.'
+        : 'Non riesco a mandare il codice: riprova tra poco.');
+    });
+  }
+
+  function mostraCodice(messaggio) {
+    const el = barra();
+    el.innerHTML = '<div class="accesso">'
+      + '<p class="soprattitolo">Riposa · area venditori</p>'
+      + '<h2>Controlla la posta</h2>'
+      + `<p class="aiuto">Ti abbiamo mandato un codice di 6 cifre a <strong>${esc(emailAccesso)}</strong>. `
+      + 'Se non lo trovi, guarda nella posta indesiderata.</p>'
+      + '<form id="form-codice" class="venditori-accesso" novalidate>'
+      + '<label for="v-codice">Il codice</label>'
+      + '<input id="v-codice" name="codice" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" '
+      + 'maxlength="6" enterkeyhint="go" placeholder="123456">'
+      + '<button type="submit" class="bottone bottone-grande">Entra</button>'
+      + '</form>'
+      + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
+      + '<p class="accesso-piede"><a href="#venditori" id="v-altra-email">← Un’altra e-mail, o un codice nuovo</a></p>'
+      + '</div>';
+    document.getElementById('v-altra-email').addEventListener('click', ev => { ev.preventDefault(); mostraAccesso(); });
+    const campo = document.getElementById('v-codice');
+    campo.focus();
+    document.getElementById('form-codice').addEventListener('submit', ev => {
+      ev.preventDefault();
+      const codice = campo.value.replace(/\D/g, '');
+      if (codice.length !== 6) return mostraCodice('Il codice ha 6 cifre.');
+      const b = ev.currentTarget.querySelector('button');
+      b.disabled = true; b.textContent = 'Controllo…';
+      sb.auth.verifyOtp({ email: emailAccesso, token: codice, type: 'email' }).then(({ error }) => {
+        if (error) {
+          return mostraCodice(/expired|invalid/i.test(error.message)
+            ? 'Codice sbagliato o scaduto (vale un’ora). Ricontrolla, o chiedine uno nuovo.'
+            : 'Non riesco a controllare il codice: riprova tra poco.');
+        }
+        togliCodiceVecchio();
+        caricaArea();
+      });
+    });
   }
 
   function chiudiAccesso() {
@@ -308,30 +374,24 @@ const Venditori = (() => {
     window.scrollTo(0, 0);
   }
 
-  /* Accesso e caricamento dell'area in una sola chiamata. */
-  function entra(c, silenzioso) {
-    const el = barra();
-    const b = el.querySelector('button[type=submit]');
-    if (!silenzioso && b) b.textContent = 'Controllo…';
-    chiama({ azione: 'area', codice: c }).then(r => {
+  /* Dopo l'accesso: tutta l'area in una chiamata (area() nel database). */
+  function caricaArea() {
+    rpc('area').then(r => {
       if (!r || !r.ok) {
-        memoria('togli');
-        return mostraAccesso(r && r.motivo === 'troppe richieste'
-          ? 'Troppi tentativi in quest’ora: riprova più tardi.'
-          : 'Codice non riconosciuto. Controlla di averlo scritto bene o chiedilo a Pro Farmer.');
+        // l'utente c'è ma non è (più) un venditore attivo
+        sb.auth.signOut();
+        return mostraAccesso('Il tuo accesso non è attivo. Chiedi a Pro Farmer.');
       }
-      codice = c;
       ricevi(r);
-      memoria('scrivi', c);
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       apri(scheda);
     }).catch(() => {
-      /* Senza rete il codice NON si cancella: appena torna il segnale basta
+      /* Senza rete l'accesso NON si perde: appena torna il segnale basta
          "Riprova". Il calcolo per la stalla intanto funziona lo stesso. */
       mostraAccesso(navigator.onLine === false
         ? 'Sei senza rete. La tua area si carica quando torna il segnale; intanto il calcolatore per la stalla funziona lo stesso (lo trovi qui sotto, «Torna al calcolatore»).'
-        : 'Non riesco a collegarmi: controlla la connessione e riprova.', c);
+        : 'Non riesco a collegarmi: controlla la connessione e riprova.', true);
     });
   }
 
@@ -341,14 +401,14 @@ const Venditori = (() => {
       profilo: r.profilo || { nome: cond.nome, ruolo: cond.ruolo, email: '' },
       clienti: r.clienti || [],
       ordini: r.ordini || [],
-      // solo link web sicuri, anche se lo script li ha già filtrati
+      // solo link web sicuri, anche se il database li ha già filtrati
       materiali: (r.materiali || []).filter(m => /^https:\/\//.test(m.link || ''))
     };
   }
 
   /* Ricarica clienti e ordini dopo un salvataggio, senza cambiare scheda. */
   function ricarica() {
-    return chiama({ azione: 'area', codice }).then(r => { if (r && r.ok) ricevi(r); });
+    return rpc('area').then(r => { if (r && r.ok) ricevi(r); });
   }
 
   function nomeSoldi() {
@@ -367,7 +427,8 @@ const Venditori = (() => {
     ordini: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
     soldi: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.5c-.7-.9-1.8-1.5-3-1.5-2.2 0-4 2.2-4 5s1.8 5 4 5c1.2 0 2.3-.6 3-1.5M6.5 11h6M6.5 13.5h6"/>',
     materiali: '<path d="M4 6.5 12 3l8 3.5-8 3.5z"/><path d="M4 11.5 12 15l8-3.5M4 16.5 12 20l8-3.5"/>',
-    profilo: '<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.6 3.9-6 7.5-6s6.7 2.4 7.5 6"/>'
+    profilo: '<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.6 3.9-6 7.5-6s6.7 2.4 7.5 6"/>',
+    gestione: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="7" cy="18" r="1.8"/>'
   };
   function icona(id) {
     return `<svg class="tessera-icona" viewBox="0 0 24 24" aria-hidden="true">${ICONE[id]}</svg>`;
@@ -422,6 +483,8 @@ const Venditori = (() => {
       ['materiali', 'Materiali', nM ? `${nM} ${nM === 1 ? 'documento' : 'documenti'} da mandare ai clienti` : 'Per ora nessuno', false],
       ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
+    // Pro Farmer gestisce da qui ordini, venditori, condizioni e materiali
+    if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Gestione Pro Farmer', 'Ordini di tutti, venditori, condizioni, materiali', false]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
@@ -458,6 +521,10 @@ const Venditori = (() => {
       }
       return;
     }
+    if (id === 'gestione') {
+      if (typeof ProFarmer !== 'undefined') ProFarmer.disegna(p, sb);
+      return;
+    }
     const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
                       materiali: disegnaMateriali, profilo: disegnaProfilo }[id];
     p.innerHTML = disegna();
@@ -481,14 +548,14 @@ const Venditori = (() => {
   }
 
   function esci() {
-    codice = null;
+    if (sb) sb.auth.signOut();   // anche senza rete: la sessione sul telefono si cancella comunque
     cond = null;
     area = null;
     scheda = 'home';
     ultimoCalcolo = null;
     suggeriti = null;
     stato = statoVuoto();
-    memoria('togli');
+    togliCodiceVecchio();
     document.body.classList.remove('in-area-venditori', 'accesso-venditori');
     boxRis.hidden = true;
     boxRis.innerHTML = '';
@@ -574,13 +641,20 @@ const Venditori = (() => {
       if (manca) { err.textContent = manca; err.hidden = false; return; }
       const b = ev.currentTarget.querySelector('button[type=submit]');
       b.disabled = true; b.textContent = 'Salvo…';
-      const p = Object.assign({ azione: 'cliente', codice }, d);
-      if (c) p.id = c.id;
-      chiama(p).then(r => {
-        if (!r || !r.ok) throw new Error(r && r.motivo || 'errore');
+      // i campi vuoti diventano "niente"; venditore e date li mette il database
+      const riga = {};
+      Object.keys(d).forEach(k => { riga[k] = d[k] === '' ? null : d[k]; });
+      if (riga.capi !== null) riga.capi = Math.max(0, Math.floor(Number(riga.capi) || 0));
+      const q = c ? sb.from('clienti').update(riga).eq('id', c.id) : sb.from('clienti').insert(riga);
+      q.then(({ error }) => {
+        if (error) throw Object.assign(new Error(error.message), { delDatabase: error.code === 'P0001' });
         return ricarica();
       }).then(() => apri('clienti'))
-        .catch(e => { b.disabled = false; b.textContent = 'Salva'; err.textContent = /manca|serve|non valid/i.test(e.message) ? 'Non salvato: ' + e.message + '.' : 'Non sono riuscito a salvare: riprova tra poco.'; err.hidden = false; });
+        .catch(e => {
+          b.disabled = false; b.textContent = 'Salva';
+          err.textContent = e.delDatabase ? 'Non salvato: ' + e.message : 'Non sono riuscito a salvare: riprova tra poco.';
+          err.hidden = false;
+        });
     });
   }
 
@@ -903,23 +977,19 @@ const Venditori = (() => {
     }
     err.hidden = true;
 
-    const p = { azione: 'ordine', codice };
+    const p = {};
     VOCI.forEach(v => { if (Number(stato[v.id]) > 0) p[v.id] = Math.floor(Number(stato[v.id])); });
     if (scelto) p.clienteId = scelto.id;
-    else if (!perMagazzino) {
-      CAMPI_ORDINE.forEach(k => { if (stato[k]) p[k] = stato[k]; });
-      p.cliente = stato.ragione;   // lo script chiama "cliente" la ragione sociale
-    }
+    else if (!perMagazzino) CAMPI_ORDINE.forEach(k => { if (stato[k]) p[k] = stato[k]; });
     if (stato.note) p.note = stato.note;
-    if (stato.annuale) p.annuale = 'si';
+    if (stato.annuale) p.annuale = true;
     const chi = scelto ? scelto.ragione : (stato.ragione || cond.nome);
     if (ultimoCalcolo) p.calcolo = testoRiepilogo({ azienda: chi }, ultimoCalcolo);
 
     const bottone = f.querySelector('button[type=submit]');
     bottone.disabled = true;
     bottone.textContent = 'Invio in corso…';
-    chiama(p).then(r => {
-      if (!r || !r.ok) throw new Error(r && r.motivo || 'errore');
+    rpc('invia_ordine', { p }).then(r => {
       const box = document.getElementById('blocco-ordine');
       box.innerHTML = '<div class="trovato"><span class="trovato-spunta">✓</span>'
         + `<h2>Ordine inviato a Pro Farmer</h2><p>Numero <strong>${esc(r.numero)}</strong>. `
@@ -942,8 +1012,7 @@ const Venditori = (() => {
     }).catch(e => {
       bottone.disabled = false;
       bottone.textContent = 'Manda l’ordine a Pro Farmer';
-      errore(e.message === 'manca il cliente' ? 'Serve la ragione sociale del cliente.'
-        : /^cliente incompleto/.test(e.message) ? 'Ordine non inviato: ' + e.message.replace(/^cliente incompleto: /, '') + '.'
+      errore(e.delDatabase ? e.message
         : navigator.onLine === false
           ? 'Sei senza rete: l’ordine non è partito. I dati restano qui: premi di nuovo quando torna il segnale.'
           : 'L’ordine non è partito: riprova tra poco. Se continua, chiama Pro Farmer.');
@@ -953,18 +1022,28 @@ const Venditori = (() => {
   /* ------------------------------------------------------------------ avvio */
 
   function avvia() {
-    const salvato = memoria('leggi');
-    // nell'area si parte sempre dall'alto: niente posizione rimessa dal browser
-    if (salvato || location.hash === '#venditori') {
-      try { history.scrollRestoration = 'manual'; } catch (e) {}
-    }
-    if (salvato) {
-      document.body.classList.add('in-area-venditori');
-      barra().innerHTML = '<p class="aiuto">Rientro nella tua area…</p>';
-      entra(salvato, true);
-      return;
-    }
-    if (location.hash === '#venditori') mostraAccesso();
+    const c = collegamento();
+    // chi aveva il vecchio codice personale rientra con l'e-mail
+    let vecchio = false;
+    try { vecchio = !!(localStorage.getItem(CHIAVE_VECCHIA) || sessionStorage.getItem(CHIAVE_VECCHIA)); } catch (e) {}
+    if (vecchio) togliCodiceVecchio();
+    if (!c) { if (location.hash === '#venditori') mostraAccesso(); return; }
+    c.auth.getSession().then(({ data }) => {
+      const dentro = !!(data && data.session);
+      // nell'area si parte sempre dall'alto: niente posizione rimessa dal browser
+      if (dentro || vecchio || location.hash === '#venditori') {
+        try { history.scrollRestoration = 'manual'; } catch (e) {}
+      }
+      if (dentro) {
+        document.body.classList.add('in-area-venditori');
+        barra().innerHTML = '<p class="aiuto">Rientro nella tua area…</p>';
+        caricaArea();
+      } else if (vecchio) {
+        mostraAccesso('Da novembre si entra con la tua e-mail: scrivila qui e ti mandiamo un codice di 6 cifre. Il vecchio codice personale non serve più.');
+      } else if (location.hash === '#venditori') {
+        mostraAccesso();
+      }
+    });
   }
   window.addEventListener('hashchange', () => { if (location.hash === '#venditori' && !cond) mostraAccesso(); });
 

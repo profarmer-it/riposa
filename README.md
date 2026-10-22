@@ -13,10 +13,13 @@ schermo: arriva via e-mail, oppure su WhatsApp **dal numero Pro Farmer**, e il
 contatto diventa un lead profilato.
 
 Agenti, rivenditori e commerciali Pro Farmer hanno un'**area venditori** su
-`riposa.profarmer.it/#venditori`: entrano con un codice personale, vedono il
-risultato a schermo e mandano l'ordine a Pro Farmer dallo stesso calcolo. Nel
-codice di questo repository non ci sono né codici né condizioni commerciali:
-arrivano dallo script del foglio Google, solo dopo l'accesso.
+`riposa.profarmer.it/#venditori`: entrano con la loro e-mail e un codice di 6
+cifre che arriva per e-mail, vedono il risultato a schermo e mandano l'ordine
+a Pro Farmer dallo stesso calcolo. Dal novembre 2026 l'area venditori sta su
+**Supabase** (progetto "riposa", Francoforte): nel codice di questo repository
+c'è solo la chiave pubblica, e quello che ognuno vede lo decide il database.
+Le condizioni commerciali arrivano solo dopo l'accesso, e ognuno vede le sue.
+I lead degli allevatori restano sullo script del foglio Google.
 
 **Il calcolatore è online: https://riposa.profarmer.it**
 
