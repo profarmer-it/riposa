@@ -21,7 +21,7 @@ const Venditori = (() => {
   let codice = null;
   let cond = null;          // le condizioni di chi è entrato
   let area = null;          // profilo, clienti, ordini, materiali (dallo script)
-  let scheda = 'calcolo';   // la scheda aperta
+  let scheda = 'home';      // la sezione aperta: 'home' è "La mia area"
   let ultimoCalcolo = null; // il risultato del calcolatore, se c'è
   // quello che il venditore ha scritto nel modulo d'ordine: sopravvive ai
   // ridisegni del risultato (per esempio quando sceglie l'alternativa)
@@ -78,9 +78,9 @@ const Venditori = (() => {
   window.addEventListener('beforeinstallprompt', ev => {
     ev.preventDefault();
     promptAndroid = ev;
-    if (cond) disegnaBarra();
+    if (cond) aggiorna();
   });
-  window.addEventListener('appinstalled', () => { promptAndroid = null; if (cond) disegnaBarra(); });
+  window.addEventListener('appinstalled', () => { promptAndroid = null; if (cond) aggiorna(); });
 
   function installata() {
     return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -121,12 +121,12 @@ const Venditori = (() => {
     const si = document.getElementById('v-installa');
     if (si) si.addEventListener('click', () => {
       promptAndroid.prompt();
-      promptAndroid.userChoice.finally(() => { promptAndroid = null; disegnaBarra(); });
+      promptAndroid.userChoice.finally(() => { promptAndroid = null; aggiorna(); });
     });
     const no = document.getElementById('v-installa-no');
     if (no) no.addEventListener('click', () => {
       try { localStorage.setItem(CHIAVE_INSTALLA, '1'); } catch (e) {}
-      disegnaBarra();
+      aggiorna();
     });
   }
 
@@ -228,27 +228,54 @@ const Venditori = (() => {
     return el;
   }
 
+  /* La schermata di accesso è una pagina a sé: niente calcolatore sotto, un
+     campo grande (sopra i 16 px, così l'iPhone non zooma quando lo tocchi). */
   function mostraAccesso(messaggio, codiceDaRiprovare) {
+    document.body.classList.add('accesso-venditori');
+    document.body.classList.remove('in-area-venditori');
+    const p = document.getElementById('area-pannello');
+    if (p) p.hidden = true;
     const el = barra();
-    el.innerHTML = '<h2 class="titolo-sezione">Area venditori</h2>'
-      + '<p class="aiuto">Per agenti, rivenditori e commerciali Pro Farmer. Entra con il tuo codice personale: '
-      + 'trovi i tuoi clienti, i tuoi ordini, le tue provvigioni e i materiali da mandare ai clienti.</p>'
+    el.innerHTML = '<div class="accesso">'
+      + '<p class="soprattitolo">Riposa · area venditori</p>'
+      + '<h2>Entra nella tua area</h2>'
+      + '<p class="aiuto">Per agenti, rivenditori e commerciali Pro Farmer: i tuoi clienti, i tuoi ordini, '
+      + 'le tue provvigioni e i materiali da mandare ai clienti.</p>'
       + '<form id="form-accesso" class="venditori-accesso" novalidate>'
-      + '<div class="campo"><label for="v-codice">Il tuo codice</label>'
-      + '<input id="v-codice" name="codice" autocomplete="off" autocapitalize="characters" placeholder="es. ABCD-1234"></div>'
-      + '<button type="submit" class="bottone">Entra</button>'
+      + '<label for="v-codice">Il tuo codice personale</label>'
+      + '<input id="v-codice" name="codice" autocomplete="off" autocorrect="off" spellcheck="false" '
+      + 'autocapitalize="characters" enterkeyhint="go" placeholder="ABCD-1234">'
+      + '<button type="submit" class="bottone bottone-grande">Entra</button>'
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
-      + (codiceDaRiprovare ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '');
+      + (codiceDaRiprovare ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '')
+      + '<p class="accesso-piede">Non hai il codice? Chiedilo a Pro Farmer: '
+      + `<a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a></p>`
+      + '<p class="accesso-piede"><a href="./" id="v-al-calcolatore">← Torna al calcolatore per l’allevatore</a></p>'
+      + '</div>';
     const riprova = document.getElementById('v-riprova');
     if (riprova) riprova.addEventListener('click', () => entra(codiceDaRiprovare));
     if (codiceDaRiprovare) document.getElementById('v-codice').value = codiceDaRiprovare;
+    document.getElementById('v-al-calcolatore').addEventListener('click', ev => {
+      ev.preventDefault();
+      chiudiAccesso();
+    });
     document.getElementById('form-accesso').addEventListener('submit', ev => {
       ev.preventDefault();
       const c = document.getElementById('v-codice').value.trim();
       if (!c) return;
       entra(c);
     });
+    // dopo che il browser ha rimesso la posizione di scorrimento della visita prima
+    setTimeout(() => window.scrollTo(0, 0), 0);
+  }
+
+  function chiudiAccesso() {
+    document.body.classList.remove('accesso-venditori');
+    history.replaceState(null, '', location.pathname);
+    const el = document.getElementById('area-venditori');
+    if (el) el.remove();
+    window.scrollTo(0, 0);
   }
 
   /* Accesso e caricamento dell'area in una sola chiamata. */
@@ -266,14 +293,14 @@ const Venditori = (() => {
       codice = c;
       ricevi(r);
       memoria('scrivi', c);
+      document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
-      disegnaBarra();
       apri(scheda);
     }).catch(() => {
       /* Senza rete il codice NON si cancella: appena torna il segnale basta
          "Riprova". Il calcolo per la stalla intanto funziona lo stesso. */
       mostraAccesso(navigator.onLine === false
-        ? 'Sei senza rete. Il calcolo qui sotto funziona lo stesso; l’area venditori si carica quando torna il segnale.'
+        ? 'Sei senza rete. La tua area si carica quando torna il segnale; intanto il calcolatore per la stalla funziona lo stesso (lo trovi qui sotto, «Torna al calcolatore»).'
         : 'Non riesco a collegarmi: controlla la connessione e riprova.', c);
     });
   }
@@ -298,41 +325,98 @@ const Venditori = (() => {
     return cond.ruolo === 'agente' ? 'Provvigioni' : cond.ruolo === 'rivenditore' ? 'Margini' : 'Venduto';
   }
 
+  function iniziali(nome) {
+    return String(nome || '').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+  }
+
+  /* Le icone delle sezioni: tratti semplici, stesso spessore, colore del testo. */
+  const ICONE = {
+    calcolo: '<path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h2M12 18h4"/>',
+    diretto: '<path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
+    clienti: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 14.5c1.8.8 3 2.6 3 4.5"/>',
+    ordini: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
+    soldi: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.5c-.7-.9-1.8-1.5-3-1.5-2.2 0-4 2.2-4 5s1.8 5 4 5c1.2 0 2.3-.6 3-1.5M6.5 11h6M6.5 13.5h6"/>',
+    materiali: '<path d="M4 6.5 12 3l8 3.5-8 3.5z"/><path d="M4 11.5 12 15l8-3.5M4 16.5 12 20l8-3.5"/>',
+    profilo: '<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.6 3.9-6 7.5-6s6.7 2.4 7.5 6"/>'
+  };
+  function icona(id) {
+    return `<svg class="tessera-icona" viewBox="0 0 24 24" aria-hidden="true">${ICONE[id]}</svg>`;
+  }
+
+  /* La testata dell'account: sempre in alto quando si è dentro. Fuori dalla
+     home porta il pulsante per tornare a "La mia area". */
   function disegnaBarra() {
     const el = barra();
-    const schede = [
-      ['calcolo', 'Calcolo e ordine'], ['clienti', `Clienti (${area.clienti.length})`],
-      ['ordini', `Ordini (${area.ordini.length})`], ['soldi', nomeSoldi()],
-      ['materiali', 'Materiali'], ['profilo', 'Profilo']
+    let h = '<div class="account">'
+      + `<span class="account-iniziali" aria-hidden="true">${esc(iniziali(cond.nome))}</span>`
+      + `<div class="account-nome"><strong>${esc(cond.nome)}</strong><span>${esc(RUOLI[cond.ruolo] || cond.ruolo)}</span></div>`
+      + '<button type="button" class="account-esci" id="v-esci">Esci</button>'
+      + '</div>';
+    if (scheda !== 'home') {
+      h += '<button type="button" class="area-indietro" id="v-home">'
+        + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>La mia area</button>';
+    }
+    el.innerHTML = h;
+    document.getElementById('v-esci').addEventListener('click', esci);
+    const home = document.getElementById('v-home');
+    if (home) home.addEventListener('click', () => apri('home'));
+  }
+
+  function aggiorna() {
+    disegnaBarra();
+    if (scheda === 'home') apri('home');
+  }
+
+  /* "La mia area": una tessera per sezione, ognuna con il dato che serve a colpo d'occhio. */
+  function disegnaHome() {
+    const validi = area.ordini.filter(o => o.stato !== 'annullato');
+    const ultimo = validi[0];
+    const nC = area.clienti.length, nO = validi.length, nM = area.materiali.length;
+    let soldi = '';
+    if (cond.ruolo === 'agente') {
+      const mat = validi.filter(o => o.stato === 'pagato' && !o.liquidata).reduce((x, o) => x + (o.provvigione || 0), 0);
+      const inc = validi.filter(o => o.stato !== 'pagato' && !o.liquidata).reduce((x, o) => x + (o.provvigione || 0), 0);
+      soldi = nO ? `${euro(mat)} maturate · ${euro(inc)} in corso` : 'Le vedrai dal primo ordine';
+    } else if (cond.ruolo === 'rivenditore') {
+      const m = validi.reduce((x, o) => x + (o.margine || 0), 0);
+      soldi = nO ? `${euro(m)} di margine stimato` : 'Lo vedrai dal primo ordine';
+    } else {
+      soldi = nO ? `${euro(validi.reduce((x, o) => x + (o.totaleCliente || 0), 0))} venduti` : 'Dal primo ordine';
+    }
+    const tessere = [
+      ['calcolo', 'Nuovo calcolo', 'Calcola la stalla e prepara l’ordine', true],
+      ['diretto', 'Ordine diretto', 'Sai già cosa serve al cliente', false],
+      ['clienti', 'Clienti', nC ? `${nC} ${nC === 1 ? 'cliente' : 'clienti'}` : 'Aggiungi il primo', false],
+      ['ordini', 'Ordini', nO ? `${nO} ${nO === 1 ? 'ordine' : 'ordini'} · l’ultimo il ${ultimo.data}` : 'Ancora nessun ordine', false],
+      ['soldi', nomeSoldi(), soldi, false],
+      ['materiali', 'Materiali', nM ? `${nM} ${nM === 1 ? 'documento' : 'documenti'} da mandare ai clienti` : 'Per ora nessuno', false],
+      ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
-    let h = '<div class="venditori-testa">';
-    h += `<p><strong>${esc(cond.nome)}</strong> <span class="venditori-ruolo">${esc(RUOLI[cond.ruolo] || cond.ruolo)}</span></p>`;
-    h += '<div class="venditori-azioni"><button type="button" class="bottone bottone-fantasma" id="v-esci">Esci</button></div>';
-    h += '</div>';
+    let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
         + `erano valide fino al ${esc(cond.validoFino)} e sono da aggiornare con Pro Farmer. Intanto restano quelle.</span></div>`;
     }
     h += riquadroInstalla();
-    h += '<nav class="venditori-schede" role="tablist">';
-    schede.forEach(([id, et]) => {
-      h += `<button type="button" role="tab" data-scheda="${id}" aria-selected="${scheda === id}">${esc(et)}</button>`;
+    h += '<div class="tessere">';
+    tessere.forEach(([id, titolo, sotto, primaria]) => {
+      h += `<button type="button" class="tessera${primaria ? ' tessera-primaria' : ''}" data-apri="${id}">`
+        + icona(id) + `<strong>${esc(titolo)}</strong><span>${esc(sotto)}</span></button>`;
     });
-    h += '</nav>';
-    el.innerHTML = h;
-    document.getElementById('v-esci').addEventListener('click', esci);
-    agganciaInstalla();
-    el.querySelectorAll('[data-scheda]').forEach(b => b.addEventListener('click', () => apri(b.dataset.scheda)));
+    h += '</div>';
+    return h;
   }
 
   function apri(id) {
+    if (id === 'diretto') return ordineDiretto();
     scheda = id;
-    barra().querySelectorAll('[data-scheda]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scheda === id)));
+    disegnaBarra();
     const calc = id === 'calcolo';
     modulo.hidden = !calc;
     boxRis.hidden = !calc || !boxRis.innerHTML;
     const p = pannello();
     p.hidden = calc;
+    window.scrollTo(0, 0);
     if (calc) {
       document.querySelector('#modulo button[type=submit]').textContent = 'Calcola';
       if (!document.getElementById('v-diretto')) {
@@ -344,9 +428,13 @@ const Venditori = (() => {
       }
       return;
     }
-    const disegna = { clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
+    const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
                       materiali: disegnaMateriali, profilo: disegnaProfilo }[id];
     p.innerHTML = disegna();
+    if (id === 'home') {
+      agganciaInstalla();
+      p.querySelectorAll('[data-apri]').forEach(b => b.addEventListener('click', () => apri(b.dataset.apri)));
+    }
     if (id === 'clienti') agganciaClienti();
     if (id === 'materiali') agganciaMateriali();
   }
@@ -359,19 +447,19 @@ const Venditori = (() => {
     boxRis.innerHTML = '';
     boxRis.hidden = false;
     mostraOrdine(null);
-    boxRis.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    boxRis.scrollIntoView({ block: 'start' });
   }
 
   function esci() {
     codice = null;
     cond = null;
     area = null;
-    scheda = 'calcolo';
+    scheda = 'home';
     ultimoCalcolo = null;
     suggeriti = null;
     stato = statoVuoto();
     memoria('togli');
-    document.body.classList.remove('in-area-venditori');
+    document.body.classList.remove('in-area-venditori', 'accesso-venditori');
     boxRis.hidden = true;
     boxRis.innerHTML = '';
     modulo.hidden = false;
@@ -462,7 +550,7 @@ const Venditori = (() => {
       chiama(p).then(r => {
         if (!r || !r.ok) throw new Error(r && r.motivo || 'errore');
         return ricarica();
-      }).then(() => { disegnaBarra(); apri('clienti'); })
+      }).then(() => apri('clienti'))
         .catch(() => { b.disabled = false; b.textContent = 'Salva'; err.textContent = 'Non sono riuscito a salvare: riprova tra poco.'; err.hidden = false; });
     });
   }
@@ -821,7 +909,7 @@ const Venditori = (() => {
         modulo.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       document.getElementById('v-vedi').addEventListener('click', () => {
-        ricarica().then(() => { disegnaBarra(); apri('ordini'); barra().scrollIntoView({ behavior: 'smooth' }); });
+        ricarica().then(() => apri('ordini'));
       });
     }).catch(e => {
       bottone.disabled = false;
@@ -837,7 +925,16 @@ const Venditori = (() => {
 
   function avvia() {
     const salvato = memoria('leggi');
-    if (salvato) { barra().innerHTML = '<p class="aiuto">Rientro nell’area venditori…</p>'; entra(salvato, true); return; }
+    // nell'area si parte sempre dall'alto: niente posizione rimessa dal browser
+    if (salvato || location.hash === '#venditori') {
+      try { history.scrollRestoration = 'manual'; } catch (e) {}
+    }
+    if (salvato) {
+      document.body.classList.add('in-area-venditori');
+      barra().innerHTML = '<p class="aiuto">Rientro nella tua area…</p>';
+      entra(salvato, true);
+      return;
+    }
     if (location.hash === '#venditori') mostraAccesso();
   }
   window.addEventListener('hashchange', () => { if (location.hash === '#venditori' && !cond) mostraAccesso(); });

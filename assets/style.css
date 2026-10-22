@@ -498,3 +498,64 @@ body.in-area-venditori .eroe{display:none}
 .icona-condividi svg{vertical-align:-2px}
 /* app aperta dall'icona: niente margine sotto la barra di stato dell'iPhone */
 @media (display-mode: standalone){ body{padding-top:env(safe-area-inset-top)} }
+
+/* ----------------------------------------------- accesso e "La mia area" */
+/* Accesso: una pagina a sé, senza il calcolatore sotto */
+body.accesso-venditori .eroe,
+body.accesso-venditori #modulo,
+body.accesso-venditori #risultato{display:none}
+body.accesso-venditori main,
+body.in-area-venditori main{padding-top:24px}
+.accesso{max-width:440px;margin:8px auto;text-align:center}
+.accesso h2{font-family:Fraunces,Georgia,serif;font-size:30px;line-height:1.15;margin:6px 0 10px}
+.accesso .soprattitolo{color:var(--blu)}
+.accesso .aiuto{margin:0 auto 22px}
+.venditori-accesso{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;text-align:left}
+.venditori-accesso label{font-weight:600;font-size:15px}
+.venditori-accesso input{
+  width:100%;box-sizing:border-box;height:64px;padding:0 16px;
+  font:600 26px/1 Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;text-align:center;
+  color:var(--testo);background:var(--bianco);border:2px solid var(--crema-2);border-radius:14px
+}
+.venditori-accesso input::placeholder{color:#B8C2CF;letter-spacing:.16em}
+.venditori-accesso input:focus{outline:0;border-color:var(--blu);box-shadow:0 0 0 4px rgba(47,134,224,.15)}
+.venditori-accesso .bottone{width:100%}
+.accesso .errore{margin-top:14px;text-align:left}
+.accesso-piede{margin:18px 0 0;font-size:14px;color:var(--testo-2)}
+.accesso-piede a{color:var(--blu);font-weight:500}
+
+/* La testata dell'account */
+.account{display:flex;align-items:center;gap:12px}
+.account-iniziali{flex:0 0 46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:var(--navy);color:var(--bianco);font-weight:600;font-size:16px;letter-spacing:.04em}
+.account-nome{flex:1;min-width:0;display:flex;flex-direction:column}
+.account-nome strong{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-nome span{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--testo-2)}
+.account-esci{font:inherit;font-size:14px;font-weight:500;color:var(--testo-2);background:none;border:1px solid var(--crema-2);
+  border-radius:99px;padding:8px 14px;cursor:pointer}
+.area-indietro{display:inline-flex;align-items:center;gap:4px;margin-top:16px;padding:8px 14px 8px 8px;
+  font:inherit;font-size:15px;font-weight:600;color:var(--blu);background:#EAF3FD;border:0;border-radius:99px;cursor:pointer}
+.area-indietro svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* La home: le tessere delle sezioni */
+.area-titolo{font-family:Fraunces,Georgia,serif;font-size:26px;margin:22px 4px 14px}
+.tessere{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+@media (min-width:640px){ .tessere{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.tessera{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
+  min-height:132px;padding:16px;font:inherit;color:var(--testo);background:var(--bianco);
+  border:1px solid var(--crema-2);border-radius:var(--raggio);box-shadow:var(--ombra);cursor:pointer;
+  transition:transform .12s ease, border-color .12s ease}
+.tessera:hover{border-color:var(--blu-chiaro)}
+.tessera:active{transform:scale(.98)}
+.tessera strong{font-size:17px;margin-top:10px}
+.tessera span{font-size:13px;line-height:1.35;color:var(--testo-2)}
+.tessera-icona{width:30px;height:30px;fill:none;stroke:var(--blu);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tessera-primaria{grid-column:1 / -1;min-height:0;flex-direction:row;align-items:center;gap:14px;
+  background:var(--navy);border-color:var(--navy);color:var(--bianco)}
+.tessera-primaria strong{margin:0;font-size:19px}
+.tessera-primaria span{color:#C9D6E6}
+.tessera-primaria .tessera-icona{stroke:var(--blu-chiaro);flex:0 0 34px;width:34px;height:34px}
+.tessera-primaria strong + span{display:block}
+.tessera-primaria{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;row-gap:2px}
+.tessera-primaria .tessera-icona{grid-row:1 / 3}
+.venditori-pannello > .installa{margin-top:0}
