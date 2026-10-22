@@ -186,6 +186,120 @@ const Venditori = (() => {
     });
   }
 
+  /* --------------------------------------------------- le notifiche (Web Push)
+     Dal 22/10/2026. Il telefono si iscrive quando il venditore tocca
+     «Attiva le notifiche» (il permesso si può chiedere solo dopo un tocco).
+     L'iscrizione va nel database (salva_iscrizione); le notifiche le manda
+     la funzione "notifica" su Supabase, e le mostra sw.js.
+     Su iPhone esistono solo con Riposa installata sulla schermata Home. */
+  const VAPID = 'BBMiPSY2ADgUWEiZE7vpPz6aJLnfxfM-rUjhZKuNp2nQh8nv7NSMChvyL_MMjIEUnc1c3CZO_OflRINeQX_nZo4';
+  const CHIAVE_NOTIFICHE = 'riposa-notifiche-no';
+
+  function notifichePossibili() {
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  }
+  /* 'attive', 'spente', 'negate', 'installa' (iPhone non installata), 'no' (telefono che non le sa fare) */
+  function statoNotifiche() {
+    if (suIPhone() && !installata()) return 'installa';
+    if (!notifichePossibili()) return 'no';
+    if (Notification.permission === 'denied') return 'negate';
+    return Notification.permission === 'granted' ? 'attive' : 'spente';
+  }
+  function chiaveVapid() {
+    const b = atob(VAPID.replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(b, c => c.charCodeAt(0));
+  }
+  function iscrizioneAttuale() {
+    return navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription().then(s => ({ reg, s })));
+  }
+  function salvaIscrizione(s) {
+    const j = s.toJSON();
+    j.dispositivo = navigator.userAgent.slice(0, 200);
+    return rpc('salva_iscrizione', { s: j });
+  }
+  /* Con il permesso già dato, a ogni accesso il telefono si ri-lega a chi è
+     entrato (anche se sullo stesso telefono prima c'era un altro venditore). */
+  function sincronizzaNotifiche() {
+    if (statoNotifiche() !== 'attive') return;
+    iscrizioneAttuale().then(({ reg, s }) => s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveVapid() }))
+      .then(salvaIscrizione).catch(() => {});
+  }
+  function attivaNotifiche(bottone) {
+    if (bottone) { bottone.disabled = true; bottone.textContent = 'Un momento…'; }
+    return Notification.requestPermission()
+      .then(p => { if (p !== 'granted') throw new Error('negato'); return iscrizioneAttuale(); })
+      .then(({ reg, s }) => s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveVapid() }))
+      .then(salvaIscrizione)
+      .catch(() => {})
+      .then(() => aggiornaVista());
+  }
+  function disattivaNotifiche(bottone) {
+    if (bottone) { bottone.disabled = true; bottone.textContent = 'Un momento…'; }
+    return togliQuestoTelefono().then(() => {
+      try { localStorage.setItem(CHIAVE_NOTIFICHE, '1'); } catch (e) {}
+      aggiornaVista();
+    });
+  }
+  /* Esci e «Disattiva»: questo telefono non riceve più niente. */
+  function togliQuestoTelefono() {
+    if (!notifichePossibili() || !sb) return Promise.resolve();
+    const lavoro = iscrizioneAttuale().then(({ s }) => {
+      if (!s) return;
+      return rpc('togli_iscrizione', { endpoint: s.endpoint }).catch(() => {}).then(() => s.unsubscribe());
+    }).catch(() => {});
+    // senza service worker o senza rete non si resta appesi: dopo 4 secondi si va avanti
+    return Promise.race([lavoro, new Promise(ok => setTimeout(ok, 4000))]);
+  }
+  function aggiornaVista() {
+    if (cond && (scheda === 'home' || scheda === 'profilo')) apri(scheda);
+  }
+  function cosaAvvisa() {
+    return cond.ruolo === 'interno' ? 'quando un agente o un rivenditore manda un ordine'
+      : cond.ruolo === 'agente' ? 'quando i tuoi ordini sono confermati, consegnati e pagati, e quando ti liquidiamo le provvigioni'
+        : 'quando i tuoi ordini sono confermati, consegnati e pagati';
+  }
+
+  /* In home, una volta: l'invito ad attivarle. Mai insieme all'invito a installare. */
+  function riquadroNotifiche() {
+    if (statoNotifiche() !== 'spente') return '';
+    try { if (localStorage.getItem(CHIAVE_NOTIFICHE) === '1') return ''; } catch (e) {}
+    return '<div class="installa"><p><strong>Vuoi un avviso sul telefono?</strong> Ti scriviamo noi '
+      + esc(cosaAvvisa()) + '.</p><div class="azioni">'
+      + '<button type="button" class="bottone" id="v-notifiche-si">Attiva le notifiche</button>'
+      + '<button type="button" class="bottone bottone-fantasma" id="v-notifiche-no">Non ora</button></div></div>';
+  }
+  function agganciaNotifiche() {
+    const si = document.getElementById('v-notifiche-si');
+    if (si) si.addEventListener('click', () => attivaNotifiche(si));
+    const no = document.getElementById('v-notifiche-no');
+    if (no) no.addEventListener('click', () => {
+      try { localStorage.setItem(CHIAVE_NOTIFICHE, '1'); } catch (e) {}
+      aggiornaVista();
+    });
+    const via = document.getElementById('v-notifiche-via');
+    if (via) via.addEventListener('click', () => disattivaNotifiche(via));
+  }
+  /* Nel profilo: lo stato su questo telefono, sempre. */
+  function bloccoNotifiche() {
+    const st = statoNotifiche();
+    let h = '<div class="blocco"><h3>Notifiche su questo telefono</h3>';
+    if (st === 'attive') {
+      h += `<p>Attive: ti avvisiamo ${esc(cosaAvvisa())}.</p>`
+        + '<div class="azioni"><button type="button" class="bottone bottone-fantasma" id="v-notifiche-via">Disattiva su questo telefono</button></div>';
+    } else if (st === 'spente') {
+      h += `<p>Spente. Se le attivi ti avvisiamo ${esc(cosaAvvisa())}.</p>`
+        + '<div class="azioni"><button type="button" class="bottone" id="v-notifiche-si">Attiva le notifiche</button></div>';
+    } else if (st === 'installa') {
+      h += '<p>Su iPhone le notifiche arrivano solo con Riposa installata: in Safari tocca Condividi e poi '
+        + '«Aggiungi alla schermata Home», apri Riposa dall’icona e torna qui.</p>';
+    } else if (st === 'negate') {
+      h += '<p>Le hai bloccate per Riposa. Per riattivarle: Impostazioni del telefono → Notifiche → Riposa.</p>';
+    } else {
+      h += '<p>Questo telefono o browser non sa ricevere le notifiche di Riposa.</p>';
+    }
+    return h + '</div>';
+  }
+
   function euro(n) {
     if (n === null || n === undefined) return 'da definire';
     return num(n, 2) + ' €';
@@ -384,6 +498,7 @@ const Venditori = (() => {
         return mostraAccesso('Il tuo accesso non è attivo. Chiedi a Pro Farmer.');
       }
       ricevi(r);
+      sincronizzaNotifiche();
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       apri(scheda);
@@ -491,7 +606,8 @@ const Venditori = (() => {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
         + `erano valide fino al ${esc(cond.validoFino)} e sono da aggiornare con Pro Farmer. Intanto restano quelle.</span></div>`;
     }
-    h += riquadroInstalla();
+    const inst = riquadroInstalla();
+    h += inst || riquadroNotifiche();
     // le tessere entrano una dopo l'altra solo la prima volta, all'accesso:
     // dopo, tornare alla home dev'essere immediato
     h += `<div class="tessere${homeVista ? '' : ' tessere-entrano'}">`;
@@ -539,10 +655,12 @@ const Venditori = (() => {
     if (id !== 'home') entra(p);
     if (id === 'home') {
       agganciaInstalla();
+      agganciaNotifiche();
       p.querySelectorAll('[data-apri]').forEach(b => b.addEventListener('click', () => apri(b.dataset.apri)));
     }
     if (id === 'clienti') agganciaClienti();
     if (id === 'materiali') agganciaMateriali();
+    if (id === 'profilo') agganciaNotifiche();
   }
 
   /* La sezione nuova compare con una dissolvenza breve dal basso: il
@@ -569,7 +687,9 @@ const Venditori = (() => {
   }
 
   function esci() {
-    if (sb) sb.auth.signOut();   // anche senza rete: la sessione sul telefono si cancella comunque
+    // prima il telefono esce dalle notifiche (serve ancora l'accesso), poi l'accesso
+    const telefono = togliQuestoTelefono();
+    if (sb) telefono.then(() => sb.auth.signOut());   // anche senza rete: la sessione sul telefono si cancella comunque
     cond = null;
     area = null;
     scheda = 'home';
@@ -831,6 +951,8 @@ const Venditori = (() => {
       + '<li>Sotto il risultato scegli il cliente dalla tua lista (o scrivine uno nuovo) e manda l’ordine: arriva a Pro Farmer.</li>'
       + '<li>Pro Farmer conferma e aggiorna lo stato: lo segui in <strong>Ordini</strong>, e in <strong>' + esc(nomeSoldi()) + '</strong> vedi quanto hai maturato.</li>'
       + '</ol></div>';
+
+    h += bloccoNotifiche();
 
     h += '<div class="blocco"><h3>Pro Farmer</h3><p>'
       + `<a href="mailto:${PRO_FARMER.email}">${PRO_FARMER.email}</a> · <a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a>`
