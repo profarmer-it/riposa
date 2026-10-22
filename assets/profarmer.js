@@ -21,8 +21,10 @@ const ProFarmer = (() => {
   let sb = null;
   let box = null;
   let sezione = 'ordini';
+  let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
   let dati = { ordini: [], venditori: [], condizioni: null, materiali: [] };
   let filtroStato = 'aperti';
+  const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
   const SEZIONI = { ordini: 'Ordini', provvigioni: 'Provvigioni', venditori: 'Venditori',
                     condizioni: 'Condizioni', materiali: 'Materiali' };
@@ -74,8 +76,14 @@ const ProFarmer = (() => {
     });
     h += '</div><div id="pf-corpo"></div>';
     box.innerHTML = h;
-    box.querySelectorAll('[data-sezione]').forEach(b => b.addEventListener('click', () => { sezione = b.dataset.sezione; mostra(); }));
+    box.querySelectorAll('[data-sezione]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.sezione === sezione) return;
+      sezione = b.dataset.sezione; cambiata = true; mostra();
+    }));
+    const attiva = box.querySelector('.pf-scheda.attiva');
+    if (attiva) attiva.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const corpo = document.getElementById('pf-corpo');
+    if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
     ({ ordini: ordini, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
   }
 
@@ -196,22 +204,22 @@ const ProFarmer = (() => {
 
   /* -------------------------------------------------------------- venditori */
 
-  function campo(nome, etichetta, valore, tipo, extra) {
-    return `<label>${esc(etichetta)}<input name="${nome}" type="${tipo || 'text'}" value="${esc(v(valore))}"${extra || ''}></label>`;
+  function campo(nome, etichetta, valore, tipo, extra, classe) {
+    return `<label${classe ? ` class="${classe}"` : ''}>${esc(etichetta)}<input name="${nome}" type="${tipo || 'text'}" value="${esc(v(valore))}"${extra || ''}></label>`;
   }
 
   function moduloVenditore(x) {
     const nuovo = !x.id;
-    let h = `<form class="pf-venditore" data-id="${esc(x.id || '')}" novalidate><div class="pf-campi">`
+    let h = `<form class="pf-venditore" data-id="${esc(x.id || '')}" data-ruolo="${esc(x.ruolo)}" novalidate><div class="pf-campi">`
       + campo('nome', 'Nome', x.nome)
       + '<label>Ruolo<select name="ruolo" class="pf-select">'
       + Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${x.ruolo === k ? ' selected' : ''}>${n}</option>`).join('') + '</select></label>'
       + campo('email', 'E-mail (per entrare)', x.email, 'email', ' autocapitalize="off"')
       + campo('telefono', 'Telefono', x.telefono, 'tel')
-      + campo('prezzo_bigbag', 'Rivenditore: big bag €/t', x.prezzo_bigbag, 'number', ' step="0.01" min="0"')
-      + campo('prezzo_sacchi', 'Rivenditore: sacchi €/t', x.prezzo_sacchi, 'number', ' step="0.01" min="0"')
-      + campo('provvigione_perc', 'Agente: provvigione piùLact %', x.provvigione_perc, 'number', ' step="0.1" min="0" max="100"')
-      + campo('valide_fino', 'Condizioni valide fino al', x.valide_fino, 'date')
+      + campo('prezzo_bigbag', 'piùLact big bag: paga €/t', x.prezzo_bigbag, 'number', ' step="0.01" min="0"', 'solo-rivenditore')
+      + campo('prezzo_sacchi', 'piùLact sacchi: paga €/t', x.prezzo_sacchi, 'number', ' step="0.01" min="0"', 'solo-rivenditore')
+      + campo('provvigione_perc', 'Provvigione piùLact %', x.provvigione_perc, 'number', ' step="0.1" min="0" max="100"', 'solo-agente')
+      + campo('valide_fino', 'Condizioni valide fino al', x.valide_fino, 'date', '', 'non-interno')
       + `<label class="pf-spunta"><input type="checkbox" name="attivo"${x.attivo !== false ? ' checked' : ''}> Attivo (può entrare)</label>`
       + `<label class="pf-largo">Note interne<textarea name="note" rows="2">${esc(v(x.note))}</textarea></label>`
       + '</div>';
@@ -234,9 +242,13 @@ const ProFarmer = (() => {
       + 'Togliere «Attivo» chiude l’accesso senza cancellare niente. Passata la data di validità non si blocca nulla: '
       + 'il venditore vede solo il promemoria.</p>'
       + '<div id="pf-venditore-nuovo"></div><ul class="lista-clienti">';
+    // chiusi: si apre solo quello da modificare
     dati.venditori.forEach(x => {
-      h += `<li><div class="cliente-testa"><strong>${esc(x.nome)}</strong><span>${esc(RUOLI[x.ruolo])}${x.attivo ? '' : ' · non attivo'}</span></div>`
-        + moduloVenditore(x) + '</li>';
+      const sotto = [RUOLI[x.ruolo], x.email || 'senza e-mail', x.attivo ? '' : 'non attivo'].filter(Boolean).join(' · ');
+      h += `<li><details class="pf-dettagli" data-id="${esc(x.id)}"${aperti.has(x.id) ? ' open' : ''}>`
+        + `<summary><span class="pf-sommario"><strong>${esc(x.nome)}</strong><span>${esc(sotto)}</span></span>`
+        + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
+        + moduloVenditore(x) + '</details></li>';
     });
     h += '</ul></div>';
     corpo.innerHTML = h;
@@ -247,11 +259,16 @@ const ProFarmer = (() => {
       aggancia(n);
     });
     aggancia(corpo);
+    corpo.querySelectorAll('.pf-dettagli').forEach(d => d.addEventListener('toggle', () => {
+      if (d.open) aperti.add(d.dataset.id); else aperti.delete(d.dataset.id);
+    }));
 
     function aggancia(dove) {
       dove.querySelectorAll('.pf-venditore').forEach(f => {
         if (f.dataset.agganciato) return;
         f.dataset.agganciato = '1';
+        // i campi delle condizioni seguono il ruolo scelto
+        f.ruolo.addEventListener('change', () => { f.dataset.ruolo = f.ruolo.value; });
         f.addEventListener('submit', ev => {
           ev.preventDefault();
           const d = new FormData(f);

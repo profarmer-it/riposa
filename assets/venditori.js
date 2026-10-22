@@ -33,6 +33,7 @@ const Venditori = (() => {
   let emailAccesso = '';    // l'e-mail a cui è stato mandato il codice
   let cond = null;          // le condizioni di chi è entrato
   let area = null;          // profilo, clienti, ordini, materiali (dallo script)
+  let homeVista = false;   // la home è già comparsa in questa visita?
   let scheda = 'home';      // la sezione aperta: 'home' è "La mia area"
   let ultimoCalcolo = null; // il risultato del calcolatore, se c'è
   // quello che il venditore ha scritto nel modulo d'ordine: sopravvive ai
@@ -331,7 +332,7 @@ const Venditori = (() => {
 
   function mostraCodice(messaggio) {
     const el = barra();
-    el.innerHTML = '<div class="accesso">'
+    el.innerHTML = '<div class="accesso accesso-codice">'
       + '<p class="soprattitolo">Riposa · area venditori</p>'
       + '<h2>Controlla la posta</h2>'
       + `<p class="aiuto">Ti abbiamo mandato un codice di 6 cifre a <strong>${esc(emailAccesso)}</strong>. `
@@ -484,16 +485,20 @@ const Venditori = (() => {
       ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
     // Pro Farmer gestisce da qui ordini, venditori, condizioni e materiali
-    if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Gestione Pro Farmer', 'Ordini di tutti, venditori, condizioni, materiali', false]);
+    if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Gestione Pro Farmer', 'Ordini di tutti, venditori, condizioni, materiali', false, true]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
         + `erano valide fino al ${esc(cond.validoFino)} e sono da aggiornare con Pro Farmer. Intanto restano quelle.</span></div>`;
     }
     h += riquadroInstalla();
-    h += '<div class="tessere">';
-    tessere.forEach(([id, titolo, sotto, primaria]) => {
-      h += `<button type="button" class="tessera${primaria ? ' tessera-primaria' : ''}" data-apri="${id}">`
+    // le tessere entrano una dopo l'altra solo la prima volta, all'accesso:
+    // dopo, tornare alla home dev'essere immediato
+    h += `<div class="tessere${homeVista ? '' : ' tessere-entrano'}">`;
+    homeVista = true;
+    tessere.forEach(([id, titolo, sotto, primaria, larga], i) => {
+      h += `<button type="button" class="tessera${primaria ? ' tessera-primaria' : ''}${larga ? ' tessera-larga' : ''}" `
+        + `data-apri="${id}" style="--i:${i}">`
         + icona(id) + `<strong>${esc(titolo)}</strong><span>${esc(sotto)}</span></button>`;
     });
     h += '</div>';
@@ -525,17 +530,27 @@ const Venditori = (() => {
     }
     if (id === 'gestione') {
       if (typeof ProFarmer !== 'undefined') ProFarmer.disegna(p, sb);
+      entra(p);
       return;
     }
     const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
                       materiali: disegnaMateriali, profilo: disegnaProfilo }[id];
     p.innerHTML = disegna();
+    if (id !== 'home') entra(p);
     if (id === 'home') {
       agganciaInstalla();
       p.querySelectorAll('[data-apri]').forEach(b => b.addEventListener('click', () => apri(b.dataset.apri)));
     }
     if (id === 'clienti') agganciaClienti();
     if (id === 'materiali') agganciaMateriali();
+  }
+
+  /* La sezione nuova compare con una dissolvenza breve dal basso: il
+     contenuto non salta da una schermata all'altra. Vedi .entra in style.css. */
+  function entra(el) {
+    el.classList.remove('entra');
+    void el.offsetWidth;   // riparte anche se la classe c'era già
+    el.classList.add('entra');
   }
 
   function ordineDiretto(clienteId) {
@@ -549,6 +564,7 @@ const Venditori = (() => {
     boxRis.innerHTML = '';
     boxRis.hidden = false;
     mostraOrdine(null);
+    entra(boxRis);
     window.scrollTo(0, 0);
   }
 
@@ -557,6 +573,7 @@ const Venditori = (() => {
     cond = null;
     area = null;
     scheda = 'home';
+    homeVista = false;
     ultimoCalcolo = null;
     suggeriti = null;
     stato = statoVuoto();
@@ -996,7 +1013,8 @@ const Venditori = (() => {
     bottone.textContent = 'Invio in corso…';
     rpc('invia_ordine', { p }).then(r => {
       const box = document.getElementById('blocco-ordine');
-      box.innerHTML = '<div class="trovato"><span class="trovato-spunta">✓</span>'
+      box.innerHTML = '<div class="trovato ordine-partito"><span class="trovato-spunta" aria-hidden="true">'
+        + '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>'
         + `<h2>Ordine inviato a Pro Farmer</h2><p>Numero <strong>${esc(r.numero)}</strong>. `
         + (r.copia ? 'Te ne arriva una copia per e-mail. ' : '')
         + 'Pro Farmer ti ricontatta per la conferma e la consegna. Lo trovi in <strong>Ordini</strong>.</p>'

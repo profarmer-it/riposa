@@ -543,10 +543,7 @@ body.in-area-venditori main{padding-top:24px}
 @media (min-width:640px){ .tessere{grid-template-columns:repeat(3,minmax(0,1fr))} }
 .tessera{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
   min-height:132px;padding:16px;font:inherit;color:var(--testo);background:var(--bianco);
-  border:1px solid var(--crema-2);border-radius:var(--raggio);box-shadow:var(--ombra);cursor:pointer;
-  transition:transform .12s ease, border-color .12s ease}
-.tessera:hover{border-color:var(--blu-chiaro)}
-.tessera:active{transform:scale(.98)}
+  border:1px solid var(--crema-2);border-radius:var(--raggio);box-shadow:var(--ombra);cursor:pointer}
 .tessera strong{font-size:17px;margin-top:10px}
 .tessera span{font-size:13px;line-height:1.35;color:var(--testo-2)}
 .tessera-icona{width:30px;height:30px;fill:none;stroke:var(--blu);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -582,3 +579,74 @@ body.in-area-venditori main{padding-top:24px}
 .venditori-accesso input[type=email]{text-transform:none;letter-spacing:normal;font-size:20px;font-weight:500}
 .venditori-accesso input[type=email]::placeholder{letter-spacing:normal}
 #v-codice{letter-spacing:.3em;font-variant-numeric:tabular-nums}
+
+/* ----------------------------------------- ritocchi area venditori, 22/10/2026 */
+/* Nell'area e nell'accesso la scheda non sale sulla testata: il logo resta libero */
+body.in-area-venditori #area-venditori,
+body.accesso-venditori #area-venditori{margin-top:0}
+/* Pro Farmer ha una tessera in più: la Gestione prende tutta la riga */
+.tessera-larga{grid-column:1 / -1;min-height:0}
+/* le schede della Gestione scorrono di lato senza barra */
+.pf-schede{scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.pf-schede::-webkit-scrollbar{display:none}
+.pf-scheda{transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+
+/* Venditori nella Gestione: chiusi, si apre quello da modificare */
+.pf-dettagli > summary{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  list-style:none;cursor:pointer;padding:2px 0;-webkit-tap-highlight-color:transparent}
+.pf-dettagli > summary::-webkit-details-marker{display:none}
+.pf-sommario{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pf-sommario span{font-size:14px;color:var(--testo-2);overflow-wrap:anywhere}
+.pf-freccia{flex:0 0 22px;width:22px;height:22px;fill:none;stroke:var(--testo-2);stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease-out)}
+.pf-dettagli[open] .pf-freccia{transform:rotate(180deg)}
+.pf-dettagli[open] > .pf-venditore{animation:entra .22s var(--ease-out)}
+/* i campi delle condizioni seguono il ruolo */
+.pf-venditore:not([data-ruolo=rivenditore]) .solo-rivenditore,
+.pf-venditore:not([data-ruolo=agente]) .solo-agente,
+.pf-venditore[data-ruolo=interno] .non-interno{display:none}
+
+/* ------------------------------------------------------------ movimento
+   Poco e veloce: l'area si usa tutti i giorni, in stalla. Solo trasformazioni
+   e opacità; con "riduci movimento" restano le dissolvenze, senza spostamenti. */
+:root{--ease-out:cubic-bezier(0.23, 1, 0.32, 1)}
+@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes entra-da-destra{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes tessera-entra{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes spunta-entra{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes spunta-traccia{to{stroke-dashoffset:0}}
+
+/* una sezione nuova: dissolvenza breve dal basso */
+.entra{animation:entra .24s var(--ease-out)}
+/* il codice arriva "dopo" l'e-mail: il secondo passo entra da destra */
+.accesso-codice{animation:entra-da-destra .26s var(--ease-out)}
+/* all'accesso le tessere entrano una dopo l'altra (40 ms l'una) */
+.tessere-entrano .tessera{animation:tessera-entra .32s var(--ease-out) backwards;animation-delay:calc(var(--i) * 40ms)}
+/* tessere e bottoni rispondono al tocco */
+.tessera{transition:transform .16s var(--ease-out),border-color .15s ease,box-shadow .15s ease}
+.tessera:active{transform:scale(.97)}
+@media (hover:hover) and (pointer:fine){
+  .tessera:hover{border-color:var(--blu-chiaro);box-shadow:0 6px 18px rgba(14,35,64,.08)}
+}
+/* ordine partito: il cerchio compare e la spunta si disegna */
+.ordine-partito .trovato-spunta{animation:spunta-entra .3s var(--ease-out) both}
+.trovato-spunta svg{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ordine-partito .trovato-spunta path{stroke-dasharray:24;stroke-dashoffset:24;animation:spunta-traccia .32s var(--ease-out) .18s forwards}
+.ordine-partito h2,.ordine-partito p,.ordine-partito .azioni{animation:entra .3s var(--ease-out) both}
+.ordine-partito p{animation-delay:.06s}
+.ordine-partito .azioni{animation-delay:.12s}
+/* un errore compare, non salta fuori */
+.venditori-pannello .errore,.accesso .errore,#ordine-errore{animation:entra .2s var(--ease-out)}
+
+@media (prefers-reduced-motion:reduce){
+  .entra,.accesso-codice,.tessere-entrano .tessera,.ordine-partito h2,.ordine-partito p,.ordine-partito .azioni,
+  .ordine-partito .trovato-spunta,.pf-dettagli[open] > .pf-venditore,
+  .venditori-pannello .errore,.accesso .errore,#ordine-errore{animation:dissolvi .2s ease both}
+  .ordine-partito .trovato-spunta path{animation:none;stroke-dashoffset:0}
+  .tessera:active{transform:none}
+  .pf-freccia{transition:none}
+}
+@keyframes dissolvi{from{opacity:0}to{opacity:1}}
+.pannello-testa + .aiuto{margin-top:14px}
+/* la conferma dell'ordine sta già dentro la scheda dell'ordine: niente scheda doppia */
+.blocco .trovato{background:none;box-shadow:none;padding:14px 0 6px}
