@@ -39,21 +39,51 @@ const Venditori = (() => {
     pagato: 'Pagato', annullato: 'Annullato'
   };
   const CUCCETTE = { '': '—', materassino: 'Materassino', buca: 'Buca', lettiera: 'Lettiera', compost: 'Compost barn' };
+  /* I dati del cliente. Obbligatori per fatturare (Giulio, 22/10/2026):
+     ragione sociale, P.IVA, telefono, e PEC o codice univoco (uno dei due). */
   const CAMPI_CLIENTE = [
     { id: 'ragione', etichetta: 'Ragione sociale', obbligatorio: true },
-    { id: 'piva', etichetta: 'P.IVA' },
-    { id: 'referente', etichetta: 'Referente' },
-    { id: 'telefono', etichetta: 'Telefono', tipo: 'tel' },
+    { id: 'piva', etichetta: 'P.IVA', obbligatorio: true, modo: 'numeric' },
+    { id: 'pec', etichetta: 'PEC', tipo: 'email', unoDeiDue: true },
+    { id: 'sdi', etichetta: 'Codice univoco (SDI)', unoDeiDue: true, maiuscolo: true },
+    { id: 'telefono', etichetta: 'Telefono', obbligatorio: true, tipo: 'tel' },
     { id: 'email', etichetta: 'E-mail', tipo: 'email' },
-    { id: 'indirizzo', etichetta: 'Indirizzo' },
+    { id: 'referente', etichetta: 'Referente' },
+    { id: 'indirizzo', etichetta: 'Indirizzo di consegna' },
     { id: 'comune', etichetta: 'Comune' },
     { id: 'provincia', etichetta: 'Provincia' },
     { id: 'capi', etichetta: 'Capi in lattazione', tipo: 'number' }
   ];
+  /* Nel modulo d'ordine, per un cliente nuovo, servono solo questi. */
+  const CAMPI_ORDINE = ['ragione', 'piva', 'pec', 'sdi', 'telefono', 'indirizzo', 'email', 'provincia'];
+
+  /* La stessa regola di mancaNelCliente() nello script Google: se cambi una,
+     cambia l'altra. Restituisce il messaggio da mostrare, o ''. */
+  function validaCliente(c) {
+    const t = k => String(c[k] || '').trim();
+    if (!t('ragione')) return 'Serve la ragione sociale.';
+    if (!/^\d{11}$/.test(t('piva').replace(/^IT/i, '').replace(/\s/g, ''))) return 'Serve la P.IVA: 11 cifre.';
+    if (!t('pec') && !t('sdi')) return 'Serve la PEC oppure il codice univoco: almeno uno dei due.';
+    if (t('pec') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t('pec'))) return 'La PEC non sembra valida.';
+    if (t('sdi') && !/^[A-Za-z0-9]{6,7}$/.test(t('sdi'))) return 'Il codice univoco ha 7 caratteri, lettere e numeri.';
+    if (t('telefono').replace(/\D/g, '').length < 8) return 'Serve il telefono del cliente.';
+    if (t('email') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t('email'))) return 'L’e-mail del cliente non sembra valida.';
+    return '';
+  }
+
+  /* Un campo cliente, per la scheda clienti (prefisso "cl") o per l'ordine ("o"). */
+  function campoCliente(f, valore, prefisso) {
+    const nota = f.obbligatorio ? '' : f.unoDeiDue ? ' <span class="opzionale">uno dei due</span>'
+      : ' <span class="opzionale">facoltativo</span>';
+    return `<div class="campo"><label for="${prefisso}-${f.id}">${esc(f.etichetta)}${nota}</label>`
+      + `<input id="${prefisso}-${f.id}" name="${f.id}" type="${f.tipo || 'text'}"`
+      + (f.modo ? ` inputmode="${f.modo}"` : '') + (f.maiuscolo ? ' autocapitalize="characters"' : '')
+      + ` value="${esc(valore || '')}"></div>`;
+  }
   const PRO_FARMER = { email: 'info@profarmer.it', telefono: '+39 376 129 6162', tel: '+393761296162' };
 
   function statoVuoto() {
-    return { bigbag: '', sacchi: '', ballette: '', annuale: false, direzionale: false, clienteId: '' };
+    return { bigbag: '', sacchi: '', ballette: '', annuale: false, clienteId: '' };
   }
 
   /* ---------------------------------------------------------------- utilità */
@@ -185,7 +215,7 @@ const Venditori = (() => {
         r.acquisto = r.acquistoT === null ? null : t * r.acquistoT;
         r.margine = r.acquisto === null ? null : r.listino - r.acquisto;
       } else {
-        r.clienteT = (voce === 'ballette' && opz.direzionale) ? c.ballette.direzionaleT : listinoT;
+        r.clienteT = listinoT;
         r.cliente = t * r.clienteT;
       }
       r.sottoMinimo = c.minimi && pezzi < c.minimi[voce];
@@ -491,6 +521,7 @@ const Venditori = (() => {
       h += '<li class="cliente">';
       h += `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong>${luogo ? `<span>${esc(luogo)}</span>` : ''}</div>`;
       h += '<p class="cliente-dati">';
+      if (c.piva) h += `P.IVA ${esc(c.piva)} · `;
       if (c.referente) h += `${esc(c.referente)} · `;
       if (c.telefono) h += `<a href="tel:${esc(c.telefono.replace(/[^\d+]/g, ''))}">${esc(c.telefono)}</a> · `;
       if (c.email) h += `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a> · `;
@@ -499,6 +530,7 @@ const Venditori = (() => {
       h += ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'}, l’ultimo il ${esc(ord[0].data)}` : 'nessun ordine';
       h += '</p>';
       if (c.note) h += `<p class="cliente-note">${esc(c.note)}</p>`;
+      if (validaCliente(c)) h += '<p class="sotto-minimo">Dati per la fattura da completare: tocca Modifica.</p>';
       h += '<div class="azioni">'
         + `<button type="button" class="bottone" data-ordina="${esc(c.id)}">Nuovo ordine</button>`
         + `<button type="button" class="bottone bottone-fantasma" data-modifica="${esc(c.id)}">Modifica</button></div>`;
@@ -519,11 +551,7 @@ const Venditori = (() => {
   function moduloCliente(c) {
     const box = document.getElementById('cl-modulo');
     let h = `<form id="form-cliente" class="contatti cliente-modulo" novalidate><h4 class="pieno">${c ? 'Modifica cliente' : 'Nuovo cliente'}</h4>`;
-    CAMPI_CLIENTE.forEach(f => {
-      h += `<div class="campo"><label for="cl-${f.id}">${esc(f.etichetta)}`
-        + (f.obbligatorio ? '' : ' <span class="opzionale">facoltativo</span>') + '</label>'
-        + `<input id="cl-${f.id}" name="${f.id}" type="${f.tipo || 'text'}" value="${esc(c ? c[f.id] : '')}"></div>`;
-    });
+    CAMPI_CLIENTE.forEach(f => { h += campoCliente(f, c ? c[f.id] : '', 'cl'); });
     h += '<div class="campo"><label for="cl-cuccetta">Tipo di cuccetta <span class="opzionale">facoltativo</span></label>'
       + '<select id="cl-cuccetta" name="cuccetta">'
       + Object.entries(CUCCETTE).map(([v, et]) => `<option value="${v}"${c && c.cuccetta === v ? ' selected' : ''}>${esc(et)}</option>`).join('')
@@ -540,9 +568,10 @@ const Venditori = (() => {
       ev.preventDefault();
       const d = Object.fromEntries(new FormData(ev.currentTarget).entries());
       Object.keys(d).forEach(k => { d[k] = String(d[k]).trim(); });
+      d.sdi = (d.sdi || '').toUpperCase();
       const err = document.getElementById('cl-errore');
-      if (!d.ragione) { err.textContent = 'Serve la ragione sociale.'; err.hidden = false; return; }
-      if (d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { err.textContent = 'L’e-mail non sembra valida.'; err.hidden = false; return; }
+      const manca = validaCliente(d);
+      if (manca) { err.textContent = manca; err.hidden = false; return; }
       const b = ev.currentTarget.querySelector('button[type=submit]');
       b.disabled = true; b.textContent = 'Salvo…';
       const p = Object.assign({ azione: 'cliente', codice }, d);
@@ -551,7 +580,7 @@ const Venditori = (() => {
         if (!r || !r.ok) throw new Error(r && r.motivo || 'errore');
         return ricarica();
       }).then(() => apri('clienti'))
-        .catch(() => { b.disabled = false; b.textContent = 'Salva'; err.textContent = 'Non sono riuscito a salvare: riprova tra poco.'; err.hidden = false; });
+        .catch(e => { b.disabled = false; b.textContent = 'Salva'; err.textContent = /manca|serve|non valid/i.test(e.message) ? 'Non salvato: ' + e.message + '.' : 'Non sono riuscito a salvare: riprova tra poco.'; err.hidden = false; });
     });
   }
 
@@ -763,9 +792,6 @@ const Venditori = (() => {
     if (cond.ruolo !== 'interno') {
       h += '<label class="spunta"><input type="checkbox" name="annuale"' + (stato.annuale ? ' checked' : '') + '>'
         + '<span>Fornitura annuale a condizioni bloccate <small>(solo ballette)</small></span></label>';
-    } else {
-      h += '<label class="spunta"><input type="checkbox" name="direzionale"' + (stato.direzionale ? ' checked' : '') + '>'
-        + '<span>Cliente direzionale <small>(ballette a 22 €/q)</small></span></label>';
     }
 
     h += '<div id="ordine-conto"></div>';
@@ -777,13 +803,9 @@ const Venditori = (() => {
           .map(c => `<option value="${esc(c.id)}"${stato.clienteId === c.id ? ' selected' : ''}>${esc(c.ragione)}${c.comune ? ' — ' + esc(c.comune) : ''}</option>`).join('')
       + '</select></div>';
     h += `<div id="o-nuovo"${stato.clienteId ? ' hidden' : ''}>`;
-    if (rivend) h += '<p class="aiuto">Se l’ordine è per il tuo magazzino lascia vuota la ragione sociale.</p>';
+    if (rivend) h += '<p class="aiuto">Se l’ordine è per il tuo magazzino lascia vuoti i dati del cliente.</p>';
     h += '<div class="contatti">';
-    h += campo('cliente', 'Ragione sociale', !rivend);
-    h += campo('provincia', 'Provincia', false);
-    h += campo('indirizzo', 'Indirizzo di consegna', false);
-    h += campo('telefono', 'Telefono', false, 'tel');
-    h += campo('email', 'E-mail', false, 'email');
+    CAMPI_ORDINE.forEach(id => { h += campoCliente(CAMPI_CLIENTE.find(f => f.id === id), stato[id], 'o'); });
     h += '</div><p class="aiuto">Un cliente nuovo entra da solo nella tua lista quando mandi l’ordine.</p></div>';
     h += '<div class="campo pieno"><label for="o-note">Note <span class="opzionale">facoltativo</span></label>'
       + `<textarea id="o-note" name="note" rows="3">${esc(stato.note || '')}</textarea></div>`;
@@ -807,18 +829,12 @@ const Venditori = (() => {
     disegnaConto();
   }
 
-  function campo(id, etichetta, obbligatorio, tipo) {
-    return `<div class="campo"><label for="o-${id}">${esc(etichetta)}`
-      + (obbligatorio ? '' : ' <span class="opzionale">facoltativo</span>') + '</label>'
-      + `<input id="o-${id}" name="${id}" type="${tipo || 'text'}" value="${esc(stato[id] || '')}"></div>`;
-  }
-
   function leggiStato(f) {
     const d = new FormData(f);
     VOCI.forEach(v => { stato[v.id] = d.get(v.id) || ''; });
-    ['cliente', 'provincia', 'indirizzo', 'telefono', 'email', 'note', 'clienteId'].forEach(k => { stato[k] = (d.get(k) || '').trim(); });
+    CAMPI_ORDINE.concat(['note', 'clienteId']).forEach(k => { stato[k] = (d.get(k) || '').trim(); });
+    stato.sdi = stato.sdi.toUpperCase();
     stato.annuale = d.get('annuale') === 'on';
-    stato.direzionale = d.get('direzionale') === 'on';
   }
 
   function righeOrdine() {
@@ -828,7 +844,7 @@ const Venditori = (() => {
   function disegnaConto() {
     const box = document.getElementById('ordine-conto');
     if (!box) return;
-    const conto = contoOrdine(cond, righeOrdine(), { annuale: stato.annuale, direzionale: stato.direzionale });
+    const conto = contoOrdine(cond, righeOrdine(), { annuale: stato.annuale });
     if (!conto.righe.length) {
       box.innerHTML = '<p class="aiuto">Indica almeno una quantità.</p>';
       return;
@@ -873,18 +889,30 @@ const Venditori = (() => {
     const errore = t => { err.textContent = t; err.hidden = false; };
     const scelto = stato.clienteId && area.clienti.find(c => c.id === stato.clienteId);
     if (!conto.righe.length) return errore('Indica almeno una quantità.');
-    if (cond.ruolo !== 'rivenditore' && !scelto && !stato.cliente) return errore('Scegli il cliente dalla lista o scrivi la ragione sociale.');
-    if (!scelto && stato.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(stato.email)) return errore('L’e-mail del cliente non sembra valida.');
+    // il rivenditore che ordina per il magazzino non indica un cliente: è l'unico caso
+    const perMagazzino = cond.ruolo === 'rivenditore' && !scelto && !CAMPI_ORDINE.some(k => stato[k]);
+    if (!perMagazzino) {
+      if (scelto && validaCliente(scelto)) {
+        return errore('A questo cliente mancano dati per la fattura (P.IVA, PEC o codice univoco, telefono). '
+          + 'Completali in Clienti → Modifica, poi manda l’ordine.');
+      }
+      if (!scelto) {
+        const manca = validaCliente(stato);
+        if (manca) return errore(manca);
+      }
+    }
     err.hidden = true;
 
     const p = { azione: 'ordine', codice };
     VOCI.forEach(v => { if (Number(stato[v.id]) > 0) p[v.id] = Math.floor(Number(stato[v.id])); });
     if (scelto) p.clienteId = scelto.id;
-    else ['cliente', 'provincia', 'indirizzo', 'telefono', 'email'].forEach(k => { if (stato[k]) p[k] = stato[k]; });
+    else if (!perMagazzino) {
+      CAMPI_ORDINE.forEach(k => { if (stato[k]) p[k] = stato[k]; });
+      p.cliente = stato.ragione;   // lo script chiama "cliente" la ragione sociale
+    }
     if (stato.note) p.note = stato.note;
     if (stato.annuale) p.annuale = 'si';
-    if (stato.direzionale) p.direzionale = 'si';
-    const chi = scelto ? scelto.ragione : (stato.cliente || cond.nome);
+    const chi = scelto ? scelto.ragione : (stato.ragione || cond.nome);
     if (ultimoCalcolo) p.calcolo = testoRiepilogo({ azienda: chi }, ultimoCalcolo);
 
     const bottone = f.querySelector('button[type=submit]');
@@ -915,6 +943,7 @@ const Venditori = (() => {
       bottone.disabled = false;
       bottone.textContent = 'Manda l’ordine a Pro Farmer';
       errore(e.message === 'manca il cliente' ? 'Serve la ragione sociale del cliente.'
+        : /^cliente incompleto/.test(e.message) ? 'Ordine non inviato: ' + e.message.replace(/^cliente incompleto: /, '') + '.'
         : navigator.onLine === false
           ? 'Sei senza rete: l’ordine non è partito. I dati restano qui: premi di nuovo quando torna il segnale.'
           : 'L’ordine non è partito: riprova tra poco. Se continua, chiama Pro Farmer.');
