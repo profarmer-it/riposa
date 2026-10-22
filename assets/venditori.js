@@ -263,7 +263,7 @@ const Venditori = (() => {
   function riquadroNotifiche() {
     if (statoNotifiche() !== 'spente') return '';
     try { if (localStorage.getItem(CHIAVE_NOTIFICHE) === '1') return ''; } catch (e) {}
-    return '<div class="installa"><p><strong>Vuoi un avviso sul telefono?</strong> Ti scriviamo noi '
+    return '<div class="installa avviso-notifiche"><p><strong>Vuoi un avviso sul telefono?</strong> Ti scriviamo noi '
       + esc(cosaAvvisa()) + '.</p><div class="azioni">'
       + '<button type="button" class="bottone" id="v-notifiche-si">Attiva le notifiche</button>'
       + '<button type="button" class="bottone bottone-fantasma" id="v-notifiche-no">Non ora</button></div></div>';

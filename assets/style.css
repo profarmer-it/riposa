@@ -650,3 +650,10 @@ body.accesso-venditori #area-venditori{margin-top:0}
 .pannello-testa + .aiuto{margin-top:14px}
 /* la conferma dell'ordine sta già dentro la scheda dell'ordine: niente scheda doppia */
 .blocco .trovato{background:none;box-shadow:none;padding:14px 0 6px}
+/* l'invito alle notifiche si deve notare: rosso lieve, sfumato (Giulio, 22/10/2026) */
+.avviso-notifiche{background:linear-gradient(135deg,#FDECEA 0%,#FBDCD8 100%);border-color:#F2B8B1;color:#5C1A14}
+.avviso-notifiche strong{color:#A3261B}
+.avviso-notifiche .bottone:not(.bottone-fantasma){background:#C0392B}
+.avviso-notifiche .bottone:not(.bottone-fantasma):active{background:#A3261B}
+@media (hover:hover) and (pointer:fine){ .avviso-notifiche .bottone:not(.bottone-fantasma):hover{background:#A3261B} }
+.avviso-notifiche .bottone-fantasma{color:#7A2A22;border-color:#F2B8B1;background:rgba(255,255,255,.55)}
