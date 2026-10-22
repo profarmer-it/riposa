@@ -82,3 +82,31 @@ self.addEventListener('fetch', ev => {
     return r;
   })());
 });
+
+/* ----------------------------------------------------------- le notifiche
+   Dal 22/10/2026. Le manda la funzione "notifica" su Supabase (ordine nuovo,
+   stato dell'ordine, provvigione liquidata). Su iPhone arrivano solo con
+   Riposa installata sulla schermata Home. Il tocco apre l'area venditori. */
+self.addEventListener('push', ev => {
+  let d = {};
+  try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { testo: ev.data && ev.data.text() }; }
+  ev.waitUntil(self.registration.showNotification(d.titolo || 'Riposa', {
+    body: d.testo || '',
+    icon: 'assets/icone/icona-192.png',
+    badge: 'assets/icone/favicon-32.png',
+    tag: d.tag || undefined,          // lo stesso ordine non si accumula: l'ultima notizia sostituisce la prima
+    data: { link: d.link || '/#venditori' }
+  }));
+});
+
+self.addEventListener('notificationclick', ev => {
+  ev.notification.close();
+  const link = new URL((ev.notification.data && ev.notification.data.link) || '/#venditori', self.location.origin).href;
+  ev.waitUntil((async () => {
+    const aperte = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of aperte) {
+      if (c.url.startsWith(self.location.origin)) { await c.focus(); return c.navigate ? c.navigate(link) : null; }
+    }
+    return self.clients.openWindow(link);
+  })());
+});
