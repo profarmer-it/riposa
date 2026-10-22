@@ -505,6 +505,8 @@ const Venditori = (() => {
     scheda = id;
     disegnaBarra();
     const calc = id === 'calcolo';
+    // un ordine diretto lasciato a metà non resta sotto il calcolatore
+    if (calc && !ultimoCalcolo) boxRis.innerHTML = '';
     modulo.hidden = !calc;
     boxRis.hidden = !calc || !boxRis.innerHTML;
     const p = pannello();
@@ -541,10 +543,13 @@ const Venditori = (() => {
     suggeriti = null;
     if (clienteId !== undefined) stato.clienteId = clienteId;
     apri('calcolo');
+    // nell'ordine diretto si vede solo l'ordine: il calcolatore della stalla
+    // non c'entra, e scorrendo in su non deve ricomparire
+    modulo.hidden = true;
     boxRis.innerHTML = '';
     boxRis.hidden = false;
     mostraOrdine(null);
-    boxRis.scrollIntoView({ block: 'start' });
+    window.scrollTo(0, 0);
   }
 
   function esci() {
@@ -1001,10 +1006,9 @@ const Venditori = (() => {
       suggeriti = null;
       ricarica().then(disegnaBarra);
       document.getElementById('v-nuovo').addEventListener('click', () => {
-        boxRis.hidden = true;
         boxRis.innerHTML = '';
         modulo.reset();
-        modulo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        apri('calcolo');   // anche dopo un ordine diretto: torna il calcolatore
       });
       document.getElementById('v-vedi').addEventListener('click', () => {
         ricarica().then(() => apri('ordini'));
