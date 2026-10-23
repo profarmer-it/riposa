@@ -22,11 +22,13 @@ const ProFarmer = (() => {
   let box = null;
   let sezione = 'ordini';
   let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
-  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [] };
+  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [] };
+  let filtroLead = 'nuovo';
+  const leadAperti = new Set();
   let filtroStato = 'aperti';
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { ordini: 'Ordini', provvigioni: 'Provvigioni', venditori: 'Venditori',
+  const SEZIONI = { ordini: 'Ordini', lead: 'Lead', provvigioni: 'Provvigioni', venditori: 'Venditori',
                     condizioni: 'Condizioni', materiali: 'Materiali' };
   const STATI = ['inviato', 'confermato', 'consegnato', 'pagato', 'annullato'];
   const NOME_STATO = { inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato', pagato: 'Pagato', annullato: 'Annullato' };
@@ -52,11 +54,12 @@ const ProFarmer = (() => {
       sb.from('ordini').select('*, venditori(nome, ruolo)').order('creato_il', { ascending: false }).limit(500),
       sb.from('venditori').select('*').order('ruolo').order('nome'),
       sb.from('condizioni_generali').select('*').eq('id', 1).maybeSingle(),
-      sb.from('materiali').select('*').order('posizione').order('creato_il')
-    ]).then(([o, ve, c, m]) => {
-      const err = [o, ve, c, m].find(x => x.error);
+      sb.from('materiali').select('*').order('posizione').order('creato_il'),
+      sb.from('lead').select('*').order('creato_il', { ascending: false }).limit(500)
+    ]).then(([o, ve, c, m, le]) => {
+      const err = [o, ve, c, m, le].find(x => x.error);
       if (err) throw new Error(err.error.message);
-      dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data };
+      dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data };
     });
   }
 
@@ -84,7 +87,7 @@ const ProFarmer = (() => {
     if (attiva) attiva.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
-    ({ ordini: ordini, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    ({ ordini: ordini, lead: lead, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
   }
 
   /* Salva, ricarica e ridisegna; l'errore resta vicino al bottone. */
@@ -172,6 +175,64 @@ const ProFarmer = (() => {
           if (x.error) throw new Error('e-mail non partita, riprova più tardi');
         })));
     });
+  }
+
+  /* ------------------------------------------------------------------- lead */
+
+  /* Gli allevatori che hanno usato il calcolatore (dal 23/10/2026 su
+     Supabase, prima sul foglio Google). Si richiamano da qui: lo stato e le
+     note sono solo di Pro Farmer. */
+  const STATI_LEAD = { nuovo: 'Da richiamare', richiamato: 'Richiamato', cliente: 'Diventato cliente',
+    'non interessato': 'Non interessato', prova: 'Prova / da ignorare' };
+  const ZONE = { materassino: 'materassino', buca: 'cuccetta a buca', lettiera: 'lettiera', compost: 'compost barn' };
+
+  function lead(corpo) {
+    const lista = dati.lead.filter(x => filtroLead === 'tutti' || x.stato === filtroLead);
+    const nuovi = dati.lead.filter(x => x.stato === 'nuovo').length;
+    let h = '<div class="blocco"><div class="pannello-testa"><h3>Lead degli allevatori</h3>'
+      + '<select id="pf-filtro-lead" class="pf-select" aria-label="Quali lead">'
+      + Object.entries(Object.assign({ tutti: 'Tutti' }, STATI_LEAD))
+        .map(([k, n]) => `<option value="${k}"${k === filtroLead ? ' selected' : ''}>${esc(n)}${k === 'nuovo' ? ` (${nuovi})` : ''}</option>`).join('')
+      + '</select></div>'
+      + '<p class="aiuto">Chi ha fatto il calcolo e ha ricevuto il risultato per e-mail. «Senza consenso» vuol dire che '
+      + 'non ha accettato di essere ricontattato a scopo commerciale: non è in ActiveCampaign.</p>';
+    if (!lista.length) h += '<p class="aiuto">Nessun lead qui.</p>';
+    h += '<ul class="lista-clienti">';
+    lista.forEach(x => {
+      const sotto = [x.nome, x.provincia, dataIt(x.creato_il), x.consenso ? '' : 'senza consenso'].filter(Boolean).join(' · ');
+      h += `<li><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
+        + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span></span>`
+        + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
+        + `<form class="pf-lead" data-id="${esc(x.id)}" novalidate>`
+        + '<p class="cliente-dati">'
+        + `<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>`
+        + (x.telefono ? ` · <a href="tel:${esc(String(x.telefono).replace(/[^\d+]/g, ''))}">${esc(x.telefono)}</a>` : '')
+        + '</p><p class="cliente-dati">'
+        + esc([ZONE[x.zona] || x.zona, x.cuccette && `${x.cuccette} cuccette`, x.mq && `${x.mq} m²`,
+               x.capi && `${x.capi} capi`, x.mungitura === 'robot' ? 'robot' : ''].filter(Boolean).join(' · '))
+        + '</p><p class="cliente-dati">'
+        + esc([x.prodotto, x.dose, x.frequenza, x.kg_mese && `${x.kg_mese} kg al mese`].filter(Boolean).join(' · '))
+        + '</p>'
+        + `<p class="cliente-dati">E-mail: ${esc(x.esito_email || '—')} · ActiveCampaign: ${esc(x.esito_ac || '—')}</p>`
+        + '<div class="pf-campi"><label>Stato<select name="stato" class="pf-select">'
+        + Object.entries(STATI_LEAD).map(([k, n]) => `<option value="${k}"${x.stato === k ? ' selected' : ''}>${esc(n)}</option>`).join('')
+        + '</select></label>'
+        + `<label class="pf-largo">Note Pro Farmer<textarea name="note_pf" rows="2">${esc(v(x.note_pf))}</textarea></label></div>`
+        + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva</button></div>'
+        + '</form></details></li>';
+    });
+    h += '</ul></div>';
+    corpo.innerHTML = h;
+    document.getElementById('pf-filtro-lead').addEventListener('change', ev => { filtroLead = ev.target.value; mostra(); });
+    corpo.querySelectorAll('.pf-dettagli').forEach(d => d.addEventListener('toggle', () => {
+      if (d.open) leadAperti.add(d.dataset.id); else leadAperti.delete(d.dataset.id);
+    }));
+    corpo.querySelectorAll('.pf-lead').forEach(f => f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const d = new FormData(f);
+      salva(f.querySelector('button[type=submit]'), () => sb.from('lead')
+        .update({ stato: d.get('stato'), note_pf: nulloSeVuoto(String(d.get('note_pf') || '').trim()) }).eq('id', f.dataset.id));
+    }));
   }
 
   /* ------------------------------------------------------------ provvigioni */

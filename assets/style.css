@@ -657,3 +657,7 @@ body.accesso-venditori #area-venditori{margin-top:0}
 .avviso-notifiche .bottone:not(.bottone-fantasma):active{background:#A3261B}
 @media (hover:hover) and (pointer:fine){ .avviso-notifiche .bottone:not(.bottone-fantasma):hover{background:#A3261B} }
 .avviso-notifiche .bottone-fantasma{color:#7A2A22;border-color:#F2B8B1;background:rgba(255,255,255,.55)}
+/* Dal 23/10/2026 i contatti stanno sotto "soluzione trovata", nello stesso riquadro */
+.trovato-contatti .contatti{text-align:left;margin-top:20px}
+.trovato-contatti .azioni{max-width:none}
+.pf-dettagli[open] > .pf-lead{animation:entra .22s var(--ease-out)}

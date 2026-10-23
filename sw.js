@@ -6,7 +6,7 @@
    apre in fretta e il CALCOLO funziona anche senza rete (in stalla il segnale
    è spesso debole).
 
-   Cosa NON tiene: le chiamate allo script Google (accesso, clienti, ordini,
+   Cosa NON tiene: le chiamate a Supabase (accesso, clienti, ordini,
    lead). Quelle vanno sempre in rete, perché devono essere vere e fresche.
    Senza rete l'ordine non parte, e la pagina lo dice.
 
@@ -55,7 +55,7 @@ self.addEventListener('fetch', ev => {
   const req = ev.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== location.origin) return;   // script Google, WhatsApp: sempre in rete
+  if (url.origin !== location.origin) return;   // Supabase e ogni altro sito: sempre in rete
 
   // La pagina: prima la rete (così si vede subito la versione nuova), senza rete la copia.
   if (req.mode === 'navigate') {
