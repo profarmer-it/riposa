@@ -9,17 +9,18 @@ ballette, per la cuccetta a buca e per il materassino.
 Dalle caratteristiche della stalla — dove riposano le vacche, quante cuccette,
 come si riempie la buca — restituisce il prodotto giusto, la dose per cuccetta,
 la frequenza, il consumo mensile e quanto ordinare. Il risultato non compare a
-schermo: arriva via e-mail, oppure su WhatsApp **dal numero Pro Farmer**, e il
-contatto diventa un lead profilato.
+schermo: arriva per e-mail, e il contatto diventa un lead profilato.
 
 Agenti, rivenditori e commerciali Pro Farmer hanno un'**area venditori** su
 `riposa.profarmer.it/#venditori`: entrano con la loro e-mail e un codice di 6
 cifre che arriva per e-mail, vedono il risultato a schermo e mandano l'ordine
-a Pro Farmer dallo stesso calcolo. Dal novembre 2026 l'area venditori sta su
-**Supabase** (progetto "riposa", Francoforte): nel codice di questo repository
-c'è solo la chiave pubblica, e quello che ognuno vede lo decide il database.
-Le condizioni commerciali arrivano solo dopo l'accesso, e ognuno vede le sue.
-I lead degli allevatori restano sullo script del foglio Google.
+a Pro Farmer dallo stesso calcolo.
+
+Dal 22-23 ottobre 2026 tutto il server di Riposa è **Supabase** (progetto
+"riposa", Francoforte): area venditori, ordini, lead degli allevatori, e-mail
+(Resend, da riposa@profarmer.it), notifiche sul telefono. Nel codice di questo
+repository c'è solo la chiave pubblica: quello che ognuno vede lo decide il
+database. Lo script Google del foglio non serve più.
 
 **Il calcolatore è online: https://riposa.profarmer.it**
 
@@ -30,7 +31,7 @@ motore di calcolo, i font, i materiali commerciali. Tutto ciò che è nel
 repository viene servito da GitHub Pages a un indirizzo indovinabile.
 
 I documenti interni — la mappa del progetto (`MAPPA.html`), le regole di
-dosaggio (`docs/`) e lo script del foglio Google (`integrazioni/`) — restano
+dosaggio (`docs/`) e lo schema e le funzioni di Supabase (`integrazioni/`) — restano
 nella cartella sul Mac e il `.gitignore` li tiene fuori da qui. Ci sono dentro
 il know-how sui dosaggi e il ragionamento commerciale: non è roba da vetrina.
 
@@ -47,10 +48,8 @@ Nessun altro file va toccato.
 ## Le due cose da non fare mai
 
 1. **Non mettere chiavi né indirizzi di webhook in questi file.** Il sito è
-   statico: il suo codice è pubblico per chiunque. Le chiavi di ActiveCampaign e
-   l'indirizzo del webhook Zapier stanno nelle *Proprietà script* dell'Apps
-   Script (`AC_API_URL`, `AC_API_KEY`, `ZAPIER_HOOK_URL`), sui server di Google.
-   Chi ha l'indirizzo del webhook può far partire messaggi dal numero aziendale.
+   statico: il suo codice è pubblico per chiunque. Le chiavi (ActiveCampaign,
+   Resend, notifiche) stanno nei *secrets* delle Edge Function di Supabase.
 2. **Non modificare le dosi in `app.js`.** Le dosi vivono solo in `regole.js`.
 
 ## Come si aggiorna il sito online
@@ -59,21 +58,15 @@ Il sito è pubblicato con **GitHub Pages** dal ramo `main` di questo
 repository: ogni modifica che arriva su GitHub va online da sola in un paio
 di minuti. Non c'è niente da caricare a mano.
 
-Quando cambiano insieme il sito e lo script del foglio Google, l'ordine è
-sempre lo stesso: **prima lo script Google, poi il sito**.
+Quando cambiano insieme il sito e il database o le funzioni di Supabase,
+l'ordine è sempre lo stesso: **prima Supabase, poi il sito**.
 
 ## Stato
 
-**Fase 1 e area venditori online** (19 ottobre 2026). Il calcolatore è online
-dal 9 settembre 2026; dal 18 ottobre propone la gamma di due prodotti, e i sette
-scenari sono confermati sui numeri reali (il settimo, il Pronto sul materassino, dal 19 ottobre). Ogni calcolo scrive una riga di 32 colonne sul
-foglio Google e crea il contatto in ActiveCampaign con il tag `riposa`.
+Il calcolatore è online dal 9 settembre 2026; dal 18 ottobre propone la gamma
+di due prodotti. Dal 23 ottobre 2026 il risultato arriva **solo per e-mail**
+(WhatsApp è uscito): la funzione `lead` su Supabase scrive il lead, manda
+l'e-mail e, col consenso, crea il contatto in ActiveCampaign con il tag
+`riposa`. Pro Farmer vede e segue i lead nella Gestione dell'area venditori.
 
-La consegna funziona su entrambi i canali. Via e-mail la manda l'Apps Script.
-Su WhatsApp l'allevatore manda al numero Pro Farmer una richiesta di due righe,
-e quel suo messaggio apre la finestra di 24 ore dentro la quale un workflow
-Zapier gli consegna il calcolo **dal numero aziendale**, come messaggio normale.
-Collaudato end-to-end il 9 settembre.
-
-L'informativa privacy è collegata alla spunta di consenso e dichiara gli otto
-servizi che il calcolatore usa davvero.
+L'informativa privacy è collegata alla spunta di consenso.

@@ -15,7 +15,6 @@ const titoloLettiera = document.getElementById('titolo-lettiera-attuale');
 
 let ultimoRisultato = null;
 let premiumScelto = null;   // id dello scenario alternativo scelto dall'allevatore
-let canale = null;          // 'whatsapp' | 'email'
 let consegnato = false;     // il risultato è già stato inviato?
 let datiContatto = null;
 
@@ -427,7 +426,8 @@ function testoConfezione(c) {
 
 /* ============================================================================
    Il percorso dopo il calcolo
-   ragionamento → scelta del canale → contatti → risultato
+   ragionamento → contatti → il risultato arriva per e-mail
+   Dal 23/10/2026 il risultato arriva solo per e-mail: WhatsApp è uscito.
    ========================================================================== */
 
 /* --- 1. il ragionamento ------------------------------------------------- */
@@ -498,68 +498,28 @@ function mostraRagionamento(r) {
     }, intervallo * i);
   });
 
-  setTimeout(() => mostraCanale(r), DURATA_RAGIONAMENTO);
+  setTimeout(() => mostraContatti(r), DURATA_RAGIONAMENTO);
 }
 
-/* --- 2. come vuoi riceverlo -------------------------------------------- */
-
-function emailDisponibile() {
-  const c = CONFIG.raccoltaLead;
-  return !!(c && c.attivo && c.url && c.emailAttiva);
-}
-
-function mostraCanale(r) {
-  const dueVie = emailDisponibile();
-  let h = '<div class="trovato">';
-  h += '<span class="trovato-spunta">✓</span>';
-  h += '<h2>Il calcolatore ha trovato la soluzione ideale per la tua realtà</h2>';
-  h += `<p>${dueVie ? 'Come preferisci ricevere il risultato?' : 'Ecco come ricevere il risultato.'}</p>`;
-  h += '<div class="canali">';
-  h += '<button type="button" class="canale canale-whatsapp" data-canale="whatsapp">'
-    + '<strong>WhatsApp</strong>'
-    + '<small>ti rispondiamo dal numero Pro Farmer</small>'
-    + '<small class="canale-nota">⚡️ Ricevi in un lampo!</small></button>';
-  if (dueVie) {
-    h += '<button type="button" class="canale canale-email" data-canale="email">'
-      + '<strong>E-mail</strong>'
-      + '<small>te lo mandiamo per iscritto</small>'
-      + '<small class="canale-nota">‼️ Controlla anche lo SPAM</small></button>';
-  }
-  h += '</div></div>';
-  mostra(h);
-
-  boxRis.querySelectorAll('.canale').forEach(b => {
-    b.addEventListener('click', () => {
-      canale = b.dataset.canale;
-      mostraContatti(r);
-    });
-  });
-}
-
-/* --- 3. i contatti ------------------------------------------------------ */
+/* --- 2. dove te lo mandiamo ------------------------------------------- */
 
 function mostraContatti(r) {
-  const viaMail = canale === 'email';
-  let h = '<div class="blocco">';
-  h += `<h3>${viaMail ? 'Dove te lo mandiamo?' : 'Su quale numero te lo mandiamo?'}</h3>`;
-  h += '<p style="color:#5A6A80;font-size:15px">Quattro dati e il risultato è tuo.</p>';
+  let h = '<div class="trovato trovato-contatti">';
+  h += '<span class="trovato-spunta">✓</span>';
+  h += '<h2>Il calcolatore ha trovato la soluzione ideale per la tua realtà</h2>';
+  h += '<p>Dove te la mandiamo? Ti arriva per e-mail tra pochi secondi.</p>';
   h += '<form id="modulo-contatti" class="contatti" novalidate>';
   h += campoTesto('nome', 'Nome e cognome', 'text', true);
   h += campoTesto('azienda', 'Ragione sociale', 'text', true);
   h += campoTesto('provincia', 'Provincia', 'text', true);
-  h += viaMail
-    ? campoTesto('email', 'E-mail', 'email', true)
-    : campoTesto('telefono', 'Numero di telefono', 'tel', true);
+  h += campoTesto('email', 'E-mail', 'email', true);
+  h += campoTesto('telefono', 'Telefono', 'tel', false, 'pieno');
   h += spuntaConsenso();
   h += '<p id="errore-contatti" class="errore pieno" hidden></p>';
   h += '<div class="azioni pieno">';
-  h += `<button type="submit" class="bottone ${viaMail ? '' : 'bottone-whatsapp'}">`
-    + `${viaMail ? 'Mandami il risultato per e-mail' : 'Mandami il risultato su WhatsApp'}</button>`;
-  h += '<button type="button" class="bottone bottone-fantasma" id="btn-indietro">Cambia canale</button>';
+  h += '<button type="submit" class="bottone">Mandami il risultato per e-mail</button>';
   h += '</div></form></div>';
   mostra(h);
-
-  document.getElementById('btn-indietro').addEventListener('click', () => mostraCanale(r));
 
   document.getElementById('modulo-contatti').addEventListener('submit', ev => {
     ev.preventDefault();
@@ -567,36 +527,35 @@ function mostraContatti(r) {
     const err = document.getElementById('errore-contatti');
     const dati = Object.fromEntries(new FormData(f).entries());
 
-    /* Gli spazi di troppo si mangiano qui, una volta per tutte: uno spazio in
-       coda alla ragione sociale rompe il grassetto del messaggio WhatsApp
-       (*Agrinova * non diventa grassetto) e sporca la riga sul foglio. */
+    // gli spazi di troppo si mangiano qui, una volta per tutte
     for (const chiave in dati) {
       if (typeof dati[chiave] === 'string') dati[chiave] = dati[chiave].trim();
     }
-
     dati.consenso = document.getElementById('c-consenso').checked;
 
-    if (!dati.nome || !dati.nome.trim()) {
-      return errore(err, 'Serve il tuo nome.');
-    }
-    if (!dati.azienda || !dati.azienda.trim()) {
-      return errore(err, 'Serve la ragione sociale dell’azienda.');
-    }
-    if (!dati.provincia || !dati.provincia.trim()) {
-      return errore(err, 'Serve la provincia.');
-    }
-    if (viaMail) {
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((dati.email || '').trim())) {
-        return errore(err, 'Serve un indirizzo e-mail valido.');
-      }
-    } else if (!dati.telefono || dati.telefono.replace(/\D/g, '').length < 8) {
-      return errore(err, 'Serve un numero di telefono valido.');
-    }
+    if (!dati.nome) return errore(err, 'Serve il tuo nome.');
+    if (!dati.azienda) return errore(err, 'Serve la ragione sociale dell’azienda.');
+    if (!dati.provincia) return errore(err, 'Serve la provincia.');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
+    if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
     err.hidden = true;
 
     datiContatto = dati;
-    consegna(r);
-    mostraConferma(r);
+    const b = f.querySelector('button[type=submit]');
+    b.disabled = true;
+    b.textContent = 'Invio in corso…';
+    inviaLead(dati, r).then(esito => {
+      consegnato = true;
+      mostraConferma(esito);
+    }).catch(e => {
+      b.disabled = false;
+      b.textContent = 'Mandami il risultato per e-mail';
+      errore(err, navigator.onLine === false
+        ? 'Sei senza rete: il risultato non è partito. I dati restano qui, riprova quando torna il segnale.'
+        : e.message === 'troppe richieste'
+          ? 'Troppe richieste in questo momento: riprova tra qualche minuto.'
+          : 'Non sono riuscito a mandarlo: riprova tra poco. Se continua, chiama Pro Farmer al +39 376 129 6162.');
+    });
   });
 }
 
@@ -605,30 +564,17 @@ function errore(el, testo) {
   el.hidden = false;
 }
 
-/* --- 4. la consegna ---------------------------------------------------- */
+/* --- 3. la conferma ---------------------------------------------------- */
 
-function consegna(r) {
-  inviaLead(datiContatto, r);
-  if (canale === 'whatsapp') apriWhatsApp(datiContatto, r);
-  consegnato = true;
-}
-
-/* Il muro: il risultato non compare a schermo, arriva solo sul canale scelto.
-   L'agente lo vedrà a schermo dall'area riservata, quando la faremo. */
-function mostraConferma(r) {
-  const viaMail = canale === 'email';
+/* Il muro: il risultato non compare a schermo, arriva solo per e-mail. */
+function mostraConferma(esito) {
   let h = '<div class="trovato">';
   h += '<span class="trovato-spunta">✓</span>';
-  h += `<h2>${viaMail ? 'Te l’abbiamo mandato per e-mail' : 'Manca solo il tuo invio'}</h2>`;
-  h += `<p>${viaMail
-    ? 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi, guarda nello SPAM.'
-    : 'Si è aperto WhatsApp con la richiesta già scritta: <strong>premi invia</strong> e ti rispondiamo dal numero Pro Farmer col calcolo per la tua stalla.'}</p>`;
+  h += '<h2>Te l’abbiamo mandato per e-mail</h2>';
+  h += `<p>${esito && esito.email === false
+    ? 'L’abbiamo ricevuto: te l’abbiamo già mandato da poco a ' + esc(datiContatto.email) + ', controlla la casella.'
+    : 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi tra qualche minuto, guarda nella posta indesiderata.'}</p>`;
   h += '<div class="azioni">';
-  if (!viaMail) {
-    h += '<button type="button" class="bottone bottone-whatsapp" id="btn-rinvia">Riapri WhatsApp</button>';
-    // Se non ha premuto invia, la finestra delle 24 ore non si apre e il calcolo
-    // non gli arriva: questo pulsante e' la sua seconda occasione.
-  }
   h += '<button type="button" class="bottone bottone-fantasma" id="btn-ricomincia">Fai un altro calcolo</button>';
   h += '</div>';
   h += '<p class="conferma-nota">Se hai bisogno di una mano ti richiamiamo noi: '
@@ -636,8 +582,6 @@ function mostraConferma(r) {
   h += '</div>';
   mostra(h);
 
-  const rinvia = document.getElementById('btn-rinvia');
-  if (rinvia) rinvia.addEventListener('click', () => apriWhatsApp(datiContatto, r));
   document.getElementById('btn-ricomincia').addEventListener('click', () => {
     boxRis.hidden = true;
     boxRis.innerHTML = '';
@@ -789,8 +733,8 @@ function testoRiepilogo(dati, r) {
      prova: quelle sono materia della conversazione che l'agente apre dopo,
      non del messaggio che arriva per primo.
      Why: un allevatore in stalla legge sei righe, non una scheda.
-     Il grassetto e' quello di WhatsApp (*cosi*): sull'e-mail lo traduce in
-     HTML l'Apps Script. Attenzione a non lasciare mai uno spazio prima
+     Il grassetto si scrive *cosi*: nell'e-mail lo traduce in HTML la
+     funzione "lead" su Supabase. Attenzione a non lasciare mai uno spazio prima
      dell'asterisco di chiusura, o il grassetto non viene applicato. */
 
   const chi = dati.azienda || dati.nome || 'la tua stalla';
@@ -860,56 +804,33 @@ function testoRiepilogo(dati, r) {
   return L.join('\n');
 }
 
-/* Il messaggio che il wa.me precompila NON e' piu' il calcolo: e' una richiesta
-   breve che l'allevatore manda a Pro Farmer. Why: quel suo messaggio apre la
-   finestra di 24 ore in cui WhatsApp permette a un'azienda di rispondere con
-   messaggi liberi, senza template approvati da Meta. Il calcolo completo parte
-   dopo, dal numero Pro Farmer, come messaggio normale.
-   Nome e ragione sociale servono ad agganciare la riga sul foglio. */
-function testoRichiesta(dati) {
-  const chi = [dati.nome, dati.azienda].filter(Boolean).join(' — ');
-  return 'Ciao Pro Farmer, ho usato il calcolatore Riposa per la mia stalla.\n'
-    + (chi ? chi + '\n' : '')
-    + 'Mi mandate il risultato?';
-}
-
-function apriWhatsApp(dati, r) {
-  const testo = encodeURIComponent(testoRichiesta(dati));
-  const numero = (CONFIG.azienda.whatsapp || '').replace(/\D/g, '');
-  const url = numero
-    ? `https://wa.me/${numero}?text=${testo}`
-    : `https://wa.me/?text=${testo}`;   // senza numero configurato: l'utente sceglie il destinatario
-  window.open(url, '_blank', 'noopener');
-}
-
 /* ------------------------------------------------------------ raccolta lead */
-/* Un solo indirizzo: la Web App di Google Apps Script dentro il foglio.
-   Chiamata in JSONP, così funziona da un sito statico su un altro dominio.
-   Nessuna chiave di nessun tipo passa da qui.                                */
+/* Dal 23/10/2026: un POST alla funzione "lead" su Supabase, che controlla i
+   dati, scrive il lead, manda l'e-mail all'allevatore (con il link ai
+   materiali aggiunto dal server) e, col consenso, crea il contatto in
+   ActiveCampaign. Nessuna chiave passa da qui. Vedi
+   integrazioni/supabase/functions/lead. */
 
 function inviaLead(dati, r) {
   const conf = CONFIG.raccoltaLead;
-  if (!conf.attivo || !conf.url) return;
-
   const d = r.dati;
-  const s = r.scenario;
   const scelta = (r.premium || []).find(x => x.idScenario === premiumScelto);
 
-  const q = new URLSearchParams({
+  const corpo = {
     azienda:        dati.azienda || '',
     nome:           dati.nome || '',
-    provincia:      dati.provincia || '',   // non più chiesta nel modulo breve
+    provincia:      dati.provincia || '',
     telefono:       dati.telefono || '',
     email:          dati.email || '',
-    consenso:       dati.consenso ? 'si' : 'no',
+    consenso:       !!dati.consenso,
     zona:           d.zona || '',
     cuccette:       d.cuccette || '',
-    cuccetteStimate: d.cuccetteStimate ? 'si' : 'no',
+    cuccetteStimate: !!d.cuccetteStimate,
     capi:           d.capi || '',
     mungitura:      d.mungitura || '',
     riempimento:    d.riempimento || '',
     lettiera:       (d.lettieraAttuale || []).join(', '),
-    biogas:         d.biogas ? 'si' : 'no',
+    biogas:         !!d.biogas,
     mq:             d.mq || '',
     capiZona:       d.capiZona || '',
     cellule:        d.cellule || '',
@@ -921,18 +842,20 @@ function inviaLead(dati, r) {
     kgMese:         r.kgMese ? Math.round(r.kgMese) : '',
     formato:        r.confezioneConsigliata ? r.confezioneConsigliata.etichetta : '',
     premium:        scelta ? scelta.prodotto.nome : '',
-    prova:          ''   // le proposte di prova sono uscite il 18 ottobre 2026
-  });
+    riepilogo:      testoRiepilogo(dati, r)
+  };
 
-  q.set('canale', canale || '');
-  q.set('riepilogo', testoRiepilogo(dati, r));
-
-  const cb = 'leadCallback' + Date.now();
-  window[cb] = () => { delete window[cb]; };
-  const el = document.createElement('script');
-  el.src = `${conf.url}?${q.toString()}&callback=${cb}`;
-  el.onload = el.onerror = () => el.remove();
-  document.body.appendChild(el);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  return fetch(conf.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+    signal: ctrl.signal
+  }).then(x => x.json().catch(() => ({})).then(j => {
+    if (!x.ok || !j.ok) throw new Error(j.motivo || 'errore');
+    return j;
+  })).finally(() => clearTimeout(timer));
 }
 
 /* ------------------------------------------------------------------- avvio */
@@ -950,7 +873,6 @@ modulo.addEventListener('submit', ev => {
   boxErrore.hidden = true;
 
   premiumScelto = null;
-  canale = null;
   consegnato = false;
   datiContatto = null;
   ultimoRisultato = calcola(d);

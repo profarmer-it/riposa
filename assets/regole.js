@@ -11,29 +11,17 @@ const CONFIG = {
   azienda: {
     nome: 'Pro Farmer',
     email: 'info@profarmer.it',
-    sito: 'https://www.profarmer.it/piulact/',
-    // numero WhatsApp aziendale, formato internazionale senza + e senza spazi
-    // +39 376 129 6162
-    whatsapp: '393761296162'
+    sito: 'https://www.profarmer.it/piulact/'
   },
 
-  // Raccolta lead. Il calcolatore parla con UN solo indirizzo: la Web App di
-  // Google Apps Script che vive dentro il foglio "Riposa — lead calcolatore".
-  // È quello script a scrivere la riga sul foglio e a creare il contatto in
-  // ActiveCampaign, tenendo la chiave API al sicuro sui server di Google.
-  // Il codice dello script sta in integrazioni/foglio-google.gs
+  // Raccolta lead. Dal 23/10/2026 il calcolatore manda i dati alla funzione
+  // "lead" su Supabase (progetto riposa, Francoforte): scrive il lead, manda
+  // l'e-mail all'allevatore e, col consenso, crea il contatto in
+  // ActiveCampaign. Le chiavi stanno sul server, qui c'è solo l'indirizzo.
+  // Il codice sta in integrazioni/supabase/functions/lead.
+  // Prima era lo script Google del foglio "Riposa — lead calcolatore".
   raccoltaLead: {
-    attivo: true,
-    // Web App di Google Apps Script, versione 4 dell'8 settembre 2026.
-    // La prima distribuzione era rimasta in uno stato rotto (rispondeva
-    // "Script function not found: doGet" anche col codice giusto): questa è
-    // una distribuzione nuova, creata da zero, e risponde.
-    url: 'https://script.google.com/macros/s/AKfycbyMzaKgp6VBNIG_pkVPzzXSS7aLVOxAPEmopH0ZYKoUuK2DjwRg0dYVquMhzGNOz_ef/exec',
-    // L'invio per e-mail lo fa lo script, non il sito. Va messo a true solo
-    // dopo aver aggiunto MailApp allo script e ridistribuito una nuova versione:
-    // finché è false il pulsante E-mail non compare, così non promettiamo
-    // all'allevatore un invio che non parte.
-    emailAttiva: true
+    url: 'https://gmhmxybqmkcmnbjdnslz.supabase.co/functions/v1/lead'
   },
 
   // Informativa privacy, linkata dalla spunta di consenso. È il documento
