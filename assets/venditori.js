@@ -1018,8 +1018,8 @@ const Venditori = (() => {
     h += '</tbody></table><p class="aiuto">Prezzi franco partenza, IVA esclusa.</p></div>';
 
     h += '<div class="blocco"><h3>Come si lavora</h3><ol class="passi">'
-      + '<li>In stalla, apri <strong>Calcolo e ordine</strong>, compila la stalla del cliente e premi Calcola: prodotto, dose e quantità sono pronti.</li>'
-      + '<li>Sotto il risultato scegli il cliente dalla tua lista (o scrivine uno nuovo) e manda l’ordine: arriva a Pro Farmer.</li>'
+      + '<li><strong>Nuovo ordine</strong>: scegli il cliente e le quantità. Per un cliente che riordina, tocca il suo nome sotto <strong>Riordina</strong>: le quantità sono già quelle dell’ultima volta.</li>'
+      + '<li>Per un allevamento nuovo, <strong>Calcola una stalla</strong>: prodotto, dose e quantità sono pronti, e sotto c’è già l’ordine da mandare.</li>'
       + '<li>Pro Farmer conferma e aggiorna lo stato: lo segui in <strong>Ordini</strong>, e in <strong>' + esc(nomeSoldi()) + '</strong> vedi quanto hai maturato.</li>'
       + '</ol></div>';
 
@@ -1027,7 +1027,12 @@ const Venditori = (() => {
 
     h += '<div class="blocco"><h3>Pro Farmer</h3><p>'
       + `<a href="mailto:${PRO_FARMER.email}">${PRO_FARMER.email}</a> · <a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a>`
-      + '</p></div>';
+      + '</p>'
+      // richiesto dagli store (Apple 5.1.1): una via per chiedere la cancellazione dell'account
+      + `<p class="aiuto"><a href="mailto:${PRO_FARMER.email}?subject=${encodeURIComponent('Cancellazione account Riposa Pro')}`
+      + `&body=${encodeURIComponent('Chiedo la cancellazione del mio account Riposa Pro: ' + (area.profilo.email || ''))}">`
+      + 'Chiedi la cancellazione del tuo account</a>: Pro Farmer chiude l’accesso e cancella i tuoi dati, salvo quelli che la legge chiede di tenere (gli ordini fatturati).</p>'
+      + '</div>';
     return h;
   }
 
