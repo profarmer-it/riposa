@@ -709,12 +709,12 @@ input[type=number],select,
 /* cosa usi oggi: pulsanti su due colonne, il quadratino sparisce */
 .spunte{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:640px){ .spunte{grid-template-columns:repeat(3,minmax(0,1fr))} }
-.spunta{position:relative;justify-content:center;min-height:52px;padding:10px 12px;text-align:center;
+.spunte .spunta{position:relative;justify-content:center;min-height:52px;padding:10px 12px;text-align:center;
   font-size:16px;font-weight:500;line-height:1.25}
-.spunta input{position:absolute;opacity:0;width:1px;height:1px}
-.spunta:has(input:checked){border-color:var(--navy);background:var(--navy);color:var(--bianco)}
-.spunta:has(input:checked) span::before{content:"✓ ";font-weight:600;color:var(--blu-chiaro)}
-.spunta:has(input:focus-visible){outline:2px solid var(--blu);outline-offset:2px}
+.spunte .spunta input{position:absolute;opacity:0;width:1px;height:1px}
+.spunte .spunta:has(input:checked){border-color:var(--navy);background:var(--navy);color:var(--bianco)}
+.spunte .spunta:has(input:checked) span::before{content:"✓ ";font-weight:600;color:var(--blu-chiaro)}
+.spunte .spunta:has(input:focus-visible){outline:2px solid var(--blu);outline-offset:2px}
 
 /* ------------------------------------------------ Riposa Pro, 24/10/2026
    L'app dei venditori (pro/index.html): niente eroe, il nome dell'app nella
@@ -839,7 +839,48 @@ textarea,.venditori-ordine textarea,.contatti textarea,.cliente-modulo textarea{
 /* il titolo di un gruppo di domande starebbe sul bordo: lo riportiamo dentro */
 .campo-mancante > legend{float:left;width:100%}
 .campo-mancante > legend + *{clear:both}
-.venditori-ordine .spunta small{font-size:14px}
 @media (max-width:560px){ .ordine-conto thead th{white-space:normal;letter-spacing:.02em;vertical-align:bottom} }
 .chiama{max-width:100%;box-sizing:border-box;font-size:15.5px;padding:12px 20px}
 .chiama svg{flex:0 0 18px}
+
+/* ------------------------------------------ il modulo d'ordine, 24/10/2026
+   Una riga per prodotto: cosa, formato e minimo a sinistra; a destra il
+   contatore − numero unità +, grande per il pollice. */
+.righe-ordine{display:grid;gap:0;margin:0 0 6px}
+.riga-ordine{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--crema-2)}
+.riga-ordine:first-child{padding-top:4px}
+.riga-cosa{display:flex;flex-direction:column;min-width:0}
+.riga-cosa strong{font-size:16.5px;line-height:1.25}
+.riga-cosa span{font-size:15px;color:var(--testo);line-height:1.35}
+.riga-cosa small{margin-top:2px;font-size:13.5px;color:var(--testo-2)}
+.contatore{flex:0 0 auto;display:flex;align-items:center;gap:6px}
+.contatore-passo{width:44px;height:48px;border:1.5px solid var(--bordo);border-radius:12px;background:var(--bianco);
+  font:600 22px/1 Inter,sans-serif;color:var(--navy);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.contatore-passo:active{background:var(--crema)}
+.contatore-campo{display:flex;flex-direction:column;align-items:center;justify-content:center;width:76px;height:56px;
+  border:1.5px solid var(--bordo);border-radius:12px;background:var(--bianco);cursor:text}
+.contatore-campo:focus-within{border-color:var(--blu);box-shadow:0 0 0 3px rgba(47,134,224,.14)}
+.contatore-campo input{width:100%;padding:0;border:0;background:none;text-align:center;
+  font:600 20px/1.1 Inter,sans-serif;color:var(--testo);-moz-appearance:textfield;appearance:textfield}
+.contatore-campo input::-webkit-outer-spin-button,.contatore-campo input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.contatore-campo input:focus{outline:0}
+.contatore-campo input::placeholder{color:#AEB8C6}
+.contatore-campo span{font-size:13px;font-weight:500;color:var(--testo-2);line-height:1.1;margin-top:2px}
+@media (max-width:360px){ .contatore-campo{width:64px} .contatore-passo{width:40px} }
+/* la fornitura annuale: una casella vera, non un pulsante */
+.spunta-riga{display:flex;gap:12px;align-items:flex-start;margin:16px 0 4px;padding:14px 16px;cursor:pointer;
+  border:1.5px solid var(--bordo);border-radius:12px;background:var(--bianco);font-size:16px;font-weight:500}
+.spunta-riga input{flex:0 0 22px;width:22px;height:22px;margin:1px 0 0;accent-color:var(--blu)}
+.spunta-riga small{display:block;margin-top:2px;font-size:14px;font-weight:400;color:var(--testo-2)}
+.spunta-riga:has(input:checked){border-color:var(--blu);background:#F2F8FE}
+/* le condizioni del conto */
+.note-conto{margin:12px 0 0;padding:12px 14px;list-style:none;border-radius:10px;background:var(--crema);font-size:14px;color:var(--testo-2)}
+.note-conto li{position:relative;padding-left:14px}
+.note-conto li+li{margin-top:4px}
+.note-conto li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--testo-2)}
+/* il nome del prodotto sopra, a tutta riga; sotto il minimo a sinistra e il contatore a destra */
+.riga-ordine{display:grid;grid-template-columns:1fr auto;grid-template-areas:"cosa cosa" "minimo contatore";align-items:center;gap:8px 12px}
+.riga-cosa{grid-area:cosa;display:block;margin:0;font-size:16px;line-height:1.35}
+.riga-cosa strong{font-size:16.5px}
+.riga-minimo{grid-area:minimo;margin:0;font-size:14px;color:var(--testo-2)}
+.contatore{grid-area:contatore}

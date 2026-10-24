@@ -47,9 +47,12 @@ const Venditori = (() => {
 
   const RUOLI = { agente: 'agente', rivenditore: 'rivenditore', interno: 'Pro Farmer' };
   const VOCI = [
-    { id: 'bigbag',   nome: 'piùLact, big bag da 600 kg',        unita: 'big bag' },
-    { id: 'sacchi',   nome: 'piùLact, bancali di sacchi da 25 kg (1,2 t)', unita: 'bancali' },
-    { id: 'ballette', nome: 'piùLact Pronto, ballette da circa 850 kg', unita: 'ballette' }
+    { id: 'bigbag',   nome: 'piùLact, big bag da 600 kg',        unita: 'big bag',
+      prodotto: 'piùLact', formato: 'Big bag da 600 kg', una: 'big bag' },
+    { id: 'sacchi',   nome: 'piùLact, bancali di sacchi da 25 kg (1,2 t)', unita: 'bancali',
+      prodotto: 'piùLact', formato: 'Bancale di sacchi da 25 kg (1,2 t)', una: 'bancale' },
+    { id: 'ballette', nome: 'piùLact Pronto, ballette da circa 850 kg', unita: 'ballette',
+      prodotto: 'piùLact Pronto', formato: 'Ballette da circa 850 kg', una: 'balletta' }
   ];
   const STATI = {
     inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato',
@@ -1044,16 +1047,24 @@ const Venditori = (() => {
     h += '<h3>L’ordine</h3>';
     h += '<form id="form-ordine" novalidate>';
 
-    h += '<table class="tabella ordine-righe"><tbody>';
+    /* Una riga per prodotto (24/10/2026): a sinistra cosa e in che formato,
+       a destra quante, con − e + e l'unità di misura scritta accanto. */
+    h += '<div class="righe-ordine">';
     VOCI.forEach(v => {
-      h += `<tr><th>${esc(v.nome)}</th><td><input type="number" min="0" step="1" inputmode="numeric" `
-        + `name="${v.id}" value="${esc(stato[v.id])}" aria-label="${esc(v.unita)}"> ${esc(v.unita)}</td></tr>`;
+      const min = cond.minimi && cond.minimi[v.id];
+      h += `<div class="riga-ordine"><p class="riga-cosa"><strong>${esc(v.prodotto)}</strong> · ${esc(v.formato)}</p>`
+        + `<p class="riga-minimo">${min ? `Minimo ${min} ${esc(min === 1 ? v.una : v.unita)}` : ''}</p>`
+        + `<div class="contatore"><button type="button" class="contatore-passo" data-passo="-1" data-voce="${v.id}" aria-label="Un ${esc(v.una)} in meno">−</button>`
+        + `<label class="contatore-campo"><input type="number" min="0" step="1" inputmode="numeric" placeholder="0" `
+        + `name="${v.id}" value="${esc(stato[v.id])}" aria-label="${esc(v.unita)} di ${esc(v.prodotto)}">`
+        + `<span>${esc(v.unita)}</span></label>`
+        + `<button type="button" class="contatore-passo" data-passo="1" data-voce="${v.id}" aria-label="Un ${esc(v.una)} in più">+</button></div></div>`;
     });
-    h += '</tbody></table>';
+    h += '</div>';
 
     if (cond.ruolo !== 'interno') {
-      h += '<label class="spunta"><input type="checkbox" name="annuale"' + (stato.annuale ? ' checked' : '') + '>'
-        + '<span>Fornitura annuale a condizioni bloccate <small>(solo ballette)</small></span></label>';
+      h += '<label class="spunta-riga"><input type="checkbox" name="annuale"' + (stato.annuale ? ' checked' : '') + '>'
+        + '<span>Fornitura annuale a condizioni bloccate<small>Vale solo per le ballette.</small></span></label>';
     }
 
     h += '<div id="ordine-conto"></div>';
@@ -1074,8 +1085,7 @@ const Venditori = (() => {
 
     h += '<p id="ordine-errore" class="errore" hidden></p>';
     h += '<div class="azioni"><button type="submit" class="bottone">Manda l’ordine a Pro Farmer</button></div>';
-    h += '<p class="aiuto">Prezzi franco partenza, IVA esclusa. Ballette: importo stimato su 850 kg a balletta, '
-      + 'si fattura il peso reale. L’ordine arriva a Pro Farmer per e-mail, che lo conferma.</p>';
+    h += '<p class="aiuto aiuto-centro">L’ordine arriva a Pro Farmer per e-mail, che te lo conferma.</p>';
     h += '</form></div>';
 
     boxRis.insertAdjacentHTML('beforeend', h);
@@ -1088,6 +1098,13 @@ const Venditori = (() => {
       disegnaConto();
     });
     f.addEventListener('submit', ev => { ev.preventDefault(); invia(f); });
+    // − e +: cambiano la quantità di uno, mai sotto zero, e rifanno il conto
+    f.querySelectorAll('[data-passo]').forEach(b => b.addEventListener('click', () => {
+      const campo = f.elements[b.dataset.voce];
+      const n = Math.max(0, (parseInt(campo.value, 10) || 0) + Number(b.dataset.passo));
+      campo.value = n ? String(n) : '';
+      campo.dispatchEvent(new Event('input', { bubbles: true }));
+    }));
     disegnaConto();
   }
 
@@ -1141,6 +1158,11 @@ const Venditori = (() => {
     if (t.daDefinire) {
       h += '<p class="aiuto">Per qualche voce le tue condizioni non sono ancora inserite: il conto lo completa Pro Farmer.</p>';
     }
+    // le condizioni del conto, sotto le cifre a cui si riferiscono
+    h += '<ul class="note-conto"><li>Prezzi franco partenza, IVA esclusa.</li>'
+      + (conto.righe.some(r => r.voce === 'ballette')
+        ? '<li>Ballette: importo stimato su 850 kg a balletta; si fattura il peso reale.</li>' : '')
+      + '</ul>';
     box.innerHTML = h;
   }
 
