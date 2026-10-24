@@ -22,14 +22,17 @@ const ProFarmer = (() => {
   let box = null;
   let sezione = 'ordini';
   let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
-  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [] };
+  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [] };
   let filtroLead = 'nuovo';
   const leadAperti = new Set();
   let filtroStato = 'aperti';
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { ordini: 'Ordini', lead: 'Lead', allevatori: 'Allevatori', provvigioni: 'Provvigioni',
+  const SEZIONI = { ordini: 'Ordini', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', provvigioni: 'Provvigioni',
                     venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
+  /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
+  const cerca = {};
+  let filtroVenditore = '';   // ordini e clienti: di chi ('' = tutti, 'diretti' = Pro Farmer)
   const STATI = ['inviato', 'confermato', 'consegnato', 'pagato', 'annullato'];
   const NOME_STATO = { inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato', pagato: 'Pagato', annullato: 'Annullato' };
   const RUOLI = { agente: 'Agente', rivenditore: 'Rivenditore', interno: 'Pro Farmer' };
@@ -57,12 +60,13 @@ const ProFarmer = (() => {
       sb.from('materiali').select('*').order('posizione').order('creato_il'),
       sb.from('lead').select('*').order('creato_il', { ascending: false }).limit(500),
       sb.rpc('allevatori_gestione'),
-      sb.from('messaggi_allevatori').select('*').order('programmato_il', { ascending: false }).limit(100)
-    ]).then(([o, ve, c, m, le, al, me]) => {
-      const err = [o, ve, c, m, le, al, me].find(x => x.error);
+      sb.from('messaggi_allevatori').select('*').order('programmato_il', { ascending: false }).limit(100),
+      sb.from('clienti').select('*').order('ragione')
+    ]).then(([o, ve, c, m, le, al, me, cl]) => {
+      const err = [o, ve, c, m, le, al, me, cl].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
-               allevatori: al.data || [], messaggi: me.data || [] };
+               allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [] };
     });
   }
 
@@ -90,7 +94,55 @@ const ProFarmer = (() => {
     if (attiva) attiva.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
-    ({ ordini: ordini, lead: lead, allevatori: allevatori, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    setTimeout(() => agganciaCerca(corpo), 0);
+    ({ ordini: ordini, clienti: clienti, lead: lead, allevatori: allevatori, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+  }
+
+  /* La casella di ricerca di una lista: filtra le righe mentre si scrive,
+     senza ridisegnare (il cursore resta dov'è). Ogni <li> porta il suo testo
+     in data-cerca. Con tanti agenti le liste diventano lunghe (24/10/2026). */
+  function casellaCerca(id, segnaposto) {
+    return `<input type="search" class="pf-cerca" id="pf-cerca-${id}" data-lista="${id}" placeholder="${esc(segnaposto)}" `
+      + `value="${esc(cerca[id] || '')}" autocomplete="off" aria-label="${esc(segnaposto)}">`
+      + `<p class="aiuto pf-cerca-vuoto" id="pf-vuoto-${id}" hidden>Nessun risultato.</p>`;
+  }
+  const normale = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  function agganciaCerca(corpo) {
+    corpo.querySelectorAll('.pf-cerca').forEach(c => {
+      const filtra = () => {
+        const q = normale(c.value.trim());
+        cerca[c.dataset.lista] = c.value;
+        let visti = 0;
+        corpo.querySelectorAll(`[data-lista-di="${c.dataset.lista}"] > li`).forEach(li => {
+          const ok = !q || normale(li.dataset.cerca).includes(q);
+          li.hidden = !ok; if (ok) visti++;
+        });
+        document.getElementById('pf-vuoto-' + c.dataset.lista).hidden = visti > 0;
+      };
+      c.addEventListener('input', filtra);
+      filtra();
+    });
+  }
+  function nomeVenditore(id) {
+    const x = dati.venditori.find(v => v.id === id);
+    return x ? (x.ruolo === 'interno' ? 'Pro Farmer (diretto)' : `${x.nome} · ${RUOLI[x.ruolo]}`) : '—';
+  }
+  function selectVenditore(nome, scelto, conTutti) {
+    const gruppi = { interno: 'Pro Farmer', agente: 'Agenti', rivenditore: 'Rivenditori' };
+    let h = `<select name="${nome}" class="pf-select">`;
+    if (conTutti) h += `<option value="">Tutti</option><option value="diretti"${scelto === 'diretti' ? ' selected' : ''}>Diretti Pro Farmer</option>`;
+    Object.entries(gruppi).forEach(([ruolo, et]) => {
+      const lista = dati.venditori.filter(x => x.ruolo === ruolo);
+      if (!lista.length || (conTutti && ruolo === 'interno')) return;
+      h += `<optgroup label="${esc(et)}">` + lista.map(x =>
+        `<option value="${esc(x.id)}"${x.id === scelto ? ' selected' : ''}>${esc(ruolo === 'interno' ? 'Pro Farmer (cliente diretto)' : x.nome)}</option>`).join('') + '</optgroup>';
+    });
+    return h + '</select>';
+  }
+  function diChi(idVenditore) {
+    if (!filtroVenditore) return true;
+    if (filtroVenditore === 'diretti') return (dati.venditori.find(v => v.id === idVenditore) || {}).ruolo === 'interno';
+    return idVenditore === filtroVenditore;
   }
 
   /* Salva, ricarica e ridisegna; l'errore resta vicino al bottone. */
@@ -120,12 +172,14 @@ const ProFarmer = (() => {
   function ordini(corpo) {
     const filtri = { aperti: 'Da seguire', tutti: 'Tutti' };
     STATI.forEach(s => { filtri[s] = NOME_STATO[s]; });
-    const lista = dati.ordini.filter(o => filtroStato === 'tutti' ? true
-      : filtroStato === 'aperti' ? !['pagato', 'annullato'].includes(o.stato) : o.stato === filtroStato);
+    const lista = dati.ordini.filter(o => (filtroStato === 'tutti' ? true
+      : filtroStato === 'aperti' ? !['pagato', 'annullato'].includes(o.stato) : o.stato === filtroStato) && diChi(o.venditore_id));
     let h = '<div class="blocco"><div class="pannello-testa"><h3>Ordini</h3>'
       + '<select id="pf-filtro" class="pf-select" aria-label="Quali ordini">'
       + Object.entries(filtri).map(([k, n]) => `<option value="${k}"${k === filtroStato ? ' selected' : ''}>${esc(n)}</option>`).join('')
-      + '</select></div>';
+      + '</select></div>'
+      + '<div class="pf-filtri"><label>Di chi' + selectVenditore('pf-di-chi', filtroVenditore, true).replace('<select ', '<select id="pf-di-chi-ordini" ') + '</label>'
+      + casellaCerca('ordini', 'Cerca cliente, numero, venditore') + '</div>';
     const senzaMail = dati.ordini.filter(o => !o.email_inviata_il);
     if (senzaMail.length) {
       h += `<div class="avviso"><span class="avviso-icona">⚠</span><span>${senzaMail.length} `
@@ -133,12 +187,12 @@ const ProFarmer = (() => {
         + 'li trovi qui sotto con «Rimanda l’e-mail».</span></div>';
     }
     if (!lista.length) h += '<p class="aiuto">Nessun ordine qui.</p>';
-    h += '<ul class="lista-clienti">';
+    h += '<ul class="lista-clienti" data-lista-di="ordini">';
     lista.forEach(o => {
       const vend = o.venditori || {};
       const soldi = o.ruolo === 'agente' ? `provvigione ${euro(o.provvigione)}`
         : o.ruolo === 'rivenditore' ? `al rivenditore ${euro(o.totale_rivenditore)} · margine ${euro(o.margine)}` : '';
-      h += `<li><form class="pf-ordine" data-id="${esc(o.id)}" novalidate>`
+      h += `<li data-cerca="${esc([o.cliente, o.numero, vend.nome, (o.cliente_dati || {}).piva].join(' '))}"><form class="pf-ordine" data-id="${esc(o.id)}" novalidate>`
         + `<div class="cliente-testa"><strong>${esc(o.cliente || (o.ruolo === 'rivenditore' ? 'Magazzino del rivenditore' : '—'))}</strong>`
         + `<span>n. ${esc(o.numero)} · ${esc(dataIt(o.creato_il))}</span></div>`
         + `<p class="cliente-dati">${esc(vend.nome || '')} (${esc(RUOLI[o.ruolo] || o.ruolo)}) · ${esc(pezzi(o))}`
@@ -164,6 +218,7 @@ const ProFarmer = (() => {
     h += '</ul></div>';
     corpo.innerHTML = h;
     document.getElementById('pf-filtro').addEventListener('change', ev => { filtroStato = ev.target.value; mostra(); });
+    document.getElementById('pf-di-chi-ordini').addEventListener('change', ev => { filtroVenditore = ev.target.value; mostra(); });
     corpo.querySelectorAll('.pf-ordine').forEach(f => {
       f.addEventListener('submit', ev => {
         ev.preventDefault();
@@ -200,10 +255,11 @@ const ProFarmer = (() => {
       + '<p class="aiuto">Chi ha fatto il calcolo e ha ricevuto il risultato per e-mail. «Senza consenso» vuol dire che '
       + 'non ha accettato di essere ricontattato a scopo commerciale: non è in ActiveCampaign.</p>';
     if (!lista.length) h += '<p class="aiuto">Nessun lead qui.</p>';
-    h += '<ul class="lista-clienti">';
+    else h += casellaCerca('lead', 'Cerca azienda, nome, provincia, e-mail');
+    h += '<ul class="lista-clienti" data-lista-di="lead">';
     lista.forEach(x => {
       const sotto = [x.nome, x.provincia, dataIt(x.creato_il), x.consenso ? '' : 'senza consenso'].filter(Boolean).join(' · ');
-      h += `<li><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
+      h += `<li data-cerca="${esc([x.azienda, x.nome, x.provincia, x.email, x.telefono].join(' '))}"><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
         + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span></span>`
         + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
         + `<form class="pf-lead" data-id="${esc(x.id)}" novalidate>`
@@ -235,6 +291,54 @@ const ProFarmer = (() => {
       const d = new FormData(f);
       salva(f.querySelector('button[type=submit]'), () => sb.from('lead')
         .update({ stato: d.get('stato'), note_pf: nulloSeVuoto(String(d.get('note_pf') || '').trim()) }).eq('id', f.dataset.id));
+    }));
+  }
+
+  /* ---------------------------------------------------------------- clienti
+     Dal 24/10/2026. Tutti i clienti: quelli DIRETTI, seguiti da Pro Farmer
+     (intestati al venditore interno), e quelli di agenti e rivenditori.
+     Una P.IVA è di un solo venditore; da qui Pro Farmer sposta un cliente
+     (per esempio da un agente ai diretti). Gli ordini già fatti restano a
+     chi li ha mandati: si sposta solo il cliente, per i prossimi. */
+  function clienti(corpo) {
+    const diretti = new Set(dati.venditori.filter(x => x.ruolo === 'interno').map(x => x.id));
+    const lista = dati.clienti.filter(c => diChi(c.venditore_id));
+    const nDiretti = dati.clienti.filter(c => diretti.has(c.venditore_id)).length;
+    let h = '<div class="blocco"><div class="pannello-testa"><h3>Clienti</h3></div>'
+      + `<p class="aiuto">${dati.clienti.length} clienti: ${nDiretti} diretti di Pro Farmer, ${dati.clienti.length - nDiretti} di agenti e rivenditori. `
+      + 'I clienti diretti li segue Pro Farmer: li aggiungete e ordinate da «La mia area», come un venditore. '
+      + 'Spostare un cliente vale per i prossimi ordini; quelli già fatti restano a chi li ha mandati.</p>'
+      + '<div class="pf-filtri"><label>Di chi' + selectVenditore('pf-di-chi', filtroVenditore, true).replace('<select ', '<select id="pf-di-chi-clienti" ') + '</label>'
+      + casellaCerca('clienti', 'Cerca ragione sociale, P.IVA, comune') + '</div>';
+    if (!lista.length) h += '<p class="aiuto">Nessun cliente qui.</p>';
+    h += '<ul class="lista-clienti" data-lista-di="clienti">';
+    lista.forEach(c => {
+      const ord = dati.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato');
+      const luogo = [c.comune, c.provincia].filter(Boolean).join(' · ');
+      const diretto = diretti.has(c.venditore_id);
+      h += `<li data-cerca="${esc([c.ragione, c.piva, c.comune, c.provincia, c.referente, nomeVenditore(c.venditore_id)].join(' '))}">`
+        + `<form class="pf-cliente" data-id="${esc(c.id)}" data-prima="${esc(c.venditore_id)}" novalidate>`
+        + `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong><span class="pf-proprietario${diretto ? ' diretto' : ''}">${esc(diretto ? 'Diretto Pro Farmer' : nomeVenditore(c.venditore_id))}</span></div>`
+        + `<p class="cliente-dati">${esc(['P.IVA ' + c.piva, luogo, c.telefono].filter(Boolean).join(' · '))}</p>`
+        + `<p class="cliente-dati">${ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'}, l’ultimo il ${esc(dataIt(ord[0].creato_il))}` : 'Nessun ordine'}</p>`
+        + '<div class="pf-campi"><label>Assegnato a' + selectVenditore('venditore_id', c.venditore_id, false) + '</label></div>'
+        + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone" disabled>Sposta</button></div>'
+        + '</form></li>';
+    });
+    h += '</ul></div>';
+    corpo.innerHTML = h;
+    document.getElementById('pf-di-chi-clienti').addEventListener('change', ev => { filtroVenditore = ev.target.value; mostra(); });
+    // «Sposta» si accende solo se l'assegnazione cambia davvero
+    corpo.querySelectorAll('.pf-cliente').forEach(f => f.addEventListener('change', () => {
+      f.querySelector('button[type=submit]').disabled = new FormData(f).get('venditore_id') === f.dataset.prima;
+    }));
+    corpo.querySelectorAll('.pf-cliente').forEach(f => f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const nuovo = new FormData(f).get('venditore_id');
+      if (nuovo === f.dataset.prima) return;
+      const ragione = f.querySelector('strong').textContent;
+      if (!confirm(`Sposto ${ragione} a ${nomeVenditore(nuovo)}? Il venditore di prima non lo vedrà più; gli ordini già fatti restano suoi.`)) return;
+      salva(f.querySelector('button[type=submit]'), () => sb.from('clienti').update({ venditore_id: nuovo }).eq('id', f.dataset.id));
     }));
   }
 
@@ -395,11 +499,12 @@ const ProFarmer = (() => {
       + 'Dopo aver messo l’e-mail, «Manda l’invito» gli crea l’accesso e gli spiega come entrare. '
       + 'Togliere «Attivo» chiude l’accesso senza cancellare niente. Passata la data di validità non si blocca nulla: '
       + 'il venditore vede solo il promemoria.</p>'
-      + '<div id="pf-venditore-nuovo"></div><ul class="lista-clienti">';
+      + '<div id="pf-venditore-nuovo"></div>' + casellaCerca('venditori', 'Cerca nome o e-mail')
+      + '<ul class="lista-clienti" data-lista-di="venditori">';
     // chiusi: si apre solo quello da modificare
     dati.venditori.forEach(x => {
       const sotto = [RUOLI[x.ruolo], x.email || 'senza e-mail', x.attivo ? '' : 'non attivo'].filter(Boolean).join(' · ');
-      h += `<li><details class="pf-dettagli" data-id="${esc(x.id)}"${aperti.has(x.id) ? ' open' : ''}>`
+      h += `<li data-cerca="${esc([x.nome, x.email, RUOLI[x.ruolo]].join(' '))}"><details class="pf-dettagli" data-id="${esc(x.id)}"${aperti.has(x.id) ? ' open' : ''}>`
         + `<summary><span class="pf-sommario"><strong>${esc(x.nome)}</strong><span>${esc(sotto)}</span></span>`
         + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
         + moduloVenditore(x) + '</details></li>';

@@ -29,5 +29,55 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuovo ordine",
+      "short_name": "Ordine",
+      "url": "/pro/#nuovo-ordine",
+      "icons": [
+        {
+          "src": "../assets/icone/pro/icona-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "I miei clienti",
+      "short_name": "Clienti",
+      "url": "/pro/#clienti",
+      "icons": [
+        {
+          "src": "../assets/icone/pro/icona-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "I miei ordini",
+      "short_name": "Ordini",
+      "url": "/pro/#ordini",
+      "icons": [
+        {
+          "src": "../assets/icone/pro/icona-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Calcola una stalla",
+      "short_name": "Calcolo",
+      "url": "/pro/#calcolo",
+      "icons": [
+        {
+          "src": "../assets/icone/pro/icona-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity"
   ]
 }
