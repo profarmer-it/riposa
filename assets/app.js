@@ -564,6 +564,58 @@ function errore(el, testo) {
   el.hidden = false;
 }
 
+/* --- l'app sul telefono dell'allevatore (24/10/2026) ---------------------
+   Dopo il risultato lo invitiamo a tenere Riposa sul telefono. Su Android il
+   telefono offre l'installazione e la apriamo noi col pulsante; su iPhone non
+   esiste, quindi spieghiamo i due tocchi in Safari. Se è già installata, o
+   se ha detto «Non ora», niente riquadro. */
+let invitoAndroid = null;
+window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); invitoAndroid = ev; });
+const CHIAVE_NON_ORA = 'riposa-installa-allevatore-no';
+
+function appInstallata() {
+  return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+}
+function suIPhone() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function invitoInstalla() {
+  let nonOra = false;
+  try { nonOra = localStorage.getItem(CHIAVE_NON_ORA) === '1'; } catch (e) {}
+  if (appInstallata() || nonOra || (!suIPhone() && !invitoAndroid)) return '';
+  const condividi = '<span class="icona-condividi">Condividi <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true">'
+    + '<path d="M10 2v11M6 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<path d="M5 9H4v9h12V9h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>';
+  let h = '<div class="invito-app">';
+  h += '<img src="assets/icone/icona-192.png" alt="" width="64" height="64" class="invito-app-icona">';
+  h += '<div><p class="invito-app-titolo">Tieni Riposa sul telefono</p>';
+  h += '<p>Si apre dall’icona, come un’app. Rifai il calcolo in un attimo quando cambia la stalla, '
+    + 'anche in stalla senza campo.</p>';
+  if (suIPhone()) {
+    h += `<p class="invito-app-come">In Safari tocca ${condividi} e poi <strong>«Aggiungi alla schermata Home»</strong>.</p>`;
+  }
+  h += '<div class="invito-app-azioni">';
+  if (!suIPhone()) h += '<button type="button" class="bottone" id="btn-installa">Installa Riposa</button>';
+  h += '<button type="button" class="invito-app-no" id="btn-installa-no">Non ora</button></div></div></div>';
+  return h;
+}
+
+function agganciaInvito() {
+  const box = document.querySelector('.invito-app');
+  if (!box) return;
+  const si = document.getElementById('btn-installa');
+  if (si) si.addEventListener('click', () => {
+    if (!invitoAndroid) return;
+    invitoAndroid.prompt();
+    invitoAndroid.userChoice.finally(() => { invitoAndroid = null; box.remove(); });
+  });
+  document.getElementById('btn-installa-no').addEventListener('click', () => {
+    try { localStorage.setItem(CHIAVE_NON_ORA, '1'); } catch (e) {}
+    box.remove();
+  });
+}
+
 /* --- 3. la conferma ---------------------------------------------------- */
 
 /* Il muro: il risultato non compare a schermo, arriva solo per e-mail. */
@@ -580,7 +632,9 @@ function mostraConferma(esito) {
   h += '<p class="conferma-nota">Se hai bisogno di una mano ti richiamiamo noi: '
     + 'un tecnico Pro Farmer può fare il punto sulla tua stalla.</p>';
   h += '</div>';
+  h += invitoInstalla();
   mostra(h);
+  agganciaInvito();
 
   document.getElementById('btn-ricomincia').addEventListener('click', () => {
     boxRis.hidden = true;
