@@ -661,3 +661,57 @@ body.accesso-venditori #area-venditori{margin-top:0}
 .trovato-contatti .contatti{text-align:left;margin-top:20px}
 .trovato-contatti .azioni{max-width:none}
 .pf-dettagli[open] > .pf-lead{animation:entra .22s var(--ease-out)}
+
+/* ------------------------------------------- ritocchi grafici, 24/10/2026
+   Dal controllo grafico: testo più grande e più scuro (in stalla si legge
+   dal telefono, spesso con la luce contro), prima schermata più asciutta con
+   la bovina, scelte a pulsanti. Niente ombre né righe sottili decorative. */
+:root{
+  --testo-2:#45556B;        /* le note grigie: più scure, si leggono anche al sole */
+  --bordo:#D6CDB9;          /* i bordi di campi e scelte: prima si vedevano appena */
+}
+
+/* 1. testo leggibile */
+.campo>label,legend{font-size:16.5px}
+.opzionale{display:inline-block;white-space:nowrap;font-size:13px;color:var(--testo-2)}
+.aiuto{font-size:15px;line-height:1.5}
+.scelta-corpo strong{font-size:16.5px}
+.scelta-corpo small{font-size:15px;line-height:1.45}
+.pedana{font-size:15px}
+.pedana-nota{font-size:15px;border-top:0;padding-top:4px}
+input[type=number],select,
+.contatti input[type=text],.contatti input[type=tel],.contatti input[type=email],
+.scelta-corpo,.spunta{border-color:var(--bordo)}
+
+/* 2. prima schermata: titolo, una frase, la bovina */
+.eroe{padding:28px 0 60px}
+.eroe-in{display:grid;grid-template-columns:1fr;gap:4px}
+.bovina-eroe{grid-row:1;width:84px;height:auto;margin:0 0 6px}
+.eroe h1{margin:0 0 14px;font-size:clamp(34px,7vw,52px);line-height:1.08}
+.eroe-testo{font-size:18px;line-height:1.55;color:#DCE6F2;max-width:44ch}
+@media (min-width:640px){
+  .eroe{padding:36px 0 72px}
+  .eroe-in{grid-template-columns:1fr auto;align-items:center;gap:32px}
+  .bovina-eroe{grid-row:auto;grid-column:2;width:clamp(150px,22vw,190px);margin:0}
+  .eroe h1{max-width:15ch}
+}
+
+/* 3. il modulo: niente ombra, scelte che si vedono scelte */
+.scheda{box-shadow:none}
+/* le scelte grandi hanno un pallino a destra che si riempie */
+.scelta-corpo{position:relative;padding-right:48px}
+.scelta-corpo::after{
+  content:"";position:absolute;right:16px;top:50%;width:20px;height:20px;margin-top:-10px;
+  border-radius:50%;border:2px solid var(--bordo);background:var(--bianco);
+  transition:border-color .15s,box-shadow .15s
+}
+.scelta input:checked + .scelta-corpo::after{border-color:var(--blu);box-shadow:inset 0 0 0 4px var(--bianco);background:var(--blu)}
+/* cosa usi oggi: pulsanti su due colonne, il quadratino sparisce */
+.spunte{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:640px){ .spunte{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.spunta{position:relative;justify-content:center;min-height:52px;padding:10px 12px;text-align:center;
+  font-size:16px;font-weight:500;line-height:1.25}
+.spunta input{position:absolute;opacity:0;width:1px;height:1px}
+.spunta:has(input:checked){border-color:var(--navy);background:var(--navy);color:var(--bianco)}
+.spunta:has(input:checked) span::before{content:"✓ ";font-weight:600;color:var(--blu-chiaro)}
+.spunta:has(input:focus-visible){outline:2px solid var(--blu);outline-offset:2px}
