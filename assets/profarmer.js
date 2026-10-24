@@ -20,7 +20,7 @@ const ProFarmer = (() => {
 
   let sb = null;
   let box = null;
-  let sezione = 'ordini';
+  let sezione = 'cruscotto';   // dal 24/10/2026 si apre sul cruscotto
   let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
   let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [] };
   let filtroLead = 'nuovo';
@@ -28,7 +28,7 @@ const ProFarmer = (() => {
   let filtroStato = 'aperti';
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { ordini: 'Ordini', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', provvigioni: 'Provvigioni',
+  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Ordini', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', provvigioni: 'Provvigioni',
                     venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
   /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
   const cerca = {};
@@ -95,7 +95,7 @@ const ProFarmer = (() => {
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
     setTimeout(() => agganciaCerca(corpo), 0);
-    ({ ordini: ordini, clienti: clienti, lead: lead, allevatori: allevatori, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    ({ cruscotto: cruscotto, ordini: ordini, clienti: clienti, lead: lead, allevatori: allevatori, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
   }
 
   /* La casella di ricerca di una lista: filtra le righe mentre si scrive,
@@ -292,6 +292,123 @@ const ProFarmer = (() => {
       salva(f.querySelector('button[type=submit]'), () => sb.from('lead')
         .update({ stato: d.get('stato'), note_pf: nulloSeVuoto(String(d.get('note_pf') || '').trim()) }).eq('id', f.dataset.id));
     }));
+  }
+
+  /* -------------------------------------------------------------- cruscotto
+     Dal 24/10/2026, per Giulio ed Elsa: tutto quello che succede in Riposa
+     (allevatori) e in Riposa Pro (venditori) in una pagina sola. Solo
+     lettura: per lavorare su un ordine o un lead si tocca la riga e si va
+     nella sua scheda. I numeri vengono dai dati già caricati, niente di nuovo
+     dal database. */
+  function cruscotto(corpo) {
+    const t = n => num(Number(n) || 0, 1).replace(/,0$/, '');
+    const oggiD = new Date();
+    const inizioMese = new Date(oggiD.getFullYear(), oggiD.getMonth(), 1);
+    const inizioPrima = new Date(oggiD.getFullYear(), oggiD.getMonth() - 1, 1);
+    const validi = dati.ordini.filter(o => o.stato !== 'annullato');
+    const delMese = validi.filter(o => new Date(o.creato_il) >= inizioMese);
+    const mesePrima = validi.filter(o => new Date(o.creato_il) >= inizioPrima && new Date(o.creato_il) < inizioMese);
+    const somma = (l, k) => l.reduce((x, o) => x + (Number(o[k]) || 0), 0);
+    const daSeguire = validi.filter(o => ['inviato', 'confermato', 'consegnato'].includes(o.stato));
+    const leadNuovi = dati.lead.filter(x => x.stato === 'nuovo');
+    const fra14 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('sv-SE'); })();
+    const caldi = dati.allevatori.filter(a => a.avviso_il && a.avviso_il <= fra14);
+    const senzaMail = dati.ordini.filter(o => !o.email_inviata_il);
+    const nomeMese = d => d.toLocaleDateString('it-IT', { month: 'long' });
+    const variazione = (a, b) => !b ? '' : ` · ${a >= b ? '+' : ''}${Math.round((a - b) / b * 100)}% su ${nomeMese(inizioPrima)}`;
+
+    let h = '<div class="blocco"><h3>Da fare adesso</h3><div class="cr-subito">';
+    const subito = [
+      ['ordini', daSeguire.length, 'ordini da seguire', 'inviati, confermati o consegnati, non ancora pagati'],
+      ['lead', leadNuovi.length, 'lead da richiamare', 'allevatori che hanno fatto il calcolo'],
+      ['allevatori', caldi.length, 'allevatori a fine scorta', 'nei prossimi 14 giorni: chiamarli'],
+      ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini']
+    ];
+    subito.forEach(([dove, n, cosa, sotto]) => {
+      h += `<button type="button" class="cr-casella${n ? ' cr-attenzione' : ''}" data-vai="${dove}">`
+        + `<b>${n}</b><span>${esc(cosa)}</span><small>${esc(sotto)}</small></button>`;
+    });
+    h += '</div></div>';
+
+    // il mese
+    h += `<div class="blocco"><h3>${esc(nomeMese(oggiD).replace(/^./, c => c.toUpperCase()))}</h3><dl class="numeri soldi">`
+      + `<div class="numero-cella"><dt>Ordini</dt><dd>${delMese.length}<small>${esc(variazione(delMese.length, mesePrima.length).replace(/^ · /, '') || 'nel mese')}</small></dd></div>`
+      + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(somma(delMese, 't'))}<small>${esc(variazione(somma(delMese, 't'), somma(mesePrima, 't')).replace(/^ · /, '') || 'ordinate nel mese')}</small></dd></div>`
+      + `<div class="numero-cella"><dt>Venduto</dt><dd>${euro(somma(delMese, 'totale_cliente'))}<small>al cliente, IVA esclusa</small></dd></div>`
+      + `<div class="numero-cella"><dt>Provvigioni</dt><dd>${euro(somma(delMese, 'provvigione'))}<small>maturate o in corso</small></dd></div>`
+      + '</dl>';
+    const pezzi = { bigbag: ['Big bag', 0], sacchi: ['Bancali di sacchi', 0], ballette: ['Ballette Pronto', 0] };
+    delMese.forEach(o => Object.keys(pezzi).forEach(k => { pezzi[k][1] += Number(o[k]) || 0; }));
+    h += '<p class="cliente-dati">' + Object.values(pezzi).map(([n, q]) => `${n}: <strong>${q}</strong>`).join(' · ') + '</p></div>';
+
+    // chi vende: ultimi 90 giorni
+    const da90 = new Date(); da90.setDate(da90.getDate() - 90);
+    const recenti = validi.filter(o => new Date(o.creato_il) >= da90);
+    const perVenditore = new Map();
+    recenti.forEach(o => {
+      const x = perVenditore.get(o.venditore_id) || { t: 0, n: 0, ultimo: o.creato_il };
+      x.t += Number(o.t) || 0; x.n++; if (o.creato_il > x.ultimo) x.ultimo = o.creato_il;
+      perVenditore.set(o.venditore_id, x);
+    });
+    const righe = dati.venditori.filter(v => v.attivo).map(v => ({ v, ...(perVenditore.get(v.id) || { t: 0, n: 0, ultimo: null }) }))
+      .sort((a, b) => b.t - a.t);
+    const massimo = Math.max(1, ...righe.map(x => x.t));
+    h += '<div class="blocco"><h3>Chi vende</h3><p class="aiuto">Ultimi 90 giorni, tonnellate ordinate. «Diretti» sono gli ordini di Pro Farmer per i suoi clienti.</p><ul class="cr-barre">';
+    righe.forEach(x => {
+      const nome = x.v.ruolo === 'interno' ? 'Diretti Pro Farmer' : x.v.nome;
+      h += `<li><span class="cr-nome">${esc(nome)}<small>${esc(x.v.ruolo === 'interno' ? '' : RUOLI[x.v.ruolo])}</small></span>`
+        + `<span class="cr-barra"><i style="width:${Math.round(x.t / massimo * 100)}%"></i></span>`
+        + `<span class="cr-valore">${x.n ? `${t(x.t)} t<small>${x.n} ${x.n === 1 ? 'ordine' : 'ordini'} · ultimo ${esc(dataIt(x.ultimo))}</small>` : '<small>nessun ordine</small>'}</span></li>`;
+    });
+    h += '</ul></div>';
+
+    // allevatori
+    const da30 = new Date(); da30.setDate(da30.getDate() - 30);
+    const lead30 = dati.lead.filter(x => new Date(x.creato_il) >= da30);
+    const perProvincia = {};
+    lead30.forEach(x => { const p = (x.provincia || '?').toUpperCase(); perProvincia[p] = (perProvincia[p] || 0) + 1; });
+    const conNotifiche = dati.allevatori.filter(a => a.notifiche).length;
+    h += '<div class="blocco"><h3>Allevatori (Riposa)</h3><dl class="numeri soldi">'
+      + `<div class="numero-cella"><dt>Calcoli in 30 giorni</dt><dd>${lead30.length}<small>${lead30.filter(x => x.consenso).length} con consenso al ricontatto</small></dd></div>`
+      + `<div class="numero-cella"><dt>Con l’app</dt><dd>${dati.allevatori.length}<small>${conNotifiche} con le notifiche</small></dd></div>`
+      + `<div class="numero-cella"><dt>Lead diventati clienti</dt><dd>${dati.lead.filter(x => x.stato === 'cliente').length}<small>su ${dati.lead.length} in tutto</small></dd></div>`
+      + '</dl>';
+    const prov = Object.entries(perProvincia).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    if (prov.length) h += '<p class="cliente-dati">Da dove, negli ultimi 30 giorni: ' + prov.map(([p, n]) => `${esc(p)} <strong>${n}</strong>`).join(' · ') + '</p>';
+    h += '</div>';
+
+    // cosa è successo: ordini, lead, clienti nuovi, in ordine di tempo
+    const eventi = [];
+    dati.ordini.slice(0, 40).forEach(o => eventi.push({ quando: o.creato_il, dove: 'ordini', icona: 'ordine',
+      testo: `Ordine n. ${o.numero} da ${(o.venditori || {}).nome || '—'} per ${o.cliente || 'il magazzino'}`, sotto: `${pezzi_(o)} · ${NOME_STATO[o.stato] || o.stato}` }));
+    dati.lead.slice(0, 40).forEach(x => eventi.push({ quando: x.creato_il, dove: 'lead', icona: 'lead',
+      testo: `Calcolo di ${x.azienda} (${x.provincia || '?'})`, sotto: [x.prodotto, x.kg_mese && `${x.kg_mese} kg/mese`, x.consenso ? '' : 'senza consenso'].filter(Boolean).join(' · ') }));
+    dati.clienti.slice().sort((a, b) => String(b.creato_il).localeCompare(String(a.creato_il))).slice(0, 40).forEach(c => eventi.push({
+      quando: c.creato_il, dove: 'clienti', icona: 'cliente', testo: `Nuovo cliente: ${c.ragione}`, sotto: nomeVenditore(c.venditore_id) }));
+    // senza data non si sa dove metterli: fuori dalla cronologia
+    eventi.splice(0, eventi.length, ...eventi.filter(e => e.quando));
+    eventi.sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
+    h += '<div class="blocco"><h3>Cosa è successo</h3><ul class="cr-eventi">';
+    eventi.slice(0, 20).forEach(e => {
+      h += `<li><button type="button" data-vai="${e.dove}"><span class="cr-tipo cr-${e.icona}"></span>`
+        + `<span class="cr-testo">${esc(e.testo)}<small>${esc(e.sotto)}</small></span>`
+        + `<time>${esc(quandoBreve(e.quando))}</time></button></li>`;
+    });
+    if (!eventi.length) h += '<li class="aiuto">Ancora niente.</li>';
+    h += '</ul></div>';
+
+    corpo.innerHTML = h;
+    corpo.querySelectorAll('[data-vai]').forEach(b => b.addEventListener('click', () => {
+      sezione = b.dataset.vai; cambiata = true; mostra(); window.scrollTo(0, 0);
+    }));
+  }
+  function pezzi_(o) { return pezzi(o) + (o.t ? ` · ${num(Number(o.t), 1)} t` : ''); }
+  function quandoBreve(iso) {
+    if (!iso) return '';
+    const d = new Date(iso), ora = new Date();
+    const giorni = Math.floor((new Date(ora.toDateString()) - new Date(d.toDateString())) / 864e5);
+    const hm = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    return giorni === 0 ? `oggi ${hm}` : giorni === 1 ? `ieri ${hm}` : giorni < 7 ? `${giorni} giorni fa` : dataIt(iso);
   }
 
   /* ---------------------------------------------------------------- clienti
