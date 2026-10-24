@@ -615,7 +615,7 @@ const Venditori = (() => {
       ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
     // Pro Farmer gestisce da qui ordini, venditori, condizioni e materiali
-    if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Gestione Pro Farmer', 'Ordini di tutti, venditori, condizioni, materiali', false, true]);
+    if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Cruscotto e gestione', 'Cosa succede oggi: ordini, lead, allevatori, venditori', false, true]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
