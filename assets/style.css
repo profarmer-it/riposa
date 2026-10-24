@@ -984,3 +984,14 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .apertura-pro .ap-alone,.apertura-pro .ap-bolla{fill:#E3B354}
 .apertura-pro .apertura-nome b{font-weight:600;color:#F4CF7A}
 .apertura-pro .apertura-sotto{color:#E9D3A0}
+
+/* Riposa Pro sul computer: chi lavora dal portatile ha più spazio (24/10/2026).
+   Sul telefono non cambia niente. */
+@media (min-width:1024px){
+  .app-pro .contenitore{max-width:960px}
+  .app-pro .tessere{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .app-pro .riordini{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .app-pro .riordini-titolo{grid-column:1 / -1}
+  .app-pro .lista-clienti .azioni{grid-template-columns:repeat(3,minmax(0,max-content))}
+  .app-pro .lista-clienti .azioni [data-riordina]{grid-column:auto}
+}
