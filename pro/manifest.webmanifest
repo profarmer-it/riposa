@@ -79,5 +79,7 @@
   "categories": [
     "business",
     "productivity"
-  ]
+  ],
+  "prefer_related_applications": false,
+  "dir": "ltr"
 }
