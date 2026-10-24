@@ -884,3 +884,58 @@ textarea,.venditori-ordine textarea,.contatti textarea,.cliente-modulo textarea{
 .riga-cosa strong{font-size:16.5px}
 .riga-minimo{grid-area:minimo;margin:0;font-size:14px;color:var(--testo-2)}
 .contatore{grid-area:contatore}
+
+/* ------------------------------------------- l'apertura animata, 24/10/2026
+   Solo per l'allevatore. Il blu notte dell'icona, la croce di piùLact che si
+   disegna, la bovina che compare e pensa, il nome; poi si apre sulla pagina.
+   Circa 1,9 secondi, si salta con un tocco. Solo trasformazioni e opacità. */
+.apertura{display:none}
+html.con-apertura .apertura{
+  position:fixed;inset:0;z-index:1000;display:grid;place-content:center;justify-items:center;gap:6px;
+  background:radial-gradient(120% 90% at 30% 18%,#1F4C88 0%,#0E2340 55%,#081629 100%);color:#fff;
+  -webkit-tap-highlight-color:transparent;cursor:pointer
+}
+html.con-apertura body{overflow:hidden}
+.apertura-segno{width:min(52vw,220px);height:auto;overflow:visible}
+.ap-alone,.ap-v,.ap-h,.ap-bovina,.ap-bolla{transform-box:fill-box;transform-origin:center}
+.ap-alone{fill:#4A9BF5;opacity:0}
+.ap-v{animation:ap-cresci-v .6s var(--ease-out) .08s both}
+.ap-h{animation:ap-cresci-h .6s var(--ease-out) .2s both}
+.ap-bovina{animation:ap-compare .55s cubic-bezier(.34,1.56,.64,1) .55s both}
+.ap-bolla{fill:#4A9BF5;animation:ap-bolla .35s cubic-bezier(.34,1.56,.64,1) both}
+.ap-b1{animation-delay:.95s}.ap-b2{animation-delay:1.05s}.ap-b3{animation-delay:1.15s}
+.ap-alone{animation:ap-alone 1.1s var(--ease-out) .5s both}
+.apertura-nome{margin:14px 0 0;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:40px;letter-spacing:-.01em;
+  animation:ap-su .55s var(--ease-out) .8s both}
+.apertura-sotto{margin:0;font-size:16px;color:var(--blu-chiaro);letter-spacing:.02em;animation:ap-su .55s var(--ease-out) .95s both}
+.apertura-via{animation:ap-esci .42s var(--ease-out) forwards}
+@keyframes ap-cresci-v{from{transform:scaleY(0)}to{transform:none}}
+@keyframes ap-cresci-h{from{transform:scaleX(0)}to{transform:none}}
+@keyframes ap-compare{from{opacity:0;transform:scale(.35) rotate(-8deg)}to{opacity:1;transform:none}}
+@keyframes ap-bolla{from{opacity:0;transform:scale(0)}to{opacity:1;transform:none}}
+@keyframes ap-alone{0%{opacity:0;transform:scale(.7)}35%{opacity:.35}100%{opacity:0;transform:scale(1.45)}}
+@keyframes ap-su{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes ap-esci{to{opacity:0;transform:scale(1.06)}}
+/* poi la pagina entra: titolo, frase e bovina, uno dopo l'altro */
+html.con-apertura:not(.apertura-finita) .eroe-parole > *,
+html.con-apertura:not(.apertura-finita) .bovina-eroe{opacity:0}
+html.apertura-finita .eroe h1{animation:ap-su .6s var(--ease-out) .05s both}
+html.apertura-finita .eroe-testo{animation:ap-su .6s var(--ease-out) .15s both}
+html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56,.64,1) .2s both}
+/* la bovina in testata pensa, piano */
+.bovina-eroe .pensiero{transform-box:fill-box;transform-origin:center}
+
+/* l'invito a tenere Riposa sul telefono, dopo il risultato (24/10/2026) */
+.invito-app{display:flex;gap:16px;align-items:flex-start;margin-top:16px;padding:20px;border-radius:var(--raggio);
+  background:radial-gradient(120% 120% at 0% 0%,#1F4C88 0%,#0E2340 60%);color:#fff;animation:entra .4s var(--ease-out) .3s both}
+.invito-app-icona{flex:0 0 64px;width:64px;height:64px;border-radius:15px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.invito-app p{margin:0 0 8px;color:#DCE6F2;font-size:15.5px;line-height:1.5}
+.invito-app .invito-app-titolo{margin:2px 0 6px;font-family:Fraunces,Georgia,serif;font-size:21px;font-weight:600;color:#fff;line-height:1.2}
+.invito-app-come{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.08)}
+.invito-app-come strong{color:#fff}
+.invito-app .icona-condividi{color:var(--blu-chiaro)}
+.invito-app-azioni{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:12px}
+.invito-app-azioni .bottone{width:auto;background:#fff;color:var(--navy)}
+.invito-app-no{min-height:44px;padding:0 4px;font:inherit;font-size:15px;color:#B9CBE0;background:none;border:0;cursor:pointer;text-decoration:underline}
+@media (max-width:380px){ .invito-app{flex-direction:column} }
+@media (prefers-reduced-motion:reduce){ .invito-app{animation:none} }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Riposa — il dosaggio giusto di piùLact per la tua stalla</title>
 <meta name="description" content="Calcola in due minuti quale prodotto della gamma piùLact serve alla tua stalla, quanto ne serve e come si usa. Uno strumento Pro Farmer.">
-<link rel="stylesheet" href="assets/style.css?v=20261124o">
+<link rel="stylesheet" href="assets/style.css?v=20261124r">
 <!-- App installabile (anche su iPhone: Condividi → Aggiungi alla schermata Home) -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icone/favicon-32.png">
@@ -25,11 +25,67 @@
       venditore = !!localStorage.getItem('sb-gmhmxybqmkcmnbjdnslz-auth-token')
         && (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
     } catch (e) {}
-    if (location.hash === '#venditori' || venditore) location.replace('pro/');
+    if (location.hash === '#venditori' || venditore) { location.replace('pro/'); return; }
+    /* L'apertura animata (24/10/2026): nell'app installata a ogni apertura,
+       nel browser una volta per visita. Mai a chi ha chiesto meno movimento. */
+    try {
+      if (/[?&]apertura=prova/.test(location.search)) sessionStorage.removeItem('riposa-apertura');
+      var app = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+      var vista = sessionStorage.getItem('riposa-apertura') === '1';
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && (app || !vista)) {
+        document.documentElement.classList.add('con-apertura');
+        sessionStorage.setItem('riposa-apertura', '1');
+      }
+    } catch (e) {}
   })();
 </script>
 </head>
 <body>
+
+<!-- APERTURA: l'animazione d'ingresso, solo per l'allevatore (genera-pro.mjs la toglie).
+     Si vede solo con la classe con-apertura su <html>, decisa dallo script in testa. -->
+<div class="apertura" id="apertura" aria-hidden="true">
+  <svg class="apertura-segno" viewBox="0 0 200 200" aria-hidden="true">
+    <defs><linearGradient id="ap-croce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FC4F2"/><stop offset="1" stop-color="#4A7DF7"/></linearGradient></defs>
+    <circle class="ap-alone" cx="100" cy="100" r="70"/>
+    <rect class="ap-v" x="73" y="16" width="54" height="168" rx="9" fill="url(#ap-croce)"/>
+    <rect class="ap-h" x="16" y="73" width="168" height="54" rx="9" fill="url(#ap-croce)"/>
+    <g transform="translate(54 54)"><g class="ap-bovina">
+      <ellipse cx="19" cy="34" rx="7.5" ry="12" transform="rotate(-34 19 34)" fill="#D7E3F0"/>
+      <ellipse cx="73" cy="34" rx="7.5" ry="12" transform="rotate(34 73 34)" fill="#D7E3F0"/>
+      <path d="M28 22c-3-4-2-8 1-10 1 3 2 6 4 8z" fill="#B9C9DA"/>
+      <path d="M64 22c3-4 2-8-1-10-1 3-2 6-4 8z" fill="#B9C9DA"/>
+      <ellipse cx="46" cy="48" rx="26" ry="24" fill="#fff"/>
+      <path d="M46 24c-9 0-16 4-19 10 5 2 11 1 15-2 3 3 8 4 12 3-1-6-4-10-8-11z" fill="#2F86E0"/>
+      <ellipse cx="46" cy="68" rx="17.5" ry="12" fill="#8CC4F5"/>
+      <circle cx="39.5" cy="67" r="2.4" fill="#0E2340"/><circle cx="52.5" cy="67" r="2.4" fill="#0E2340"/>
+      <circle cx="36" cy="44" r="3.6" fill="#0E2340"/><circle cx="56" cy="44" r="3.6" fill="#0E2340"/>
+      <circle cx="37.2" cy="42.8" r="1.2" fill="#fff"/><circle cx="57.2" cy="42.8" r="1.2" fill="#fff"/>
+    </g></g>
+    <circle class="ap-bolla ap-b1" cx="146" cy="74" r="5"/>
+    <circle class="ap-bolla ap-b2" cx="160" cy="60" r="7"/>
+    <circle class="ap-bolla ap-b3" cx="177" cy="42" r="9.5"/>
+  </svg>
+  <p class="apertura-nome">Riposa</p>
+  <p class="apertura-sotto">il dosaggio giusto di piùLact</p>
+</div>
+<script>
+  /* Dopo 1,9 secondi (o al primo tocco) l'apertura si dissolve e la pagina entra. */
+  (function () {
+    var el = document.getElementById('apertura'), via = false;
+    if (!document.documentElement.classList.contains('con-apertura')) { el.remove(); return; }
+    function chiudi() {
+      if (via) return; via = true;
+      el.classList.add('apertura-via');
+      document.documentElement.classList.add('apertura-finita');
+      setTimeout(function () { el.remove(); document.documentElement.classList.remove('con-apertura'); }, 450);
+    }
+    el.addEventListener('pointerdown', chiudi);
+    if (/[?&]apertura=prova/.test(location.search)) return;   // per i collaudi: resta finché non si tocca
+    setTimeout(chiudi, 1900);
+  })();
+</script>
+<!-- /APERTURA -->
 
 <header class="testata">
   <div class="contenitore testata-in">
@@ -45,9 +101,9 @@
     </div>
     <!-- la stessa bovina che poi "ragiona" sul calcolo (app.js), qui ferma -->
     <svg class="bovina bovina-eroe" viewBox="0 0 124 104" aria-hidden="true">
-      <circle class="pensiero" cx="88" cy="36" r="4"/>
-      <circle class="pensiero" cx="100" cy="25" r="5.5"/>
-      <circle class="pensiero" cx="114" cy="12" r="7.5"/>
+      <circle class="pensiero p1" cx="88" cy="36" r="4"/>
+      <circle class="pensiero p2" cx="100" cy="25" r="5.5"/>
+      <circle class="pensiero p3" cx="114" cy="12" r="7.5"/>
       <ellipse class="orecchio" cx="19" cy="34" rx="7.5" ry="12" transform="rotate(-34 19 34)"/>
       <ellipse class="orecchio" cx="73" cy="34" rx="7.5" ry="12" transform="rotate(34 73 34)"/>
       <path class="corno" d="M28 22c-3-4-2-8 1-10 1 3 2 6 4 8z"/>
@@ -214,8 +270,8 @@
 </footer>
 
 <script src="assets/vendor/supabase-2.45.4.js"></script>
-<script src="assets/regole.js?v=20261124g"></script>
-<script src="assets/app.js?v=20261124g"></script>
+<script src="assets/regole.js?v=20261124h"></script>
+<script src="assets/app.js?v=20261124h"></script>
 <!-- RIPOSA PRO: qui strumenti/genera-pro.mjs aggiunge gli script dei venditori -->
 <script>
   /* L'app installabile: il service worker tiene la pagina sul telefono, così
