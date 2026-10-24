@@ -978,3 +978,9 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 .pf-proprietario{font-size:13px;padding:2px 10px;border-radius:99px;background:var(--crema-2);color:var(--testo-2);white-space:nowrap}
 .pf-proprietario.diretto{background:var(--notte, #0E2340);color:var(--oro-chiaro, #F4CF7A)}
 .bottone:disabled{opacity:.45;cursor:default}
+
+/* l'apertura di Riposa Pro: croce oro su blu quasi nero, come l'icona (24/10/2026) */
+html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#15305A 0%,#0A1628 55%,#050B16 100%)}
+.apertura-pro .ap-alone,.apertura-pro .ap-bolla{fill:#E3B354}
+.apertura-pro .apertura-nome b{font-weight:600;color:#F4CF7A}
+.apertura-pro .apertura-sotto{color:#E9D3A0}

@@ -39,9 +39,34 @@ if (!h.includes('href="manifest.webmanifest"')) throw new Error('genera-pro: non
 cambia('content="Riposa">', 'content="Riposa Pro">', 'apple-mobile-web-app-title');
 
 // 3. via quello che serve solo all'allevatore
-cambia(/<script data-solo-allevatore>[\s\S]*?<\/script>\n/, '', 'script di rinvio a /pro/');
+// lo script in testa: niente rinvio a /pro/ (siamo già qui), resta solo la scelta dell'apertura
+cambia(/<script data-solo-allevatore>[\s\S]*?<\/script>\n/, `<script>
+  /* L'apertura animata di Riposa Pro: nell'app installata a ogni apertura,
+     nel browser una volta per visita, mai con «riduci movimento». */
+  try {
+    var app = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (/[?&]apertura=prova/.test(location.search)) sessionStorage.removeItem('riposa-pro-apertura');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches && (app || sessionStorage.getItem('riposa-pro-apertura') !== '1')) {
+      document.documentElement.classList.add('con-apertura');
+      sessionStorage.setItem('riposa-pro-apertura', '1');
+    }
+  } catch (e) {}
+</script>
+`, 'script in testa');
 cambia(/<script src="\.\.\/assets\/allevatore\.js[^"]*"><\/script>\n/, '', "l'app dell'allevatore");
-cambia(/<!-- APERTURA:[\s\S]*?<!-- \/APERTURA -->\n/, '', 'apertura animata');
+// l'apertura animata, nei colori di Riposa Pro: croce oro su blu quasi nero
+{
+  const m = h.match(/<!-- APERTURA:[\s\S]*?<!-- \/APERTURA -->\n/);
+  if (!m) throw new Error('genera-pro: non trovo "apertura animata" in index.html');
+  const pro = m[0]
+    .replace('class="apertura"', 'class="apertura apertura-pro"')
+    .replace('stop-color="#3FC4F2"', 'stop-color="#F4CF7A"').replace('stop-color="#4A7DF7"', 'stop-color="#C9912E"')
+    .replace('fill="#2F86E0"', 'fill="#C9912E"').replace('fill="#8CC4F5"', 'fill="#F1D59A"')
+    .replace('<p class="apertura-nome">Riposa</p>', '<p class="apertura-nome">Riposa <b>Pro</b></p>')
+    .replace('<p class="apertura-sotto">il dosaggio giusto di piùLact</p>', '<p class="apertura-sotto">agenti e rivenditori piùLact</p>');
+  if (pro === m[0] || !pro.includes('Riposa <b>Pro</b>')) throw new Error('genera-pro: apertura Pro non riuscita');
+  h = h.replace(m[0], pro);
+}
 cambia(/<section class="eroe">[\s\S]*?<\/section>\n\n/, '', 'sezione eroe');
 cambia(/<p class="pedana-nota pedana-altra-app">.*<\/p>/,
   '<p class="pedana-nota pedana-altra-app"><a href="../">Il calcolatore per l’allevatore, da girare ai clienti</a></p>',
