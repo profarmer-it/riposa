@@ -715,3 +715,41 @@ input[type=number],select,
 .spunta:has(input:checked){border-color:var(--navy);background:var(--navy);color:var(--bianco)}
 .spunta:has(input:checked) span::before{content:"✓ ";font-weight:600;color:var(--blu-chiaro)}
 .spunta:has(input:focus-visible){outline:2px solid var(--blu);outline-offset:2px}
+
+/* ------------------------------------------------ Riposa Pro, 24/10/2026
+   L'app dei venditori (pro/index.html): niente eroe, il nome dell'app nella
+   testata, e il calcolatore compare solo quando il venditore lo apre. */
+.app-pro .testata{padding:18px 0 16px}
+.app-pro .testata-in{justify-content:space-between;align-items:center}
+.testata-nome{font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.testata-nome b{font-weight:600;color:var(--blu-chiaro)}
+body.app-pro:not(.in-area-venditori) #modulo,
+body.app-pro:not(.in-area-venditori) #risultato{display:none}
+body.app-pro main{padding-top:24px}
+.pedana-altra-app a{white-space:normal}
+/* i riordini veloci in home, sotto "Nuovo ordine": un tocco, stesse quantità */
+.riordini{grid-column:1 / -1;display:grid;gap:8px;margin:2px 0 6px}
+.riordini-titolo{margin:4px 2px 0;font-weight:600;font-size:15px;color:var(--testo-2)}
+.riordino{display:flex;flex-direction:column;gap:2px;width:100%;padding:13px 16px;text-align:left;cursor:pointer;
+  font:inherit;color:var(--testo);background:var(--bianco);border:1.5px solid var(--bordo);border-radius:12px;
+  transition:border-color .15s ease,transform .16s var(--ease-out)}
+.riordino strong{font-size:16px}
+.riordino span{font-size:14px;color:var(--testo-2)}
+.riordino:active{transform:scale(.98)}
+@media (hover:hover) and (pointer:fine){ .riordino:hover{border-color:var(--blu)} }
+.riordina-qui{display:block;margin-top:6px;padding:5px 11px;font:inherit;font-size:13px;font-weight:600;color:var(--blu);
+  background:#EAF3FD;border:0;border-radius:99px;cursor:pointer}
+/* nella lista clienti: "Riordina" a tutta riga, sotto "Nuovo ordine" e "Modifica" affiancati */
+.lista-clienti .azioni{grid-template-columns:1fr 1fr}
+.lista-clienti .azioni [data-riordina]{grid-column:1 / -1}
+/* gli ordini come schede (24/10/2026) */
+.lista-ordini{list-style:none;padding:0;margin:14px 0 0}
+.lista-ordini li{padding:16px 0;border-top:1px solid var(--crema-2)}
+.lista-ordini li.annullato{opacity:.5}
+.ordine-testa{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ordine-testa strong{font-size:16.5px;line-height:1.3}
+.ordine-testa .stato{flex:0 0 auto;margin-top:2px}
+.ordine-pezzi{margin:4px 0 0;font-size:15.5px}
+.ordine-dati{margin:2px 0 0;font-size:14px;color:var(--testo-2)}
+.ordine-dati b{color:var(--testo);font-weight:600}
+.lista-ordini .riordina-qui{margin-top:10px}

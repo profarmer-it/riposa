@@ -2,7 +2,8 @@
    Riposa — AREA VENDITORI
    ----------------------------------------------------------------------------
    Agenti, rivenditori e commerciali Pro Farmer entrano con la loro e-mail e
-   un codice di 6 cifre che arriva per e-mail (riposa.profarmer.it/#venditori)
+   un codice di 6 cifre che arriva per e-mail. Dal 24/10/2026 sta in Riposa Pro,
+   riposa.profarmer.it/pro/ (pro/index.html, generato da strumenti/genera-pro.mjs)
    e trovano la loro area, in sei schede:
      Calcolo e ordine · Clienti · Ordini · Provvigioni (o Margini) · Materiali · Profilo
    Pro Farmer (ruolo interno) ha in più la Gestione: vedi profarmer.js.
@@ -28,6 +29,9 @@ const Venditori = (() => {
     url: 'https://gmhmxybqmkcmnbjdnslz.supabase.co',
     chiave: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaG14eWJxbWtjbW5iamRuc2x6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NjM4OTgsImV4cCI6MjEwODIzOTg5OH0.af0OZrnCjJ6Wznmv0vmimnUSOPeLcrRSU5AhyvIRNBc'
   };
+  /* Dentro Riposa Pro (/pro/, dal 24/10/2026) l'area è tutta l'app: si parte
+     dall'accesso, e uscendo si torna all'accesso, non al calcolatore. */
+  const PRO = !!window.RIPOSA_PRO;
   const CHIAVE_VECCHIA = 'riposa-codice';   // il codice personale di prima di novembre 2026
   let sb = null;            // il collegamento a Supabase
   let emailAccesso = '';    // l'e-mail a cui è stato mandato il codice
@@ -394,7 +398,7 @@ const Venditori = (() => {
     if (p) p.hidden = true;
     const el = barra();
     el.innerHTML = '<div class="accesso">'
-      + '<p class="soprattitolo">Riposa · area venditori</p>'
+      + (PRO ? '' : '<p class="soprattitolo">Riposa · area venditori</p>')
       + '<h2>Entra nella tua area</h2>'
       + '<p class="aiuto">Per agenti, rivenditori e commerciali Pro Farmer: i tuoi clienti, i tuoi ordini, '
       + 'le tue provvigioni e i materiali da mandare ai clienti.</p>'
@@ -408,11 +412,13 @@ const Venditori = (() => {
       + (conRiprova ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '')
       + '<p class="accesso-piede">Usa l’e-mail che hai dato a Pro Farmer. Non sei registrato? Chiama Pro Farmer: '
       + `<a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a></p>`
-      + '<p class="accesso-piede"><a href="./" id="v-al-calcolatore">← Torna al calcolatore per l’allevatore</a></p>'
+      + (PRO
+        ? '<p class="accesso-piede"><a href="../">Sei un allevatore? Vai al calcolatore</a></p>'
+        : '<p class="accesso-piede"><a href="./" id="v-al-calcolatore">← Torna al calcolatore per l’allevatore</a></p>')
       + '</div>';
     const riprova = document.getElementById('v-riprova');
     if (riprova) riprova.addEventListener('click', () => caricaArea());
-    document.getElementById('v-al-calcolatore').addEventListener('click', ev => {
+    if (!PRO) document.getElementById('v-al-calcolatore').addEventListener('click', ev => {
       ev.preventDefault();
       chiudiAccesso();
     });
@@ -447,7 +453,7 @@ const Venditori = (() => {
   function mostraCodice(messaggio) {
     const el = barra();
     el.innerHTML = '<div class="accesso accesso-codice">'
-      + '<p class="soprattitolo">Riposa · area venditori</p>'
+      + (PRO ? '' : '<p class="soprattitolo">Riposa · area venditori</p>')
       + '<h2>Controlla la posta</h2>'
       + `<p class="aiuto">Ti abbiamo mandato un codice di 6 cifre a <strong>${esc(emailAccesso)}</strong>. `
       + 'Se non lo trovi, guarda nella posta indesiderata.</p>'
@@ -590,9 +596,11 @@ const Venditori = (() => {
     } else {
       soldi = nO ? `${euro(validi.reduce((x, o) => x + (o.totaleCliente || 0), 0))} venduti` : 'Dal primo ordine';
     }
+    /* Dal 24/10/2026 il lavoro di tutti i giorni viene prima: l'ordine. Il
+       calcolo della stalla è una delle strade, non la porta d'ingresso. */
     const tessere = [
-      ['calcolo', 'Nuovo calcolo', 'Calcola la stalla e prepara l’ordine', true],
-      ['diretto', 'Ordine diretto', 'Sai già cosa serve al cliente', false],
+      ['diretto', 'Nuovo ordine', 'Scegli il cliente e le quantità', true],
+      ['calcolo', 'Calcola una stalla', 'Prodotto e quantità, poi l’ordine', false],
       ['clienti', 'Clienti', nC ? `${nC} ${nC === 1 ? 'cliente' : 'clienti'}` : 'Aggiungi il primo', false],
       ['ordini', 'Ordini', nO ? `${nO} ${nO === 1 ? 'ordine' : 'ordini'} · l’ultimo il ${ultimo.data}` : 'Ancora nessun ordine', false],
       ['soldi', nomeSoldi(), soldi, false],
@@ -616,6 +624,7 @@ const Venditori = (() => {
       h += `<button type="button" class="tessera${primaria ? ' tessera-primaria' : ''}${larga ? ' tessera-larga' : ''}" `
         + `data-apri="${id}" style="--i:${i}">`
         + icona(id) + `<strong>${esc(titolo)}</strong><span>${esc(sotto)}</span></button>`;
+      if (i === 0) h += riordiniVeloci();
     });
     h += '</div>';
     return h;
@@ -639,7 +648,7 @@ const Venditori = (() => {
         modulo.insertAdjacentHTML('afterbegin',
           '<div class="venditori-diretto"><p class="aiuto">Compila la stalla del cliente e premi <strong>Calcola</strong>: '
           + 'vedi il risultato e il modulo d’ordine già riempito. Se sai già cosa serve:</p>'
-          + '<button type="button" class="bottone bottone-fantasma" id="v-diretto">Ordine diretto</button></div>');
+          + '<button type="button" class="bottone bottone-fantasma" id="v-diretto">Ordine senza calcolo</button></div>');
         document.getElementById('v-diretto').addEventListener('click', () => ordineDiretto());
       }
       return;
@@ -658,6 +667,7 @@ const Venditori = (() => {
       agganciaNotifiche();
       p.querySelectorAll('[data-apri]').forEach(b => b.addEventListener('click', () => apri(b.dataset.apri)));
     }
+    p.querySelectorAll('[data-riordina]').forEach(b => b.addEventListener('click', () => riordina(b.dataset.riordina)));
     if (id === 'clienti') agganciaClienti();
     if (id === 'materiali') agganciaMateriali();
     if (id === 'profilo') agganciaNotifiche();
@@ -669,6 +679,34 @@ const Venditori = (() => {
     el.classList.remove('entra');
     void el.offsetWidth;   // riparte anche se la classe c'era già
     el.classList.add('entra');
+  }
+
+  /* I riordini in home: l'ultimo ordine di ciascuno degli ultimi tre clienti.
+     Un tocco e il modulo d'ordine si apre con le stesse quantità. */
+  function riordiniVeloci() {
+    const visti = new Set(), ultimi = [];
+    area.ordini.forEach(o => {
+      const chi = o.clienteId || o.cliente;
+      if (o.stato === 'annullato' || !chi || visti.has(chi) || ultimi.length >= 3) return;
+      visti.add(chi);
+      ultimi.push(o);
+    });
+    if (!ultimi.length) return '';
+    return '<div class="riordini"><p class="riordini-titolo">Riordina</p>'
+      + ultimi.map(o => `<button type="button" class="riordino" data-riordina="${esc(o.id)}">`
+        + `<strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
+        + `<span>${esc(descriviPezzi(o))} · ${esc(o.data)}</span></button>`).join('')
+      + '</div>';
+  }
+
+  function riordina(id) {
+    const o = area.ordini.find(x => x.id === id);
+    if (!o) return;
+    stato = statoVuoto();
+    VOCI.forEach(v => { stato[v.id] = o[v.id] ? String(o[v.id]) : ''; });
+    stato.annuale = !!o.annuale;
+    const ancora = area.clienti.some(c => c.id === o.clienteId);   // il cliente c'è ancora in lista?
+    ordineDiretto(ancora ? o.clienteId : '');
   }
 
   function ordineDiretto(clienteId) {
@@ -707,6 +745,7 @@ const Venditori = (() => {
     document.querySelector('#modulo button[type=submit]').textContent = 'Calcola il dosaggio';
     history.replaceState(null, '', location.pathname);
     ['area-venditori', 'area-pannello'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
+    if (PRO) mostraAccesso();
   }
 
   /* ---------------------------------------------------------------- clienti */
@@ -741,7 +780,8 @@ const Venditori = (() => {
       if (c.note) h += `<p class="cliente-note">${esc(c.note)}</p>`;
       if (validaCliente(c)) h += '<p class="sotto-minimo">Dati per la fattura da completare: tocca Modifica.</p>';
       h += '<div class="azioni">'
-        + `<button type="button" class="bottone" data-ordina="${esc(c.id)}">Nuovo ordine</button>`
+        + (ord.length ? `<button type="button" class="bottone" data-riordina="${esc(ord[0].id)}">Riordina come il ${esc(ord[0].data)}</button>` : '')
+        + `<button type="button" class="bottone${ord.length ? ' bottone-fantasma' : ''}" data-ordina="${esc(c.id)}">Nuovo ordine</button>`
         + `<button type="button" class="bottone bottone-fantasma" data-modifica="${esc(c.id)}">Modifica</button></div>`;
       h += '</li>';
     });
@@ -818,24 +858,28 @@ const Venditori = (() => {
     return cond.ruolo === 'agente' ? o.provvigione : cond.ruolo === 'rivenditore' ? o.margine : null;
   }
 
+  /* Gli ordini come schede, non come tabella: sul telefono una tabella di sei
+     colonne non si legge (24/10/2026). Da ognuno si riordina con un tocco. */
   function disegnaOrdini() {
     let h = '<div class="blocco"><h3>I tuoi ordini</h3>';
     if (!area.ordini.length) {
       return h + '<p class="aiuto">Non hai ancora mandato ordini. Li trovi qui dal primo che invii.</p></div>';
     }
     h += '<p class="aiuto">Lo stato lo aggiorna Pro Farmer: inviato, confermato, consegnato, pagato.</p>';
-    h += '<div class="ordine-scorri"><table class="tabella ordini-storico"><thead><tr><th>Data</th><th>Cliente</th><th>t</th>'
-      + `<th>${cond.ruolo === 'rivenditore' ? 'Paghi' : 'Importo'}</th>`
-      + (cond.ruolo === 'interno' ? '' : `<th>${cond.ruolo === 'agente' ? 'Provvigione' : 'Margine'}</th>`)
-      + '<th>Stato</th></tr></thead><tbody>';
+    const etSoldi = cond.ruolo === 'agente' ? 'provvigione' : cond.ruolo === 'rivenditore' ? 'margine' : '';
+    h += '<ul class="lista-ordini">';
     area.ordini.forEach(o => {
-      h += `<tr${o.stato === 'annullato' ? ' class="annullato"' : ''}><th>${esc(o.data)}<small>n. ${esc(o.numero)}</small></th>`
-        + `<td>${esc(o.cliente || '—')}<small>${esc(descriviPezzi(o))}${o.annuale ? ' · fornitura annuale' : ''}</small></td>`
-        + `<td>${num(o.t, 1)}</td><td>${euro(importoOrdine(o))}</td>`
-        + (cond.ruolo === 'interno' ? '' : `<td>${euro(soldiOrdine(o))}</td>`)
-        + `<td><span class="stato stato-${esc(o.stato)}">${esc(STATI[o.stato] || o.stato)}</span></td></tr>`;
+      h += `<li class="ordine${o.stato === 'annullato' ? ' annullato' : ''}">`
+        + `<div class="ordine-testa"><strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
+        + `<span class="stato stato-${esc(o.stato)}">${esc(STATI[o.stato] || o.stato)}</span></div>`
+        + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t${o.annuale ? ' · fornitura annuale' : ''}</p>`
+        + `<p class="ordine-dati">${esc(o.data)} · n. ${esc(o.numero)} · ${cond.ruolo === 'rivenditore' ? 'paghi' : 'importo'} `
+        + `<b>${euro(importoOrdine(o))}</b>`
+        + (etSoldi ? ` · ${etSoldi} <b>${euro(soldiOrdine(o))}</b>` : '')
+        + (o.liquidata ? ` · liquidata il ${esc(o.liquidata)}` : '') + '</p>'
+        + `<button type="button" class="riordina-qui" data-riordina="${esc(o.id)}">Riordina</button></li>`;
     });
-    h += '</tbody></table></div></div>';
+    h += '</ul></div>';
     return h;
   }
 
@@ -1171,11 +1215,11 @@ const Venditori = (() => {
     let vecchio = false;
     try { vecchio = !!(localStorage.getItem(CHIAVE_VECCHIA) || sessionStorage.getItem(CHIAVE_VECCHIA)); } catch (e) {}
     if (vecchio) togliCodiceVecchio();
-    if (!c) { if (location.hash === '#venditori') mostraAccesso(); return; }
+    if (!c) { if (PRO || location.hash === '#venditori') mostraAccesso(); return; }
     c.auth.getSession().then(({ data }) => {
       const dentro = !!(data && data.session);
       // nell'area si parte sempre dall'alto: niente posizione rimessa dal browser
-      if (dentro || vecchio || location.hash === '#venditori') {
+      if (PRO || dentro || vecchio || location.hash === '#venditori') {
         try { history.scrollRestoration = 'manual'; } catch (e) {}
       }
       if (dentro) {
@@ -1184,7 +1228,7 @@ const Venditori = (() => {
         caricaArea();
       } else if (vecchio) {
         mostraAccesso('Da novembre si entra con la tua e-mail: scrivila qui e ti mandiamo un codice di 6 cifre. Il vecchio codice personale non serve più.');
-      } else if (location.hash === '#venditori') {
+      } else if (PRO || location.hash === '#venditori') {
         mostraAccesso();
       }
     });

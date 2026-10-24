@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Riposa — il dosaggio giusto di piùLact per la tua stalla</title>
 <meta name="description" content="Calcola in due minuti quale prodotto della gamma piùLact serve alla tua stalla, quanto ne serve e come si usa. Uno strumento Pro Farmer.">
-<link rel="stylesheet" href="assets/style.css?v=20261124a">
+<link rel="stylesheet" href="assets/style.css?v=20261124e">
 <!-- App installabile (anche su iPhone: Condividi → Aggiungi alla schermata Home) -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icone/favicon-32.png">
@@ -15,6 +15,19 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Riposa">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script data-solo-allevatore>
+  /* Dal 24/10/2026 i venditori hanno la loro app, Riposa Pro, su /pro/.
+     Ci mandiamo i vecchi link (#venditori) e chi ha installato la Riposa di
+     prima ed era già entrato nella sua area. */
+  (function () {
+    var venditore = false;
+    try {
+      venditore = !!localStorage.getItem('sb-gmhmxybqmkcmnbjdnslz-auth-token')
+        && (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+    } catch (e) {}
+    if (location.hash === '#venditori' || venditore) location.replace('pro/');
+  })();
+</script>
 </head>
 <body>
 
@@ -195,15 +208,14 @@
       Per una valutazione precisa, o per qualsiasi altra informazione, chiama
       Pro Farmer: <a href="tel:+393761296162">+39 376 129 6162</a>.
     </p>
-    <p class="pedana-nota"><a href="#venditori">Area venditori</a></p>
+    <p class="pedana-nota pedana-altra-app"><a href="pro/">Sei un agente o un rivenditore? Entra in Riposa Pro</a></p>
   </div>
 </footer>
 
 <script src="assets/vendor/supabase-2.45.4.js"></script>
-<script src="assets/regole.js?v=20261123h"></script>
-<script src="assets/app.js?v=20261123h"></script>
-<script src="assets/profarmer.js?v=20261123h"></script>
-<script src="assets/venditori.js?v=20261123h"></script>
+<script src="assets/regole.js?v=20261124d"></script>
+<script src="assets/app.js?v=20261124d"></script>
+<!-- RIPOSA PRO: qui strumenti/genera-pro.mjs aggiunge gli script dei venditori -->
 <script>
   /* L'app installabile: il service worker tiene la pagina sul telefono, così
      si apre in fretta e il calcolo funziona anche senza rete. Vedi sw.js. */
