@@ -939,3 +939,27 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 .invito-app-no{min-height:44px;padding:0 4px;font:inherit;font-size:15px;color:#B9CBE0;background:none;border:0;cursor:pointer;text-decoration:underline}
 @media (max-width:380px){ .invito-app{flex-direction:column} }
 @media (prefers-reduced-motion:reduce){ .invito-app{animation:none} }
+
+/* «La tua stalla»: in cima alla pagina, per chi ha già fatto un calcolo (24/10/2026) */
+.tua-stalla{position:relative;margin:-28px 0 18px;padding:22px 22px 20px;border-radius:var(--raggio);
+  background:linear-gradient(140deg,#16325A 0%,#0E2340 70%);color:#DCE6F2;box-shadow:0 10px 30px rgba(14,35,64,.18)}
+.tua-stalla + .scheda{margin-top:0}
+.tua-stalla p{margin:0 0 10px;font-size:16px;line-height:1.5}
+.tua-stalla strong{color:#fff}
+.tua-stalla-titolo{font-family:Fraunces,Georgia,serif;font-size:22px !important;font-weight:600;color:#fff}
+.tua-stalla-stato{padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.08)}
+.tua-stalla-link{min-height:44px;padding:0;font:inherit;font-size:15px;font-weight:600;color:var(--blu-chiaro);
+  background:none;border:0;text-decoration:underline;cursor:pointer}
+.tua-stalla-scorta{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin:4px 0 6px}
+.tua-stalla-scorta .tua-stalla-domanda,.tua-stalla-scorta .bottone,.tua-stalla-errore{grid-column:1 / -1}
+.tua-stalla-scorta label{display:flex;flex-direction:column;gap:6px;font-size:14.5px;font-weight:600;color:#fff}
+.tua-stalla-scorta input{width:100%;min-height:48px;padding:10px 12px;font:inherit;font-size:17px;font-weight:500;
+  color:var(--testo);background:#fff;border:0;border-radius:10px}
+.tua-stalla-scorta .bottone{background:#fff;color:var(--navy)}
+.tua-stalla-errore{margin:0 !important;color:#FFC9C9 !important;font-size:14.5px !important}
+.tua-stalla-notifiche{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
+.bottone-chiaro{background:var(--blu) !important;color:#fff}
+.tua-stalla-ok{margin-top:12px !important;color:#B7F0C8 !important;font-weight:600}
+.tua-stalla-nota{margin-top:12px !important;font-size:14.5px !important;color:#B9CBE0 !important}
+@media (max-width:360px){ .tua-stalla-scorta{grid-template-columns:1fr} }
+.tua-stalla-scorta label{justify-content:flex-end}

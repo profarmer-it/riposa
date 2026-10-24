@@ -576,6 +576,14 @@ const CHIAVE_NON_ORA = 'riposa-installa-allevatore-no';
 function appInstallata() {
   return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 }
+// dopo il calcolo, un'occhiata a «La tua stalla»: la scorta si dice da lì
+function rimandaATuaStalla() {
+  if (!document.querySelector('.invito-app')) return;
+  const p = document.createElement('p');
+  p.className = 'conferma-nota';
+  p.innerHTML = 'In cima alla pagina trovi <a href="#tua-stalla">La tua stalla</a>: dicci la scorta e ti avvisiamo prima che finisca.';
+  document.querySelector('.trovato').appendChild(p);
+}
 function suIPhone() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
@@ -590,8 +598,8 @@ function invitoInstalla() {
   let h = '<div class="invito-app">';
   h += '<img src="assets/icone/icona-192.png" alt="" width="64" height="64" class="invito-app-icona">';
   h += '<div><p class="invito-app-titolo">Tieni Riposa sul telefono</p>';
-  h += '<p>Si apre dall’icona, come un’app. Rifai il calcolo in un attimo quando cambia la stalla, '
-    + 'anche in stalla senza campo.</p>';
+  h += '<p>Si apre dall’icona, come un’app. Ti avvisiamo quando il prodotto sta per finire, '
+    + 'e rifai il calcolo in un attimo, anche in stalla senza campo.</p>';
   if (suIPhone()) {
     h += `<p class="invito-app-come">In Safari tocca ${condividi} e poi <strong>«Aggiungi alla schermata Home»</strong>.</p>`;
   }
@@ -636,6 +644,8 @@ function mostraConferma(esito) {
   mostra(h);
   agganciaInvito();
 
+  const ts = document.getElementById('tua-stalla');
+  if (ts) rimandaATuaStalla();
   document.getElementById('btn-ricomincia').addEventListener('click', () => {
     boxRis.hidden = true;
     boxRis.innerHTML = '';
@@ -900,7 +910,10 @@ function inviaLead(dati, r) {
     kgMese:         r.kgMese ? Math.round(r.kgMese) : '',
     formato:        r.confezioneConsigliata ? r.confezioneConsigliata.etichetta : '',
     premium:        scelta ? scelta.prodotto.nome : '',
-    riepilogo:      testoRiepilogo(dati, r)
+    riepilogo:      testoRiepilogo(dati, r),
+    // l'app sul telefono (24/10/2026): il telefono che ha già fatto un calcolo si fa riconoscere
+    kgPezzo:        r.confezioneConsigliata ? r.confezioneConsigliata.kg : '',
+    app:            typeof Allevatore !== 'undefined' ? Allevatore.credenziali() : null
   };
 
   const ctrl = new AbortController();
@@ -912,6 +925,13 @@ function inviaLead(dati, r) {
     signal: ctrl.signal
   }).then(x => x.json().catch(() => ({})).then(j => {
     if (!x.ok || !j.ok) throw new Error(j.motivo || 'errore');
+    if (j.app && typeof Allevatore !== 'undefined') {
+      Allevatore.salva(j.app, {
+        azienda: dati.azienda || '', prodotto: r.prodotto.nome || '',
+        kgMese: r.kgMese ? Math.round(r.kgMese) : null,
+        kgPezzo: r.confezioneConsigliata ? r.confezioneConsigliata.kg : null
+      });
+    }
     return j;
   })).finally(() => clearTimeout(timer));
 }

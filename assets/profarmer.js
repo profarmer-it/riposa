@@ -22,14 +22,14 @@ const ProFarmer = (() => {
   let box = null;
   let sezione = 'ordini';
   let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
-  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [] };
+  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [] };
   let filtroLead = 'nuovo';
   const leadAperti = new Set();
   let filtroStato = 'aperti';
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { ordini: 'Ordini', lead: 'Lead', provvigioni: 'Provvigioni', venditori: 'Venditori',
-                    condizioni: 'Condizioni', materiali: 'Materiali' };
+  const SEZIONI = { ordini: 'Ordini', lead: 'Lead', allevatori: 'Allevatori', provvigioni: 'Provvigioni',
+                    venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
   const STATI = ['inviato', 'confermato', 'consegnato', 'pagato', 'annullato'];
   const NOME_STATO = { inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato', pagato: 'Pagato', annullato: 'Annullato' };
   const RUOLI = { agente: 'Agente', rivenditore: 'Rivenditore', interno: 'Pro Farmer' };
@@ -55,11 +55,14 @@ const ProFarmer = (() => {
       sb.from('venditori').select('*').order('ruolo').order('nome'),
       sb.from('condizioni_generali').select('*').eq('id', 1).maybeSingle(),
       sb.from('materiali').select('*').order('posizione').order('creato_il'),
-      sb.from('lead').select('*').order('creato_il', { ascending: false }).limit(500)
-    ]).then(([o, ve, c, m, le]) => {
-      const err = [o, ve, c, m, le].find(x => x.error);
+      sb.from('lead').select('*').order('creato_il', { ascending: false }).limit(500),
+      sb.rpc('allevatori_gestione'),
+      sb.from('messaggi_allevatori').select('*').order('programmato_il', { ascending: false }).limit(100)
+    ]).then(([o, ve, c, m, le, al, me]) => {
+      const err = [o, ve, c, m, le, al, me].find(x => x.error);
       if (err) throw new Error(err.error.message);
-      dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data };
+      dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
+               allevatori: al.data || [], messaggi: me.data || [] };
     });
   }
 
@@ -87,7 +90,7 @@ const ProFarmer = (() => {
     if (attiva) attiva.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
-    ({ ordini: ordini, lead: lead, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    ({ ordini: ordini, lead: lead, allevatori: allevatori, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
   }
 
   /* Salva, ricarica e ridisegna; l'errore resta vicino al bottone. */
@@ -232,6 +235,96 @@ const ProFarmer = (() => {
       const d = new FormData(f);
       salva(f.querySelector('button[type=submit]'), () => sb.from('lead')
         .update({ stato: d.get('stato'), note_pf: nulloSeVuoto(String(d.get('note_pf') || '').trim()) }).eq('id', f.dataset.id));
+    }));
+  }
+
+  /* ------------------------------------------------------------- allevatori
+     Dal 24/10/2026. Gli allevatori che hanno Riposa sul telefono: chi ha le
+     notifiche, chi sta per finire il prodotto (lead caldi), e i messaggi da
+     mandargli: novità, offerte, consigli. Li manda il database ogni 15 minuti
+     (giro_allevatori), a tutti o a una provincia, subito o alla data scelta. */
+  const TIPI_MESSAGGIO = { novita: 'Novità', offerta: 'Offerta', consiglio: 'Consiglio d’uso' };
+
+  function dataBreve(iso) {
+    if (!iso) return '';
+    const [a, m, g] = String(iso).slice(0, 10).split('-');
+    return `${g}/${m}/${a}`;
+  }
+
+  function allevatori(corpo) {
+    const tutti = dati.allevatori;
+    const conNotifiche = tutti.filter(a => a.notifiche).length;
+    const fra = d => { const x = new Date(); x.setDate(x.getDate() + d); return x.toLocaleDateString('sv-SE'); };
+    const caldi = tutti.filter(a => a.avviso_il && a.avviso_il <= fra(14));
+    const province = [...new Set(tutti.map(a => a.provincia).filter(Boolean))].sort();
+
+    let h = '<div class="blocco"><h3>Allevatori con Riposa</h3>'
+      + '<dl class="numeri soldi">'
+      + `<div class="numero-cella"><dt>Con l’app</dt><dd>${tutti.length}</dd></div>`
+      + `<div class="numero-cella"><dt>Notifiche attive</dt><dd>${conNotifiche}</dd></div>`
+      + `<div class="numero-cella"><dt>Stanno per finire</dt><dd>${caldi.length}<small>nei prossimi 14 giorni</small></dd></div>`
+      + '</dl>';
+    h += '<p class="aiuto">Un allevatore è qui quando ha mandato il calcolo dal telefono. Se ci dice la scorta, '
+      + '10 giorni prima che finisca il prodotto avvisiamo lui e voi: è il momento di chiamarlo.</p>';
+    if (caldi.length) {
+      h += '<h4>Stanno per finire</h4><ul class="lista-clienti">';
+      caldi.forEach(a => {
+        h += `<li><div class="cliente-testa"><strong>${esc(a.azienda || '—')}</strong><span>${esc(a.provincia || '')}</span></div>`
+          + `<p class="cliente-dati">${esc([a.nome, a.prodotto, a.scorta_pezzi && `${a.scorta_pezzi} ${a.formato || 'pezzi'} dal ${dataBreve(a.consegna_il)}`].filter(Boolean).join(' · '))}</p>`
+          + `<p class="cliente-dati"><strong>Avviso il ${esc(dataBreve(a.avviso_il))}</strong>${a.avvisato_il ? ' · avvisato' : ''}`
+          + `${a.notifiche ? '' : ' · senza notifiche: chiamatelo voi'}</p></li>`;
+      });
+      h += '</ul>';
+    }
+    h += '</div>';
+
+    // i messaggi
+    h += '<div class="blocco"><h3>Manda un messaggio agli allevatori</h3>'
+      + `<p class="aiuto">Arriva come notifica sul telefono di chi le ha attivate (oggi ${conNotifiche}). `
+      + 'Breve: il titolo si legge sulla schermata bloccata.</p>'
+      + '<form id="pf-messaggio" novalidate><div class="pf-campi">'
+      + '<label>Tipo<select name="tipo" class="pf-select">'
+      + Object.entries(TIPI_MESSAGGIO).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('') + '</select></label>'
+      + '<label>A chi<select name="provincia" class="pf-select"><option value="">Tutti</option>'
+      + province.map(p => `<option value="${esc(p)}">Solo provincia ${esc(p)}</option>`).join('') + '</select></label>'
+      + '<label class="pf-largo">Titolo <small>(max 80 caratteri)</small><input name="titolo" maxlength="80"></label>'
+      + '<label class="pf-largo">Testo <small>(max 300 caratteri)</small><textarea name="testo" rows="3" maxlength="300"></textarea></label>'
+      + `<label>Quando<input type="datetime-local" name="quando"><small>Vuoto = subito (entro 15 minuti)</small></label>`
+      + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Programma il messaggio</button></div></form>';
+    if (dati.messaggi.length) {
+      h += '<h4 style="margin-top:22px">Messaggi</h4><ul class="lista-clienti">';
+      dati.messaggi.forEach(m => {
+        const stato = m.mandato_il ? `Mandato il ${dataIt(m.mandato_il)} a ${m.destinatari || 0}`
+          : `Programmato per il ${dataIt(m.programmato_il)} alle ${new Date(m.programmato_il).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+        h += `<li><div class="cliente-testa"><strong>${esc(m.titolo)}</strong><span>${esc(TIPI_MESSAGGIO[m.tipo] || m.tipo)}${m.provincia ? ' · ' + esc(m.provincia) : ''}</span></div>`
+          + `<p class="cliente-dati">${esc(m.testo)}</p><p class="cliente-dati">${esc(stato)}</p>`
+          + (m.mandato_il ? '' : `<div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma pf-piccolo" data-togli-messaggio="${esc(m.id)}">Annulla</button></div><p class="errore" hidden></p>`)
+          + '</li>';
+      });
+      h += '</ul>';
+    }
+    h += '</div>';
+    corpo.innerHTML = h;
+
+    const f = document.getElementById('pf-messaggio');
+    f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const d = new FormData(f);
+      const riga = {
+        tipo: d.get('tipo'), provincia: nulloSeVuoto(d.get('provincia')),
+        titolo: String(d.get('titolo') || '').trim(), testo: String(d.get('testo') || '').trim()
+      };
+      const quando = String(d.get('quando') || '');
+      if (quando) riga.programmato_il = new Date(quando).toISOString();
+      const err = f.querySelector('.errore');
+      if (riga.titolo.length < 3 || riga.testo.length < 3) { err.textContent = 'Servono il titolo e il testo.'; err.hidden = false; return; }
+      const a = riga.provincia ? `agli allevatori di ${riga.provincia}` : 'a tutti gli allevatori con le notifiche';
+      if (!confirm(`Mando «${riga.titolo}» ${a}${quando ? ' alla data scelta' : ' entro 15 minuti'}?`)) return;
+      salva(f.querySelector('button[type=submit]'), () => sb.from('messaggi_allevatori').insert(riga));
+    });
+    corpo.querySelectorAll('[data-togli-messaggio]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Annullo questo messaggio? Non partirà.')) return;
+      salva(b, () => sb.from('messaggi_allevatori').delete().eq('id', b.dataset.togliMessaggio).is('mandato_il', null));
     }));
   }
 
