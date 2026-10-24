@@ -96,8 +96,8 @@ function leggiModulo() {
   const cuccetteInput = parseInt(f.get('cuccette'), 10);
   const capiInput     = parseInt(f.get('capi'), 10);
 
-  if (!zona) return { errore: 'Indica com’è fatta la zona di riposo.' };
-  if (!f.get('mungitura')) return { errore: 'Indica come mungi: sala o robot.' };
+  if (!zona) return { errore: 'Indica com’è fatta la zona di riposo.', campo: 'input[name=zona]' };
+  if (!f.get('mungitura')) return { errore: 'Indica come mungi: sala o robot.', campo: 'input[name=mungitura]' };
 
   let cuccette = null;
   if (Number.isFinite(cuccetteInput) && cuccetteInput > 0) {
@@ -115,17 +115,17 @@ function leggiModulo() {
 
   if (suSuperficie) {
     if (!(Number.isFinite(mq) && mq > 0)) {
-      return { errore: 'Serve la superficie della lettiera in metri quadri.' };
+      return { errore: 'Serve la superficie della lettiera in metri quadri.', campo: '#mq' };
     }
     if (!(Number.isFinite(capiZona) && capiZona > 0)) {
-      return { errore: 'Serve il numero di capi presenti nella zona a lettiera.' };
+      return { errore: 'Serve il numero di capi presenti nella zona a lettiera.', campo: '#capiZona' };
     }
   } else if (!cuccette) {
-    return { errore: 'Serve il numero di cuccette, oppure i capi in mungitura.' };
+    return { errore: 'Serve il numero di cuccette, oppure i capi in mungitura.', campo: '#cuccette' };
   }
 
   if (zona === 'buca' && !f.get('riempimento')) {
-    return { errore: 'Dicci come riempi la buca: con una miscelata o spagliando il prodotto sopra il materiale.' };
+    return { errore: 'Dicci come riempi la buca: con una miscelata o spagliando il prodotto sopra il materiale.', campo: 'input[name=riempimento]' };
   }
 
   const cellule = parseInt(f.get('cellule'), 10);
@@ -603,12 +603,16 @@ function spuntaConsenso() {
     + '</label>';
 }
 
+/* Il telefono riconosce i campi e propone i dati salvati: due tocchi invece
+   di scrivere tutto. La provincia italiana per il browser è "address-level2". */
+const AUTOCOMPLETA = { nome: 'name', azienda: 'organization', provincia: 'address-level2', email: 'email', telefono: 'tel' };
+
 function campoTesto(id, etichetta, tipo, obbligatorio, classe) {
   return `<div class="campo ${classe || ''}">`
     + `<label for="c-${id}">${esc(etichetta)}`
     + (obbligatorio ? '' : ' <span class="opzionale">facoltativo</span>')
     + '</label>'
-    + `<input type="${tipo}" id="c-${id}" name="${id}" autocomplete="${tipo === 'tel' ? 'tel' : tipo === 'email' ? 'email' : 'on'}">`
+    + `<input type="${tipo}" id="c-${id}" name="${id}" autocomplete="${AUTOCOMPLETA[id] || 'on'}"${id === 'provincia' ? ' autocapitalize="characters"' : ''}>`
     + '</div>';
 }
 
@@ -860,11 +864,31 @@ function inviaLead(dati, r) {
 
 /* ------------------------------------------------------------------- avvio */
 
+function togliErroreCampo() {
+  modulo.querySelectorAll('.errore-campo').forEach(e => e.remove());
+  modulo.querySelectorAll('.campo-mancante').forEach(e => e.classList.remove('campo-mancante'));
+}
+// appena l'allevatore risponde, l'avviso sparisce
+modulo.addEventListener('change', togliErroreCampo);
+
 modulo.addEventListener('submit', ev => {
   ev.preventDefault();
   const d = leggiModulo();
 
+  togliErroreCampo();
   if (d.errore) {
+    /* L'errore si scrive accanto alla domanda che manca, e la pagina ci va:
+       sul telefono la domanda è spesso molto più su del pulsante (24/10/2026). */
+    const campo = d.campo && modulo.querySelector(d.campo);
+    const box = campo && campo.closest('fieldset, .campo');
+    if (box) {
+      boxErrore.hidden = true;
+      box.classList.add('campo-mancante');
+      box.insertAdjacentHTML('beforeend', `<p class="errore errore-campo" role="alert">${esc(d.errore)}</p>`);
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (campo.type !== 'radio') campo.focus({ preventScroll: true });
+      return;
+    }
     boxErrore.textContent = d.errore;
     boxErrore.hidden = false;
     boxErrore.scrollIntoView({ behavior: 'smooth', block: 'center' });

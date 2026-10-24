@@ -784,3 +784,62 @@ body.app-pro{
 /* la fascia blu notte della testata scende dietro la scheda dell'account */
 body.app-pro{--crema:#D9E2ED;background:linear-gradient(var(--notte) 0, var(--notte) 132px, var(--crema) 132px) no-repeat, var(--crema)}
 .app-pro .scheda,.app-pro .blocco,.app-pro .tessera{border-color:#C9D4E2}
+
+/* ---------------------------- accessibilità sul telefono, 24/10/2026
+   Dal controllo su Riposa e Riposa Pro: in stalla si usa il telefono con il
+   sole sullo schermo, i guanti, poco tempo. */
+
+/* 1. ogni campo a 16 px o più: sotto, iPhone ingrandisce la pagina al tocco */
+.ordine-righe input{width:104px;min-height:48px;padding:10px 12px;font-size:17px}
+textarea,.venditori-ordine textarea,.contatti textarea,.cliente-modulo textarea{font:inherit;font-size:16px}
+
+/* 2. la domanda che manca: bordo rosso e l'avviso lì sotto */
+.campo-mancante{border-radius:12px;box-shadow:0 0 0 2px #E2A3A3;padding:10px;margin-left:-10px;margin-right:-10px}
+.errore-campo{margin:12px 0 0}
+
+/* 3. tutto ciò che si tocca è alto almeno 44 px */
+.account-esci,.area-indietro{min-height:44px}
+.riordina-qui{min-height:40px;padding:9px 16px;font-size:15px}
+.lista-ordini .riordina-qui{margin-top:12px}
+.lista-materiali .bottone,.lista-clienti .bottone{min-height:46px}
+
+/* 5. provvigioni e margini: i numeri che un agente guarda di più */
+.numero-cella dt{font-size:13px;letter-spacing:.08em}
+.numero-cella dd{font-size:26px}
+.numero-cella dd small{font-size:14px}
+@media (max-width:560px){
+  .ordine-conto{font-size:14px}
+  .ordine-conto thead th{font-size:13px}
+  .ordine-conto td small{font-size:13px}
+}
+
+/* 6. sotto i titoli delle tessere */
+.tessera span{font-size:14.5px;line-height:1.4}
+.stato{font-size:13px;padding:3px 10px}
+
+/* 7. i link nel testo: un blu più scuro, si leggono anche sul bianco */
+:root{--link:#1A5FB4}
+.accesso-piede a,.cliente-dati a,.consenso a,.lista-materiali a:not(.bottone),.aiuto a{color:var(--link)}
+.area-indietro{color:var(--link)}
+
+/* 8. le etichette piccole */
+.opzionale{font-size:14px}
+.account-nome span{font-size:13px}
+.pedana-firma{font-size:13px}
+
+/* 9. il numero di Pro Farmer: un pulsante vero, comodo da toccare */
+.chiama{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;margin-top:4px;
+  padding:12px 22px;border-radius:99px;font-weight:600;font-size:16px;color:var(--navy) !important;background:#fff;
+  text-decoration:none !important}
+.chiama svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app-pro .chiama{color:var(--notte) !important}
+.chiama{white-space:normal;text-align:center}
+.pedana-altra-app a{display:inline-block;padding:12px 4px}
+.accesso-piede a{display:inline-block;padding:10px 2px}
+/* il titolo di un gruppo di domande starebbe sul bordo: lo riportiamo dentro */
+.campo-mancante > legend{float:left;width:100%}
+.campo-mancante > legend + *{clear:both}
+.venditori-ordine .spunta small{font-size:14px}
+@media (max-width:560px){ .ordine-conto thead th{white-space:normal;letter-spacing:.02em;vertical-align:bottom} }
+.chiama{max-width:100%;box-sizing:border-box;font-size:15.5px;padding:12px 20px}
+.chiama svg{flex:0 0 18px}
