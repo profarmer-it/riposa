@@ -40,6 +40,7 @@ cambia('content="Riposa">', 'content="Riposa Pro">', 'apple-mobile-web-app-title
 
 // 3. via quello che serve solo all'allevatore
 cambia(/<script data-solo-allevatore>[\s\S]*?<\/script>\n/, '', 'script di rinvio a /pro/');
+cambia(/<script src="\.\.\/assets\/allevatore\.js[^"]*"><\/script>\n/, '', "l'app dell'allevatore");
 cambia(/<!-- APERTURA:[\s\S]*?<!-- \/APERTURA -->\n/, '', 'apertura animata');
 cambia(/<section class="eroe">[\s\S]*?<\/section>\n\n/, '', 'sezione eroe');
 cambia(/<p class="pedana-nota pedana-altra-app">.*<\/p>/,
