@@ -45,6 +45,11 @@ cambia(/<p class="pedana-nota pedana-altra-app">.*<\/p>/,
   '<p class="pedana-nota pedana-altra-app"><a href="../">Il calcolatore per l’allevatore, da girare ai clienti</a></p>',
   'link a Riposa Pro nel piede');
 
+// icone e colore della barra: quelle di Riposa Pro (croce oro, blu più scuro)
+h = h.replace(/\.\.\/assets\/icone\/(favicon-32|apple-touch-icon)\.png/g, '../assets/icone/pro/$1.png');
+if (!h.includes('icone/pro/apple-touch-icon.png')) throw new Error('genera-pro: non trovo le icone');
+cambia('<meta name="theme-color" content="#0E2340">', '<meta name="theme-color" content="#071426">', 'theme-color');
+
 // 4. il segno dell'app e gli script dei venditori
 cambia('<body>', '<body class="app-pro">', 'body');
 cambia(/(<img class="logo-profarmer"[^>]*>)/,

@@ -8,11 +8,26 @@
   "scope": "/pro/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F4F0E7",
-  "theme_color": "#0E2340",
+  "background_color": "#E4EAF2",
+  "theme_color": "#071426",
   "icons": [
-    { "src": "../assets/icone/icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "../assets/icone/icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "../assets/icone/icona-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "../assets/icone/pro/icona-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../assets/icone/pro/icona-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../assets/icone/pro/icona-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
