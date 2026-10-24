@@ -11,10 +11,16 @@ come si riempie la buca — restituisce il prodotto giusto, la dose per cuccetta
 la frequenza, il consumo mensile e quanto ordinare. Il risultato non compare a
 schermo: arriva per e-mail, e il contatto diventa un lead profilato.
 
-Agenti, rivenditori e commerciali Pro Farmer hanno un'**area venditori** su
-`riposa.profarmer.it/#venditori`: entrano con la loro e-mail e un codice di 6
-cifre che arriva per e-mail, vedono il risultato a schermo e mandano l'ordine
-a Pro Farmer dallo stesso calcolo.
+Agenti, rivenditori e commerciali Pro Farmer hanno un'app loro, **Riposa Pro**,
+su `riposa.profarmer.it/pro/` (dal 24/10/2026; i vecchi link `#venditori` ci
+portano da soli). Entrano con la loro e-mail e un codice di 6 cifre che arriva
+per e-mail; il cuore è il lavoro di tutti i giorni: nuovo ordine, riordino con
+un tocco, clienti, provvigioni o margini, materiali. Il calcolo della stalla è
+una delle strade, con il risultato a schermo e l'ordine già riempito.
+
+`pro/index.html` **non si modifica a mano**: si genera da `index.html` con
+`node strumenti/genera-pro.mjs`, così il modulo del calcolo resta scritto in un
+posto solo. Va rifatto dopo ogni modifica a `index.html`.
 
 Dal 22-23 ottobre 2026 tutto il server di Riposa è **Supabase** (progetto
 "riposa", Francoforte): area venditori, ordini, lead degli allevatori, e-mail

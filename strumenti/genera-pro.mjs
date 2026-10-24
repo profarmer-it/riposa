@@ -1,0 +1,61 @@
+/* ============================================================================
+   Riposa Pro — genera pro/index.html da index.html
+   ----------------------------------------------------------------------------
+   Dal 24/10/2026 i venditori hanno un'app loro, su riposa.profarmer.it/pro/,
+   installabile a parte. Dentro c'è lo stesso calcolatore dell'allevatore, ma
+   il modulo del calcolo deve restare scritto in un posto solo: index.html.
+   Questo script ne fa la copia per i venditori, con le differenze qui sotto.
+
+   QUANDO: dopo ogni modifica a index.html. Senza, /pro/ resta indietro.
+   COME:   node strumenti/genera-pro.mjs   (dalla cartella Riposa)
+   Si ferma con un errore se un pezzo che deve cambiare non c'è più: meglio
+   fermarsi che pubblicare una pagina sbagliata.
+   ========================================================================== */
+
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const radice = join(dirname(fileURLToPath(import.meta.url)), '..');
+let h = readFileSync(join(radice, 'index.html'), 'utf8');
+
+function cambia(cosa, con, nome) {
+  const prima = h;
+  h = h.replace(cosa, con);
+  if (h === prima) throw new Error(`genera-pro: non trovo "${nome}" in index.html`);
+}
+
+// 1. i percorsi: la pagina sta un livello più giù
+h = h.replace(/(href|src)="assets\//g, '$1="../assets/');
+cambia(`register('sw.js')`, `register('../sw.js')`, 'registrazione del service worker');
+
+// 2. nome, titolo, manifest: un'app a sé
+cambia(/<title>[^<]*<\/title>/, '<title>Riposa Pro — area agenti e rivenditori piùLact</title>', 'title');
+cambia(/<meta name="description"[^>]*>/,
+  '<meta name="description" content="L’app di agenti e rivenditori Pro Farmer: clienti, ordini, riordini, provvigioni e materiali piùLact.">\n<meta name="robots" content="noindex">',
+  'description');
+// href="manifest.webmanifest" resta com'è: dentro /pro/ è pro/manifest.webmanifest
+if (!h.includes('href="manifest.webmanifest"')) throw new Error('genera-pro: non trovo il manifest');
+cambia('content="Riposa">', 'content="Riposa Pro">', 'apple-mobile-web-app-title');
+
+// 3. via quello che serve solo all'allevatore
+cambia(/<script data-solo-allevatore>[\s\S]*?<\/script>\n/, '', 'script di rinvio a /pro/');
+cambia(/<section class="eroe">[\s\S]*?<\/section>\n\n/, '', 'sezione eroe');
+cambia(/<p class="pedana-nota pedana-altra-app">.*<\/p>/,
+  '<p class="pedana-nota pedana-altra-app"><a href="../">Il calcolatore per l’allevatore, da girare ai clienti</a></p>',
+  'link a Riposa Pro nel piede');
+
+// 4. il segno dell'app e gli script dei venditori
+cambia('<body>', '<body class="app-pro">', 'body');
+cambia(/(<img class="logo-profarmer"[^>]*>)/,
+  '<span class="testata-nome">Riposa <b>Pro</b></span>\n    $1', 'logo Pro Farmer');
+const v = (h.match(/app\.js\?v=([\w]+)/) || [])[1];
+if (!v) throw new Error('genera-pro: non trovo la versione di app.js');
+cambia('<!-- RIPOSA PRO: qui strumenti/genera-pro.mjs aggiunge gli script dei venditori -->',
+  `<script>window.RIPOSA_PRO = true;</script>\n<script src="../assets/profarmer.js?v=${v}"></script>\n<script src="../assets/venditori.js?v=${v}"></script>`,
+  'segnaposto degli script');
+
+h = '<!-- GENERATO da strumenti/genera-pro.mjs a partire da index.html: non modificare qui. -->\n' + h;
+mkdirSync(join(radice, 'pro'), { recursive: true });
+writeFileSync(join(radice, 'pro', 'index.html'), h);
+console.log('pro/index.html aggiornato (script versione ' + v + ')');

@@ -39,6 +39,8 @@ self.addEventListener('install', ev => {
       const base = f.replace(/[^/]*$/, '');
       for (const m of css.matchAll(/url\('?([^')]+)'?\)/g)) file.add(base + m[1]);
     }
+    file.add('pro/');                       // Riposa Pro, l'app dei venditori (dal 24/10/2026)
+    file.add('pro/manifest.webmanifest');
     await Promise.all([...file].map(f => cache.add(f).catch(() => null)));
     await self.skipWaiting();
   })());
@@ -58,16 +60,18 @@ self.addEventListener('fetch', ev => {
   if (url.origin !== location.origin) return;   // Supabase e ogni altro sito: sempre in rete
 
   // La pagina: prima la rete (così si vede subito la versione nuova), senza rete la copia.
+  // Due pagine: quella dell'allevatore ('./') e Riposa Pro ('pro/').
   if (req.mode === 'navigate') {
+    const pagina = url.pathname.startsWith('/pro') ? 'pro/' : './';
     ev.respondWith((async () => {
       try {
         const r = await fetch(req);
-        if (url.pathname === '/' || url.pathname.endsWith('/index.html')) {
-          (await caches.open(CACHE)).put('./', r.clone());
+        if (r.ok && /^\/(pro\/?)?(index\.html)?$/.test(url.pathname)) {
+          (await caches.open(CACHE)).put(pagina, r.clone());
         }
         return r;
       } catch (e) {
-        return (await caches.match(req)) || (await caches.match('./'));
+        return (await caches.match(req)) || (await caches.match(pagina));
       }
     })());
     return;
@@ -95,13 +99,13 @@ self.addEventListener('push', ev => {
     icon: 'assets/icone/icona-192.png',
     badge: 'assets/icone/favicon-32.png',
     tag: d.tag || undefined,          // lo stesso ordine non si accumula: l'ultima notizia sostituisce la prima
-    data: { link: d.link || '/#venditori' }
+    data: { link: d.link || '/pro/' }
   }));
 });
 
 self.addEventListener('notificationclick', ev => {
   ev.notification.close();
-  const link = new URL((ev.notification.data && ev.notification.data.link) || '/#venditori', self.location.origin).href;
+  const link = new URL((ev.notification.data && ev.notification.data.link) || '/pro/', self.location.origin).href;
   ev.waitUntil((async () => {
     const aperte = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of aperte) {
