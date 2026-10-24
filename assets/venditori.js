@@ -510,6 +510,9 @@ const Venditori = (() => {
       sincronizzaNotifiche();
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
+      // le scorciatoie dell'app (tieni premuta l'icona) e i link delle notifiche
+      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo' }[location.hash];
+      if (vai) { history.replaceState(null, '', location.pathname); apri(vai); return; }
       apri(scheda);
     }).catch(() => {
       /* Senza rete l'accesso NON si perde: appena torna il segnale basta
@@ -604,7 +607,7 @@ const Venditori = (() => {
     const tessere = [
       ['diretto', 'Nuovo ordine', 'Scegli il cliente e le quantità', true],
       ['calcolo', 'Calcola una stalla', 'Prodotto e quantità, poi l’ordine', false],
-      ['clienti', 'Clienti', nC ? `${nC} ${nC === 1 ? 'cliente' : 'clienti'}` : 'Aggiungi il primo', false],
+      ['clienti', cond.ruolo === 'interno' ? 'Clienti diretti' : 'Clienti', nC ? `${nC} ${nC === 1 ? 'cliente' : 'clienti'}` : 'Aggiungi il primo', false],
       ['ordini', 'Ordini', nO ? `${nO} ${nO === 1 ? 'ordine' : 'ordini'} · l’ultimo il ${ultimo.data}` : 'Ancora nessun ordine', false],
       ['soldi', nomeSoldi(), soldi, false],
       ['materiali', 'Materiali', nM ? `${nM} ${nM === 1 ? 'documento' : 'documenti'} da mandare ai clienti` : 'Per ora nessuno', false],
@@ -671,6 +674,7 @@ const Venditori = (() => {
       p.querySelectorAll('[data-apri]').forEach(b => b.addEventListener('click', () => apri(b.dataset.apri)));
     }
     p.querySelectorAll('[data-riordina]').forEach(b => b.addEventListener('click', () => riordina(b.dataset.riordina)));
+    agganciaCerca(p);
     if (id === 'clienti') agganciaClienti();
     if (id === 'materiali') agganciaMateriali();
     if (id === 'profilo') agganciaNotifiche();
@@ -751,6 +755,24 @@ const Venditori = (() => {
     if (PRO) mostraAccesso();
   }
 
+  /* La ricerca di una lista lunga: filtra mentre si scrive, senza ridisegnare.
+     Compare da 6 voci in su (24/10/2026). */
+  function casellaCerca(id, segnaposto) {
+    return `<input type="search" class="pf-cerca" data-lista="${id}" placeholder="${esc(segnaposto)}" aria-label="${esc(segnaposto)}" autocomplete="off">`
+      + `<p class="aiuto pf-cerca-vuoto" data-vuoto="${id}" hidden>Nessun risultato.</p>`;
+  }
+  function agganciaCerca(p) {
+    const normale = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    p.querySelectorAll('.pf-cerca').forEach(c => c.addEventListener('input', () => {
+      const q = normale(c.value.trim());
+      let visti = 0;
+      p.querySelectorAll(`[data-lista-di="${c.dataset.lista}"] > li`).forEach(li => {
+        const ok = !q || normale(li.dataset.cerca).includes(q); li.hidden = !ok; if (ok) visti++;
+      });
+      p.querySelector(`[data-vuoto="${c.dataset.lista}"]`).hidden = visti > 0;
+    }));
+  }
+
   /* ---------------------------------------------------------------- clienti */
 
   function ordiniDelCliente(id) {
@@ -758,18 +780,19 @@ const Venditori = (() => {
   }
 
   function disegnaClienti() {
-    let h = '<div class="blocco"><div class="pannello-testa"><h3>I tuoi clienti</h3>'
+    let h = `<div class="blocco"><div class="pannello-testa"><h3>${cond.ruolo === 'interno' ? 'Clienti diretti di Pro Farmer' : 'I tuoi clienti'}</h3>`
       + '<button type="button" class="bottone" id="cl-nuovo">Aggiungi cliente</button></div>';
     h += '<div id="cl-modulo"></div>';
     if (!area.clienti.length) {
       h += '<p class="aiuto">Non hai ancora clienti. Aggiungili qui, oppure si aggiungono da soli quando mandi un ordine '
         + 'con un cliente nuovo.</p>';
     }
-    h += '<ul class="lista-clienti">';
+    if (area.clienti.length > 5) h += casellaCerca('v-clienti', 'Cerca cliente, P.IVA, comune');
+    h += '<ul class="lista-clienti" data-lista-di="v-clienti">';
     area.clienti.slice().sort((a, b) => a.ragione.localeCompare(b.ragione, 'it')).forEach(c => {
       const ord = ordiniDelCliente(c.id);
       const luogo = [c.comune, c.provincia].filter(Boolean).join(' · ');
-      h += '<li class="cliente">';
+      h += `<li class="cliente" data-cerca="${esc([c.ragione, c.piva, c.comune, c.provincia, c.referente].join(' '))}">`;
       h += `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong>${luogo ? `<span>${esc(luogo)}</span>` : ''}</div>`;
       h += '<p class="cliente-dati">';
       if (c.piva) h += `P.IVA ${esc(c.piva)} · `;
@@ -870,9 +893,10 @@ const Venditori = (() => {
     }
     h += '<p class="aiuto">Lo stato lo aggiorna Pro Farmer: inviato, confermato, consegnato, pagato.</p>';
     const etSoldi = cond.ruolo === 'agente' ? 'provvigione' : cond.ruolo === 'rivenditore' ? 'margine' : '';
-    h += '<ul class="lista-ordini">';
+    if (area.ordini.length > 5) h += casellaCerca('v-ordini', 'Cerca cliente o numero');
+    h += '<ul class="lista-ordini" data-lista-di="v-ordini">';
     area.ordini.forEach(o => {
-      h += `<li class="ordine${o.stato === 'annullato' ? ' annullato' : ''}">`
+      h += `<li class="ordine${o.stato === 'annullato' ? ' annullato' : ''}" data-cerca="${esc([o.cliente, o.numero, STATI[o.stato]].join(' '))}">`
         + `<div class="ordine-testa"><strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
         + `<span class="stato stato-${esc(o.stato)}">${esc(STATI[o.stato] || o.stato)}</span></div>`
         + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t${o.annuale ? ' · fornitura annuale' : ''}</p>`

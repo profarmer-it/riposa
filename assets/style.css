@@ -963,3 +963,18 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 .tua-stalla-nota{margin-top:12px !important;font-size:14.5px !important;color:#B9CBE0 !important}
 @media (max-width:360px){ .tua-stalla-scorta{grid-template-columns:1fr} }
 .tua-stalla-scorta label{justify-content:flex-end}
+
+/* ------------------------------------------- Gestione: filtri e ricerche (24/10/2026) */
+.pf-filtri{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:14px 0 4px}
+@media (min-width:640px){ .pf-filtri{grid-template-columns:minmax(0,220px) minmax(0,1fr);align-items:end} }
+.pf-filtri label{display:flex;flex-direction:column;gap:5px;font-size:13.5px;font-weight:600;color:var(--testo-2)}
+.pf-filtri .pf-select{width:100%}
+.pf-cerca{width:100%;min-height:46px;padding:10px 14px 10px 40px;font:inherit;font-size:16px;color:var(--testo);
+  background:var(--bianco) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2345556B' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E") 13px 50%/18px no-repeat;
+  border:1.5px solid var(--bordo);border-radius:12px}
+.pf-cerca:focus{outline:0;border-color:var(--blu);box-shadow:0 0 0 3px rgba(47,134,224,.14)}
+.blocco > .pf-cerca{margin:12px 0 4px}
+.pf-cerca-vuoto{margin:10px 0 0}
+.pf-proprietario{font-size:13px;padding:2px 10px;border-radius:99px;background:var(--crema-2);color:var(--testo-2);white-space:nowrap}
+.pf-proprietario.diretto{background:var(--notte, #0E2340);color:var(--oro-chiaro, #F4CF7A)}
+.bottone:disabled{opacity:.45;cursor:default}
