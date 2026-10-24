@@ -753,3 +753,34 @@ body.app-pro main{padding-top:24px}
 .ordine-dati{margin:2px 0 0;font-size:14px;color:var(--testo-2)}
 .ordine-dati b{color:var(--testo);font-weight:600}
 .lista-ordini .riordina-qui{margin-top:10px}
+
+/* ------------------------------------- Riposa Pro: i suoi colori, 24/10/2026
+   Simile a Riposa, non identica (Giulio): stessi caratteri e stessa struttura,
+   ma fondo blu-grigio freddo invece del crema, blu più scuri e il richiamo
+   oro dell'icona. Cambiano solo i colori: le regole sopra restano quelle. */
+body.app-pro{
+  --notte:#071426;
+  --navy:#0B1D38;
+  --navy-2:#15305A;
+  --crema:#E4EAF2;          /* il fondo della pagina */
+  --crema-2:#D2DBE7;
+  --bordo:#BFCBDB;
+  --testo:#0D1B30;
+  --testo-2:#3E4F66;
+  --oro:#E3B354;
+  --oro-chiaro:#F4CF7A;
+}
+.app-pro .testata,.app-pro .pedana{background:var(--notte)}
+.app-pro .testata-nome b{color:var(--oro-chiaro)}
+.app-pro .pedana-firma{color:var(--oro-chiaro)}
+.app-pro .tessera-primaria{background:linear-gradient(135deg,#15305A 0%,var(--notte) 100%);border-color:var(--notte)}
+.app-pro .tessera-primaria .tessera-icona{stroke:var(--oro-chiaro)}
+.app-pro .account-iniziali{background:linear-gradient(135deg,#15305A,var(--notte));color:var(--oro-chiaro)}
+.app-pro .bottone:not(.bottone-fantasma){background:var(--navy)}
+@media (hover:hover) and (pointer:fine){ .app-pro .bottone:not(.bottone-fantasma):hover{background:var(--navy-2)} }
+.app-pro .esito,.app-pro .ragiona{background:var(--notte)}
+.app-pro .numero-cella{background:var(--notte)}
+.app-pro .venditori-schede button[aria-selected="true"],.app-pro .pf-scheda.attiva{background:var(--notte);border-color:var(--notte)}
+/* la fascia blu notte della testata scende dietro la scheda dell'account */
+body.app-pro{--crema:#D9E2ED;background:linear-gradient(var(--notte) 0, var(--notte) 132px, var(--crema) 132px) no-repeat, var(--crema)}
+.app-pro .scheda,.app-pro .blocco,.app-pro .tessera{border-color:#C9D4E2}

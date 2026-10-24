@@ -17,7 +17,7 @@
    serve buttare via tutto.
    ========================================================================== */
 
-const CACHE = 'riposa-v1';
+const CACHE = 'riposa-v2';   // v2: icone nuove (24/10/2026)
 
 /* All'installazione legge la pagina e mette da parte tutto quello che usa
    (stili, script, immagini, font citati nel CSS). Così la lista dei file non
