@@ -630,6 +630,12 @@ const Venditori = (() => {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
         + `erano valide fino al ${esc(cond.validoFino)} e sono da aggiornare con Pro Farmer. Intanto restano quelle.</span></div>`;
     }
+    const festeggiati = area.clienti.filter(compieOggi);
+    if (festeggiati.length) {
+      h += '<button type="button" class="avviso avviso-compleanni" data-apri="clienti"><span class="avviso-icona">🎂</span><span><strong>Oggi è il compleanno di '
+        + festeggiati.map(c => esc(c.referente || c.ragione) + (c.referente ? ` (${esc(c.ragione)})` : '')).join(', ')
+        + '.</strong> Tocca per fargli gli auguri.</span></button>';
+    }
     const inst = riquadroInstalla();
     h += inst || riquadroNotifiche();
     // le tessere entrano una dopo l'altra solo la prima volta, all'accesso:
@@ -1106,6 +1112,14 @@ const Venditori = (() => {
           + (c.lat && c.lng ? ` · <a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Portami qui</a>` : '')
           + '</p>'
         : '<p class="cliente-indirizzo cliente-indirizzo-manca">Indirizzo da completare: tocca Modifica.</p>';
+      if (c.compleanno_giorno) {
+        const oggi = compieOggi(c), wa = oggi ? whatsappAuguri(c) : '';
+        h += oggi
+          ? `<div class="cliente-compleanno oggi"><strong>🎂 Oggi compie gli anni${c.referente ? ' ' + esc(c.referente) : ''}: fagli gli auguri!</strong><div class="azioni">`
+            + (wa ? `<a class="bottone" href="${esc(wa)}" target="_blank" rel="noopener">Auguri su WhatsApp</a>` : '')
+            + (c.telefono ? `<a class="bottone bottone-fantasma" href="tel:${esc(c.telefono.replace(/[^\d+]/g, ''))}">Chiama</a>` : '') + '</div></div>'
+          : `<p class="cliente-compleanno">🎂 ${c.compleanno_giorno} ${MESI[c.compleanno_mese - 1]}${c.referente ? ' · ' + esc(c.referente) : ''}</p>`;
+      }
       // l'ultima chiamata di Pro Farmer al cliente: esito, voto e (se condivisa) la nota
       if (c.feedback) {
         const ESITO = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo' };
@@ -1141,6 +1155,25 @@ const Venditori = (() => {
       b.addEventListener('click', () => ordineDiretto(b.dataset.ordina)));
   }
 
+  /* I compleanni dei clienti (25/10/2026): giorno e mese di nascita del
+     referente. Il giorno del compleanno: in home, nella scheda del cliente
+     (chiama o WhatsApp con gli auguri già scritti) e una notifica al mattino. */
+  const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  function compieOggi(c) {
+    if (!c.compleanno_giorno || !c.compleanno_mese) return false;
+    const o = new Date(), g = o.getDate(), m = o.getMonth() + 1;
+    const bisestile = new Date(o.getFullYear(), 1, 29).getMonth() === 1;
+    return c.compleanno_mese === m && (c.compleanno_giorno === g || (c.compleanno_giorno === 29 && m === 2 && g === 28 && !bisestile));
+  }
+  function whatsappAuguri(c) {
+    let n = String(c.telefono || '').replace(/[^\d+]/g, '');
+    if (!n) return '';
+    n = n.startsWith('+') ? n.slice(1) : n.startsWith('00') ? n.slice(2) : '39' + n;
+    const nome = (c.referente || '').split(' ')[0];
+    const testo = `Buon compleanno${nome ? ' ' + nome : ''}! Tanti auguri da ${cond.ruolo === 'interno' ? 'tutta Pro Farmer' : (area.profilo.nome || '').split(' ')[0] + ' e da Pro Farmer'}.`;
+    return `https://wa.me/${n}?text=${encodeURIComponent(testo)}`;
+  }
+
   function moduloCliente(c) {
     const box = document.getElementById('cl-modulo');
     let h = `<form id="form-cliente" class="contatti cliente-modulo" novalidate><h4 class="pieno">${c ? 'Modifica cliente' : 'Nuovo cliente'}</h4>`;
@@ -1149,6 +1182,12 @@ const Venditori = (() => {
       + '<select id="cl-cuccetta" name="cuccetta">'
       + Object.entries(CUCCETTE).map(([v, et]) => `<option value="${v}"${c && c.cuccetta === v ? ' selected' : ''}>${esc(et)}</option>`).join('')
       + '</select></div>';
+    h += '<div class="campo pieno"><label for="cl-cg">Compleanno del referente <span class="opzionale">facoltativo</span></label>'
+      + '<div class="compleanno-scelta"><select id="cl-cg" name="compleanno_giorno" aria-label="Giorno"><option value="">Giorno</option>'
+      + Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}"${c && c.compleanno_giorno === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')
+      + '</select><select name="compleanno_mese" aria-label="Mese"><option value="">Mese</option>'
+      + MESI.map((m, i) => `<option value="${i + 1}"${c && c.compleanno_mese === i + 1 ? ' selected' : ''}>${m}</option>`).join('')
+      + '</select></div><p class="aiuto">Basta giorno e mese: quel giorno ti ricordiamo di fargli gli auguri.</p></div>';
     h += '<div class="campo pieno"><label for="cl-note">Note <span class="opzionale">facoltativo</span></label>'
       + `<textarea id="cl-note" name="note" rows="3">${esc(c ? c.note : '')}</textarea></div>`;
     h += '<p id="cl-errore" class="errore pieno" hidden></p>';
@@ -1163,7 +1202,10 @@ const Venditori = (() => {
       Object.keys(d).forEach(k => { d[k] = String(d[k]).trim(); });
       d.sdi = (d.sdi || '').toUpperCase();
       const err = document.getElementById('cl-errore');
-      const manca = validaCliente(d);
+      const manca = validaCliente(d)
+        || (!d.compleanno_giorno !== !d.compleanno_mese ? 'Per il compleanno servono giorno e mese.' : '')
+        || (d.compleanno_giorno && Number(d.compleanno_giorno) > [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][Number(d.compleanno_mese) - 1]
+          ? 'Quel giorno in quel mese non esiste.' : '');
       if (manca) { err.textContent = manca; err.hidden = false; return; }
       const b = ev.currentTarget.querySelector('button[type=submit]');
       b.disabled = true; b.textContent = 'Salvo…';
@@ -1171,6 +1213,7 @@ const Venditori = (() => {
       const riga = {};
       Object.keys(d).forEach(k => { riga[k] = d[k] === '' ? null : d[k]; });
       if (riga.capi !== null) riga.capi = Math.max(0, Math.floor(Number(riga.capi) || 0));
+      ['compleanno_giorno', 'compleanno_mese'].forEach(k => { if (riga[k] !== null) riga[k] = Number(riga[k]); });
       const q = c ? sb.from('clienti').update(riga).eq('id', c.id) : sb.from('clienti').insert(riga);
       q.then(({ error }) => {
         if (error) throw Object.assign(new Error(error.message), { delDatabase: error.code === 'P0001' });

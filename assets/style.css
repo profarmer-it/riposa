@@ -1198,3 +1198,16 @@ img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo
 .pf-condividi{margin-top:10px}
 .pf-avviso-venditore{margin:4px 0 0}
 .nota-riservata{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:#FFF6E5;color:#9A5B00;font-size:12.5px}
+
+/* compleanni e chiamate ai diretti (25/10/2026) */
+.compleanno-scelta{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}
+.compleanno-scelta select{width:100%;min-height:48px;padding:10px 12px;font:inherit;font-size:16px;border:1.5px solid var(--bordo);border-radius:10px;background:var(--bianco)}
+.cliente-compleanno{margin:6px 0 0;font-size:14.5px;color:var(--testo-2)}
+.cliente-compleanno.oggi{margin:8px 0 0;padding:12px;border-radius:10px;background:#FFF0F6;color:#8A1F52}
+.cliente-compleanno.oggi .azioni{margin-top:10px;grid-template-columns:1fr 1fr}
+.cliente-compleanno.oggi .bottone{text-decoration:none;min-height:44px;display:flex;align-items:center;justify-content:center}
+.avviso-compleanni{width:100%;text-align:left;font:inherit;cursor:pointer;background:#FFF0F6;color:#8A1F52;border:0;margin-bottom:14px}
+.avviso-compleanni strong{color:#8A1F52}
+.pf-proprietario.cr-oggi{background:#FFF0F6;color:#8A1F52;font-weight:700}
+.esiti-diretto{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+.pf-proprietario.esito-fatta{background:#E3EEFB;color:var(--navy)}

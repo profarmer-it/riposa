@@ -22,7 +22,7 @@ const ProFarmer = (() => {
   let box = null;
   let sezione = 'cruscotto';   // dal 24/10/2026 si apre sul cruscotto
   let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
-  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [], diamanti: null, premi: [], traguardi: [], chiamate: [], chiamateFatte: [] };
+  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [], diamanti: null, premi: [], traguardi: [], chiamate: [], chiamateFatte: [], compleanni: [] };
   let filtroLead = 'nuovo';
   const leadAperti = new Set();
   let filtroStato = 'aperti';
@@ -66,14 +66,15 @@ const ProFarmer = (() => {
       sb.from('premi').select('*').order('posizione').order('costo'),
       sb.from('traguardi').select('*').order('posizione'),
       sb.rpc('chiamate_da_fare'),
-      sb.rpc('chiamate_fatte')
-    ]).then(([o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf]) => {
-      const err = [o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf].find(x => x.error);
+      sb.rpc('chiamate_fatte'),
+      sb.rpc('compleanni_prossimi')
+    ]).then(([o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf, co]) => {
+      const err = [o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
                allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [],
                diamanti: di.data || { agenti: [], movimenti: [], richieste: [] }, premi: pr.data || [], traguardi: tr.data || [],
-               chiamate: ch.data || [], chiamateFatte: cf.data || [] };
+               chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [] };
     });
   }
 
@@ -356,6 +357,24 @@ const ProFarmer = (() => {
     });
     h += '</div></div>';
 
+    // i compleanni di oggi e della settimana: un messaggio di auguri
+    if (dati.compleanni.length) {
+      h += '<div class="blocco"><h3>🎂 Compleanni</h3><ul class="lista-clienti">';
+      dati.compleanni.forEach(x => {
+        const quando = x.fra === 0 ? 'oggi' : x.fra === 1 ? 'domani' : `fra ${x.fra} giorni`;
+        let tel = String(x.telefono || '').replace(/[^\d+]/g, '');
+        const wa = tel ? 'https://wa.me/' + (tel.startsWith('+') ? tel.slice(1) : tel.startsWith('00') ? tel.slice(2) : '39' + tel)
+          + '?text=' + encodeURIComponent(`Buon compleanno${x.referente ? ' ' + String(x.referente).split(' ')[0] : ''}! Tanti auguri da tutta Pro Farmer.`) : '';
+        h += `<li><div class="cliente-testa"><strong>${esc(x.referente || x.ragione)}</strong><span class="pf-proprietario${x.fra === 0 ? ' cr-oggi' : ''}">${quando}</span></div>`
+          + `<p class="cliente-dati">${esc(x.referente ? x.ragione + ' · ' : '')}${esc(x.ruolo === 'interno' ? 'cliente diretto' : 'cliente di ' + x.venditore)}</p>`
+          + (x.fra === 0 && x.ruolo === 'interno' && wa ? `<div class="azioni pf-azioni"><a class="bottone" href="${esc(wa)}" target="_blank" rel="noopener">Auguri su WhatsApp</a>`
+            + `<a class="bottone bottone-fantasma" href="tel:${esc(tel)}">Chiama</a></div>` : '')
+          + (x.fra === 0 && x.ruolo !== 'interno' ? `<p class="aiuto">Gli auguri li fa ${esc(x.venditore)}: ha ricevuto il promemoria.</p>` : '')
+          + '</li>';
+      });
+      h += '</ul></div>';
+    }
+
     // il mese
     h += `<div class="blocco"><h3>${esc(nomeMese(oggiD).replace(/^./, c => c.toUpperCase()))}</h3><dl class="numeri soldi">`
       + `<div class="numero-cella"><dt>Ordini</dt><dd>${delMese.length}<small>${esc(variazione(delMese.length, mesePrima.length).replace(/^ · /, '') || 'nel mese')}</small></dd></div>`
@@ -545,11 +564,15 @@ const ProFarmer = (() => {
      Chiamata e valutazione: esito e voto. Positivo per un cliente di un agente
      = i diamanti del «Feedback positivo» all'agente. «Non raggiunto» la
      lascia da fare (e conta i tentativi). */
-  const ESITI = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo', non_raggiunto: 'Non raggiunto' };
+  const ESITI = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo', non_raggiunto: 'Non raggiunto', fatta: 'Fatta' };
+  // i clienti diretti: basta farsi sentire, niente valutazione (Giulio, 25/10/2026)
+  const ESITI_DIRETTI = { fatta: 'Fatta', non_raggiunto: 'Non raggiunto' };
+  const ESITI_VENDITORI = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo', non_raggiunto: 'Non raggiunto' };
   function chiamate(corpo) {
     let h = '<div class="blocco"><h3>Chiamate di feedback da fare</h3>'
       + '<p class="aiuto">Dopo il 1° ordine consegnato di un cliente, dopo il 3° e poi ogni due ordini (5°, 7°…): una telefonata per sentire com’è andata. '
       + 'Con esito positivo, se il cliente è di un agente, l’agente vince i suoi diamanti.</p>';
+    h += '<p class="aiuto">Anche i <strong>clienti diretti</strong> sono in calendario: niente voto e niente diamanti, conta farsi sentire.</p>';
     if (!dati.chiamate.length) h += '<p class="aiuto"><strong>Nessuna chiamata da fare.</strong></p>';
     h += '<ul class="lista-clienti chiamate">';
     dati.chiamate.forEach(x => {
@@ -559,12 +582,12 @@ const ProFarmer = (() => {
         + `<p class="cliente-dati">${esc([x.referente, [x.comune, x.provincia].filter(Boolean).join(' '), x.ruolo === 'interno' ? 'cliente diretto' : 'cliente di ' + x.venditore].filter(Boolean).join(' · '))}`
         + ` · ${x.ordini} ordini, l’ultimo il ${esc(dataIt(x.ultimo))}${x.tentativi ? ` · ${x.tentativi} ${x.tentativi === 1 ? 'tentativo' : 'tentativi'} a vuoto` : ''}</p>`
         + (tel ? `<a class="bottone chiama-cliente" href="tel:${esc(tel)}">Chiama ${esc(x.telefono)}</a>` : '<p class="cliente-dati">Senza telefono.</p>')
-        + '<fieldset class="esiti"><legend>Com’è andata?</legend>'
-        + Object.entries(ESITI).map(([k, n]) => `<label class="esito-scelta esito-${k}"><input type="radio" name="esito" value="${k}"><span>${n}</span></label>`).join('')
+        + `<fieldset class="esiti${x.ruolo === 'interno' ? ' esiti-diretto' : ''}"><legend>${x.ruolo === 'interno' ? 'Ti sei fatto sentire?' : 'Com’è andata?'}</legend>`
+        + Object.entries(x.ruolo === 'interno' ? ESITI_DIRETTI : ESITI_VENDITORI).map(([k, n]) => `<label class="esito-scelta esito-${k}"><input type="radio" name="esito" value="${k}"><span>${n}</span></label>`).join('')
         + '</fieldset>'
-        + '<fieldset class="voto"><legend>Voto del cliente</legend>'
-        + [1, 2, 3, 4, 5].map(n => `<label><input type="radio" name="voto" value="${n}"><span aria-label="${n} su 5">${n}</span></label>`).join('')
-        + '</fieldset>'
+        + (x.ruolo === 'interno' ? '' : '<fieldset class="voto"><legend>Voto del cliente</legend>'
+          + [1, 2, 3, 4, 5].map(n => `<label><input type="radio" name="voto" value="${n}"><span aria-label="${n} su 5">${n}</span></label>`).join('')
+          + '</fieldset>')
         + '<label class="pf-nota">Nota <small>(facoltativa)</small><textarea name="note" rows="2" maxlength="500"></textarea></label>'
         + (x.ruolo === 'interno' ? ''
           : `<label class="pf-spunta pf-condividi"><input type="checkbox" name="condividi" checked> Mostra la nota a ${esc(x.venditore)}</label>`
@@ -581,15 +604,15 @@ const ProFarmer = (() => {
     corpo.innerHTML = h;
     corpo.querySelectorAll('.pf-chiamata').forEach(f => {
       // con «non raggiunto» il voto non serve
-      f.addEventListener('change', () => { f.querySelector('.voto').hidden = (new FormData(f).get('esito') === 'non_raggiunto'); });
+      f.addEventListener('change', () => { const v = f.querySelector('.voto'); if (v) v.hidden = (new FormData(f).get('esito') === 'non_raggiunto'); });
       f.addEventListener('submit', ev => {
         ev.preventDefault();
         const d = new FormData(f), err = f.querySelector('.errore');
         const esito = d.get('esito'), voto = d.get('voto') ? Number(d.get('voto')) : null;
         if (!esito) { err.textContent = 'Scegli com’è andata.'; err.hidden = false; return; }
-        if (esito !== 'non_raggiunto' && !voto) { err.textContent = 'Dai il voto del cliente, da 1 a 5.'; err.hidden = false; return; }
+        if (['positivo', 'neutro', 'negativo'].includes(esito) && !voto) { err.textContent = 'Dai il voto del cliente, da 1 a 5.'; err.hidden = false; return; }
         salva(f.querySelector('button[type=submit]'), () => sb.rpc('registra_chiamata', {
-          p_cliente: f.dataset.cliente, p_dopo_ordine: Number(f.dataset.dopo), p_esito: esito, p_voto: esito === 'non_raggiunto' ? null : voto,
+          p_cliente: f.dataset.cliente, p_dopo_ordine: Number(f.dataset.dopo), p_esito: esito, p_voto: ['positivo', 'neutro', 'negativo'].includes(esito) ? voto : null,
           p_note: String(d.get('note') || '').trim() || null, p_condividi: d.get('condividi') === 'on' }),
           esito === 'non_raggiunto' ? `${f.dataset.ragione}: da richiamare` : `Chiamata a ${f.dataset.ragione} registrata`);
       });
