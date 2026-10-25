@@ -511,7 +511,7 @@ const Venditori = (() => {
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       // le scorciatoie dell'app (tieni premuta l'icona) e i link delle notifiche
-      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo',
+      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa',
                     '#gestione': cond.ruolo === 'interno' ? 'gestione' : null }[location.hash];
       if (vai) { history.replaceState(null, '', location.pathname); apri(vai); return; }
       apri(scheda);
@@ -553,6 +553,7 @@ const Venditori = (() => {
     calcolo: '<path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h2M12 18h4"/>',
     diretto: '<path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
     clienti: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 14.5c1.8.8 3 2.6 3 4.5"/>',
+    mappa: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
     ordini: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
     soldi: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.5c-.7-.9-1.8-1.5-3-1.5-2.2 0-4 2.2-4 5s1.8 5 4 5c1.2 0 2.3-.6 3-1.5M6.5 11h6M6.5 13.5h6"/>',
     materiali: '<path d="M4 6.5 12 3l8 3.5-8 3.5z"/><path d="M4 11.5 12 15l8-3.5M4 16.5 12 20l8-3.5"/>',
@@ -609,6 +610,7 @@ const Venditori = (() => {
       ['diretto', 'Nuovo ordine', 'Scegli il cliente e le quantità', true],
       ['calcolo', 'Calcola una stalla', 'Prodotto e quantità, poi l’ordine', false],
       ['clienti', cond.ruolo === 'interno' ? 'Clienti diretti' : 'Clienti', nC ? `${nC} ${nC === 1 ? 'cliente' : 'clienti'}` : 'Aggiungi il primo', false],
+      ['mappa', 'Mappa clienti', nC ? 'Dove sono, e il navigatore per arrivarci' : 'I clienti compaiono qui', false],
       ['ordini', 'Ordini', nO ? `${nO} ${nO === 1 ? 'ordine' : 'ordini'} · l’ultimo il ${ultimo.data}` : 'Ancora nessun ordine', false],
       ['soldi', nomeSoldi(), soldi, false],
       ['materiali', 'Materiali', nM ? `${nM} ${nM === 1 ? 'documento' : 'documenti'} da mandare ai clienti` : 'Per ora nessuno', false],
@@ -666,7 +668,7 @@ const Venditori = (() => {
       return;
     }
     const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
-                      materiali: disegnaMateriali, profilo: disegnaProfilo }[id];
+                      materiali: disegnaMateriali, profilo: disegnaProfilo, mappa: disegnaMappa }[id];
     p.innerHTML = disegna();
     if (id !== 'home') entra(p);
     if (id === 'home') {
@@ -677,6 +679,7 @@ const Venditori = (() => {
     p.querySelectorAll('[data-riordina]').forEach(b => b.addEventListener('click', () => riordina(b.dataset.riordina)));
     agganciaCerca(p);
     if (id === 'clienti') agganciaClienti();
+    if (id === 'mappa') avviaMappa();
     if (id === 'materiali') agganciaMateriali();
     if (id === 'profilo') agganciaNotifiche();
   }
@@ -772,6 +775,125 @@ const Venditori = (() => {
       });
       p.querySelector(`[data-vuoto="${c.dataset.lista}"]`).hidden = visti > 0;
     }));
+  }
+
+  /* ------------------------------------------------------------------ mappa
+     Dal 25/10/2026. I clienti sulla cartina (OpenStreetMap). La posizione si
+     cerca dall'indirizzo una volta sola (Nominatim, un indirizzo al secondo
+     come chiede il servizio) e si salva nel cliente: le volte dopo la mappa
+     è subito pronta. Toccando un cliente: il navigatore (Google Maps, Waze,
+     e Mappe su iPhone) e il telefono. Senza rete la mappa non c'è. */
+  const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+  const nonTrovati = new Set();   // in questa visita non li cerchiamo di nuovo
+  let mappa = null;
+
+  function caricaLeaflet() {
+    if (window.L) return Promise.resolve();
+    return new Promise((ok, ko) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.css';
+      document.head.appendChild(css);
+      const js = document.createElement('script');
+      js.src = LEAFLET + 'leaflet.js'; js.onload = ok; js.onerror = ko;
+      document.head.appendChild(js);
+    });
+  }
+
+  function disegnaMappa() {
+    return '<div class="blocco blocco-mappa"><div class="pannello-testa"><h3>Mappa clienti</h3>'
+      + '<button type="button" class="bottone bottone-fantasma mappa-io" id="m-io">Dove sono io</button></div>'
+      + '<p class="aiuto" id="m-stato">Carico la mappa…</p>'
+      + '<div id="v-mappa" class="v-mappa" aria-label="Mappa dei clienti"></div>'
+      + '<div id="m-senza"></div></div>';
+  }
+
+  function indirizzoDi(c) { return [c.indirizzo, c.comune, c.provincia].filter(Boolean).join(', '); }
+
+  function popupCliente(c) {
+    const dest = `${c.lat},${c.lng}`;
+    const tel = c.telefono ? c.telefono.replace(/[^\d+]/g, '') : '';
+    return `<div class="m-popup"><strong>${esc(c.ragione)}</strong>`
+      + `<span>${esc(indirizzoDi(c))}</span>`
+      + (c.posizione === 'comune' ? '<em>Posizione indicativa: solo il comune. Completa l’indirizzo per quella esatta.</em>' : '')
+      + '<div class="m-azioni">'
+      + `<a class="bottone" href="https://www.google.com/maps/dir/?api=1&destination=${dest}" target="_blank" rel="noopener">Google Maps</a>`
+      + `<a class="bottone bottone-fantasma" href="https://waze.com/ul?ll=${dest}&navigate=yes" target="_blank" rel="noopener">Waze</a>`
+      + (suIPhone() ? `<a class="bottone bottone-fantasma" href="https://maps.apple.com/?daddr=${dest}" target="_blank" rel="noopener">Mappe</a>` : '')
+      + (tel ? `<a class="bottone bottone-fantasma" href="tel:${esc(tel)}">Chiama</a>` : '')
+      + '</div></div>';
+  }
+
+  function cercaPosizione(c) {
+    const prova = q => fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=it&accept-language=it&q='
+      + encodeURIComponent(q)).then(r => r.ok ? r.json() : []).then(j => j && j[0] ? { lat: +j[0].lat, lng: +j[0].lon } : null);
+    const pieno = [c.indirizzo, c.comune, c.provincia, 'Italia'].filter(Boolean).join(', ');
+    const soloComune = c.comune ? [c.comune, c.provincia, 'Italia'].filter(Boolean).join(', ') : '';
+    return (c.indirizzo ? prova(pieno) : Promise.resolve(null)).then(x => {
+      if (x) return { ...x, posizione: 'indirizzo' };
+      if (!soloComune) return null;
+      return new Promise(ok => setTimeout(ok, 1100)).then(() => prova(soloComune)).then(y => y ? { ...y, posizione: 'comune' } : null);
+    });
+  }
+
+  function aggiungiSegnaposto(c) {
+    const icona = L.divIcon({ className: 'm-segno' + (c.posizione === 'comune' ? ' m-indicativo' : ''), iconSize: [22, 22], iconAnchor: [11, 11] });
+    L.marker([c.lat, c.lng], { icon: icona, title: c.ragione }).addTo(mappa).bindPopup(popupCliente(c), { maxWidth: 280 });
+  }
+
+  function avviaMappa() {
+    const stato = document.getElementById('m-stato');
+    if (navigator.onLine === false) { stato.textContent = 'Sei senza rete: la mappa si carica quando torna il segnale.'; return; }
+    caricaLeaflet().then(() => {
+      const el = document.getElementById('v-mappa');
+      if (!el) return;
+      mappa = L.map(el, { scrollWheelZoom: false, zoomControl: false }).setView([45.2, 9.9], 8);
+      L.control.zoom({ position: 'bottomright' }).addTo(mappa);   // in alto lascia spazio ai cartellini   // la pianura padana, finché non ci sono clienti
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(mappa);
+      const conPos = area.clienti.filter(c => c.lat && c.lng);
+      conPos.forEach(aggiungiSegnaposto);
+      const inquadra = () => {
+        const tutti = area.clienti.filter(c => c.lat && c.lng);
+        if (tutti.length) mappa.fitBounds(tutti.map(c => [c.lat, c.lng]), { padding: [30, 30], maxZoom: 13 });
+      };
+      inquadra();
+      document.getElementById('m-io').addEventListener('click', () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(p => {
+          L.circleMarker([p.coords.latitude, p.coords.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#2F86E0', fillOpacity: 1 })
+            .addTo(mappa).bindTooltip('Sei qui');
+          mappa.setView([p.coords.latitude, p.coords.longitude], 11);
+        }, () => { stato.textContent = 'Non ho il permesso di sapere dove sei: lo dai nelle impostazioni del telefono.'; });
+      });
+      // la posizione di chi non ce l'ha ancora: una ricerca al secondo
+      const daCercare = area.clienti.filter(c => !(c.lat && c.lng) && !nonTrovati.has(c.id) && (c.indirizzo || c.comune));
+      const riassunto = () => {
+        const n = area.clienti.filter(c => c.lat && c.lng).length;
+        stato.textContent = area.clienti.length
+          ? `${n} ${n === 1 ? 'cliente' : 'clienti'} sulla mappa su ${area.clienti.length}. Tocca un cliente per il navigatore.`
+          : 'Non hai ancora clienti: compaiono qui quando li aggiungi.';
+        const senza = area.clienti.filter(c => !(c.lat && c.lng));
+        document.getElementById('m-senza').innerHTML = senza.length
+          ? '<p class="aiuto m-senza-titolo">Senza posizione: manca l’indirizzo, o non l’abbiamo trovato. Completalo da Clienti → Modifica.</p><ul class="m-senza">'
+            + senza.map(c => `<li>${esc(c.ragione)}<small>${esc(indirizzoDi(c) || 'nessun indirizzo')}</small></li>`).join('') + '</ul>'
+          : '';
+      };
+      riassunto();
+      let i = 0;
+      const prossimo = () => {
+        if (!document.getElementById('v-mappa') || i >= daCercare.length) { riassunto(); inquadra(); return; }
+        const c = daCercare[i++];
+        stato.textContent = `Cerco la posizione dei clienti: ${i} di ${daCercare.length}…`;
+        cercaPosizione(c).then(pos => {
+          if (!pos) { nonTrovati.add(c.id); return; }
+          Object.assign(c, pos);
+          aggiungiSegnaposto(c);
+          return collegamento().from('clienti').update(pos).eq('id', c.id);
+        }).catch(() => nonTrovati.add(c.id)).then(() => setTimeout(prossimo, 1100));
+      };
+      if (daCercare.length) prossimo();
+    }).catch(() => { stato.textContent = 'La mappa non si carica: controlla la connessione e riprova.'; });
   }
 
   /* ---------------------------------------------------------------- clienti */

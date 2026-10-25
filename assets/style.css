@@ -1051,3 +1051,27 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .cr-legenda i{width:10px;height:10px;border-radius:3px}
 .cr-da-chi{font-size:20px !important}
 .pf-proprietario.cr-tardi{background:#FDECEA;color:#A3261B}
+
+/* ------------------------------------------- la mappa dei clienti (25/10/2026) */
+.v-mappa{height:62vh;min-height:340px;margin-top:12px;border-radius:12px;overflow:hidden;border:1.5px solid var(--bordo);background:#E8EEF4}
+.mappa-io{width:auto;padding:9px 14px;font-size:14px;min-height:44px}
+.m-segno{width:22px;height:22px;border-radius:50%;background:var(--navy);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.app-pro .m-segno{background:linear-gradient(135deg,#F4CF7A,#C9912E)}
+.m-segno.m-indicativo{opacity:.65;border-style:dashed}
+.m-popup{display:flex;flex-direction:column;gap:4px;font:15px/1.4 Inter,sans-serif;color:var(--testo)}
+.m-popup strong{font-size:16px}
+.m-popup span{color:var(--testo-2)}
+.m-popup em{font-size:13px;color:#9A5B00;font-style:normal}
+.m-azioni{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.m-azioni .bottone{padding:9px 10px;font-size:14px;min-height:42px;color:#fff;text-decoration:none}
+.m-azioni .bottone-fantasma{color:var(--navy)}
+.m-azioni .bottone:first-child{grid-column:1 / -1}
+.leaflet-popup-content{margin:14px 16px}
+.m-senza-titolo{margin-top:14px}
+.m-senza{list-style:none;margin:6px 0 0;padding:0}
+.m-senza li{padding:8px 0;border-top:1px solid var(--crema-2);font-weight:600;font-size:15px}
+.m-senza small{display:block;font-weight:400;color:var(--testo-2);font-size:13.5px}
+/* centrata senza dimezzarsi la larghezza: su una riga sola quando ci sta */
+.pf-conferma{left:16px;right:16px;margin:0 auto;width:fit-content;transform:translateY(16px)}
+.pf-conferma.visibile{transform:none}
+@media (prefers-reduced-motion:reduce){ .pf-conferma{transform:none} }
