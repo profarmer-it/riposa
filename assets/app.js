@@ -434,9 +434,9 @@ function testoConfezione(c) {
 
 const PASSI_RAGIONAMENTO = [
   'Leggo le caratteristiche della tua stalla…',
-  'Confronto piùLact e piùLact Pronto…',
+  'Metto a confronto con le scelte di altri allevatori…',
   'Calcolo il dosaggio e la frequenza…',
-  'Verifico i formati e la quantità da ordinare…'
+  'Verifico le disponibilità…'
 ];
 
 /* 4,5 secondi (Giulio, 25/10/2026): i passi si spuntano uno alla volta, la
