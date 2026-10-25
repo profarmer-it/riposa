@@ -566,6 +566,9 @@ const ProFarmer = (() => {
         + [1, 2, 3, 4, 5].map(n => `<label><input type="radio" name="voto" value="${n}"><span aria-label="${n} su 5">${n}</span></label>`).join('')
         + '</fieldset>'
         + '<label class="pf-nota">Nota <small>(facoltativa)</small><textarea name="note" rows="2" maxlength="500"></textarea></label>'
+        + (x.ruolo === 'interno' ? ''
+          : `<label class="pf-spunta pf-condividi"><input type="checkbox" name="condividi" checked> Mostra la nota a ${esc(x.venditore)}</label>`
+            + `<p class="aiuto pf-avviso-venditore">Esito e voto arrivano comunque a ${esc(x.venditore)} con una notifica e nella scheda del cliente.</p>`)
         + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Registra la chiamata</button></div></form></li>';
     });
     h += '</ul></div>';
@@ -573,7 +576,7 @@ const ProFarmer = (() => {
       h += '<div class="blocco"><h3>Chiamate fatte</h3><ul class="lista-clienti">' + dati.chiamateFatte.map(f =>
         `<li><div class="cliente-testa"><strong>${esc(f.ragione)}</strong><span class="pf-proprietario esito-${esc(f.esito)}">${esc(ESITI[f.esito] || f.esito)}${f.voto ? ' · ' + f.voto + '/5' : ''}</span></div>`
         + `<p class="cliente-dati">dopo il ${f.dopo_ordine}° ordine · ${esc(f.venditore || '')} · ${esc(dataIt(f.fatta_il))}${f.da ? ' · ' + esc(f.da) : ''}</p>`
-        + (f.note ? `<p class="cliente-note">${esc(f.note)}</p>` : '') + '</li>').join('') + '</ul></div>';
+        + (f.note ? `<p class="cliente-note">${esc(f.note)}${f.nota_al_venditore === false && f.esito !== 'non_raggiunto' ? ' <small class="nota-riservata">nota non mostrata al venditore</small>' : ''}</p>` : '') + '</li>').join('') + '</ul></div>';
     }
     corpo.innerHTML = h;
     corpo.querySelectorAll('.pf-chiamata').forEach(f => {
@@ -587,7 +590,7 @@ const ProFarmer = (() => {
         if (esito !== 'non_raggiunto' && !voto) { err.textContent = 'Dai il voto del cliente, da 1 a 5.'; err.hidden = false; return; }
         salva(f.querySelector('button[type=submit]'), () => sb.rpc('registra_chiamata', {
           p_cliente: f.dataset.cliente, p_dopo_ordine: Number(f.dataset.dopo), p_esito: esito, p_voto: esito === 'non_raggiunto' ? null : voto,
-          p_note: String(d.get('note') || '').trim() || null }),
+          p_note: String(d.get('note') || '').trim() || null, p_condividi: d.get('condividi') === 'on' }),
           esito === 'non_raggiunto' ? `${f.dataset.ragione}: da richiamare` : `Chiamata a ${f.dataset.ragione} registrata`);
       });
     });

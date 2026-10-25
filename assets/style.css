@@ -1187,3 +1187,14 @@ img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo
 .pf-proprietario.esito-positivo{background:#E2F3E6;color:#14612F}
 .pf-proprietario.esito-negativo{background:#FDECEA;color:#A3261B}
 .pf-proprietario.esito-non_raggiunto{background:#FFF6E5;color:#9A5B00}
+
+/* il feedback di Pro Farmer nella scheda cliente del venditore (25/10/2026) */
+.cliente-feedback{display:flex;flex-direction:column;gap:2px;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--crema);font-size:14.5px}
+.cliente-feedback span{color:var(--testo-2)}
+.cliente-feedback.feedback-positivo{background:#E8F5EC}
+.cliente-feedback.feedback-positivo strong{color:#14612F}
+.cliente-feedback.feedback-negativo{background:#FDECEA}
+.cliente-feedback.feedback-negativo strong{color:#A3261B}
+.pf-condividi{margin-top:10px}
+.pf-avviso-venditore{margin:4px 0 0}
+.nota-riservata{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:#FFF6E5;color:#9A5B00;font-size:12.5px}

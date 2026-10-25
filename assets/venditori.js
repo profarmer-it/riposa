@@ -1106,6 +1106,12 @@ const Venditori = (() => {
           + (c.lat && c.lng ? ` · <a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Portami qui</a>` : '')
           + '</p>'
         : '<p class="cliente-indirizzo cliente-indirizzo-manca">Indirizzo da completare: tocca Modifica.</p>';
+      // l'ultima chiamata di Pro Farmer al cliente: esito, voto e (se condivisa) la nota
+      if (c.feedback) {
+        const ESITO = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo' };
+        h += `<p class="cliente-feedback feedback-${esc(c.feedback.esito)}"><strong>Feedback Pro Farmer: ${esc(ESITO[c.feedback.esito] || c.feedback.esito)} · ${c.feedback.voto}/5</strong>`
+          + `<span>dopo il ${c.feedback.dopo_ordine}° ordine, ${esc(c.feedback.data)}${c.feedback.nota ? ' · «' + esc(c.feedback.nota) + '»' : ''}</span></p>`;
+      }
       h += '<p class="cliente-dati">';
       if (c.piva) h += `P.IVA ${esc(c.piva)} · `;
       if (c.referente) h += `${esc(c.referente)} · `;
