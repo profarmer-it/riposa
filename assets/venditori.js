@@ -622,7 +622,7 @@ const Venditori = (() => {
     if (cond.ruolo === 'agente') {
       const d = area.diamanti;
       tessere.splice(2, 0, ['diamanti', 'I miei diamanti',
-        d ? `${d.saldo} 💎${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, premi e classifica', false, true]);
+        d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, premi e classifica', false, true]);
     }
     if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Cruscotto e gestione', 'Cosa succede oggi: ordini, lead, allevatori, venditori', false, true]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
@@ -796,15 +796,29 @@ const Venditori = (() => {
       area.diamanti = d;
       // in home cambia solo il testo della tessera: niente ridisegno, la pagina non salta
       const t = document.querySelector('[data-apri="diamanti"] span');
-      if (scheda === 'home' && t && d) t.textContent = `${d.saldo} 💎` + (posizioneInClassifica(d) ? ` · ${posizioneInClassifica(d)}° in classifica` : '');
+      if (scheda === 'home' && t && d) t.textContent = `${d.saldo} diamanti` + (posizioneInClassifica(d) ? ` · ${posizioneInClassifica(d)}° in classifica` : '');
       if (scheda === 'diamanti') apri('diamanti');
+      const leg = document.getElementById('legenda-diamanti');
+      if (scheda === 'profilo' && leg && !leg.querySelector('.legenda-traguardi')) { const aperta = leg.open; leg.outerHTML = legendaDiamanti(); if (aperta) document.getElementById('legenda-diamanti').open = true; }
     }).catch(() => {});
   }
   function posizioneInClassifica(d) {
     const i = (d.classifica || []).findIndex(x => x.io);
     return i >= 0 && d.classifica[i].diamanti > 0 ? i + 1 : 0;
   }
-  const gemme = n => n > 0 && n <= 6 ? '💎'.repeat(n) : `${n} 💎`;
+  /* I diamanti disegnati (25/10/2026): azzurro = 1, viola = 10 (Giulio). 23 si
+     vede come 2 viola e 3 azzurri. Oltre gli 8 disegni si scrivono i numeri. */
+  const GEMMA = c => `<svg class="gemma gemma-${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l5 6-10 12L2 9z"/><path class="gemma-luce" d="M7 3l2.6 6L12 3l2.4 6L17 3M2 9h20M9.6 9L12 21l2.4-12"/></svg>`;
+  function gemme(n) {
+    n = Math.max(0, Math.round(Number(n) || 0));
+    const viola = Math.floor(n / 10), azzurri = n % 10;
+    const testo = `${n} ${n === 1 ? 'diamante' : 'diamanti'}`;
+    if (!n) return `<span class="gemme" aria-label="${testo}">0 ${GEMMA('azzurra')}</span>`;
+    const icone = viola + azzurri <= 8
+      ? GEMMA('viola').repeat(viola) + GEMMA('azzurra').repeat(azzurri)
+      : (viola ? `${GEMMA('viola')}×${viola} ` : '') + (azzurri ? `${GEMMA('azzurra')}×${azzurri}` : '');
+    return `<span class="gemme" aria-label="${testo}" title="${testo}">${icone}</span>`;
+  }
 
   // i traguardi in corso, dagli ordini consegnati o pagati che l'agente ha già
   function progressi(d) {
@@ -825,13 +839,13 @@ const Venditori = (() => {
           ? `${fatto || lungo} ${(fatto || lungo) === 1 ? 'mese' : 'mesi'} su ${lungo}${fatto === 0 && serie ? ': vinto!' : ''}`
           : `${fatto} su ${lungo}: manda un ordine entro il ${nomeMese}`;
         out.push({ t, valore: fatto || (serie && mesi.has(adesso) ? lungo : 0), max: lungo, testo, nota: manca && mesi.has(adesso) ? `ne mancano ${manca}` : '' });
-      } else if (t.codice === 'volume' && t.soglia) {
-        const q = Math.floor(oggi.getMonth() / 3);
-        const tq = ok.filter(o => { const mm = mese(o.data); return Math.floor(mm / 12) === oggi.getFullYear() && Math.floor((mm % 12) / 3) === q; })
-          .reduce((x, o) => x + (Number(o.t) || 0), 0);
-        out.push({ t, valore: Math.min(tq, t.soglia), max: Number(t.soglia), testo: tq >= t.soglia
-          ? `${num(tq, 1)} t in questo trimestre: traguardo raggiunto!`
-          : `${num(tq, 1)} t su ${num(t.soglia)} t in questo trimestre` });
+      } else if ((t.codice === 'volume_motrice' || t.codice === 'volume_bilico') && t.soglia) {
+        const tm = ok.filter(o => mese(o.data) === adesso).reduce((x, o) => x + (Number(o.t) || 0), 0);
+        out.push({ t, valore: Math.min(tm, t.soglia), max: Number(t.soglia), testo: tm >= t.soglia
+          ? `${num(tm, 1)} t consegnate questo mese: traguardo raggiunto!`
+          : `${num(tm, 1)} t su ${num(t.soglia, 1)} t consegnate questo mese` });
+      } else if (t.codice === 'presentato' && d.presentati) {
+        out.push({ t, testo: `${t.descrizione} Venditori che hai portato: ${d.presentati}.` });
       } else {
         out.push({ t, testo: t.descrizione });
       }
@@ -844,12 +858,16 @@ const Venditori = (() => {
     if (!d) return '<div class="blocco"><p class="aiuto">Carico i tuoi diamanti…</p></div>';
     const pos = posizioneInClassifica(d);
     let h = '<div class="blocco diamanti-testa">'
-      + `<p class="diamanti-saldo"><span>💎</span><b>${d.saldo}</b></p>`
+      + `<p class="diamanti-saldo"><b>${d.saldo}</b><span>${d.saldo === 1 ? 'diamante' : 'diamanti'}</span></p>`
+      + `<p class="diamanti-icone">${gemme(d.saldo)}</p>`
       + `<p class="diamanti-sotto">${d.disponibili !== d.saldo ? `${d.disponibili} disponibili · ` : ''}${d.vinti_anno} vinti quest’anno${pos ? ` · ${pos}° in classifica` : ''}</p>`
-      + '<p class="aiuto">Si vincono con gli ordini <strong>consegnati</strong> e si spendono nel catalogo premi.</p></div>';
+      + '<p class="aiuto">Si vincono con gli ordini <strong>consegnati</strong> e si spendono nel catalogo premi. '
+      + '<button type="button" class="link-legenda" id="d-legenda">Leggi il regolamento</button></p></div>';
 
-    h += '<div class="blocco"><h3>I traguardi</h3><ul class="traguardi">';
+    h += '<div class="blocco"><h3>I traguardi</h3><p class="aiuto">10 diamanti azzurri fanno un diamante viola.</p><ul class="traguardi">';
+    let gruppo = null;
     progressi(d).forEach(x => {
+      if (x.t.gruppo && x.t.gruppo !== gruppo) { gruppo = x.t.gruppo; h += `<li class="traguardi-gruppo">${esc(gruppo)}</li>`; }
       h += `<li><div class="traguardo-testa"><strong>${esc(x.t.nome)}</strong><span class="traguardo-premio">${gemme(x.t.diamanti)}</span></div>`
         + (x.max ? `<div class="traguardo-barra"><i style="width:${Math.round(x.valore / x.max * 100)}%"></i></div>` : '')
         + `<p>${esc(x.testo)}${x.nota ? ` · ${esc(x.nota)}` : ''}</p></li>`;
@@ -863,33 +881,74 @@ const Venditori = (() => {
       const posso = d.disponibili >= p.costo;
       h += `<li><div><strong>${esc(p.nome)}</strong>${p.descrizione ? `<small>${esc(p.descrizione)}</small>` : ''}</div>`
         + `<button type="button" class="bottone${posso ? '' : ' bottone-fantasma'}" data-premio="${esc(p.id)}" data-nome="${esc(p.nome)}" data-costo="${p.costo}"${posso ? '' : ' disabled'}>`
-        + `${p.costo} 💎</button></li>`;
+        + `${gemme(p.costo)}</button></li>`;
     });
     h += '</ul><p class="errore" id="premio-errore" hidden></p>';
     if (d.richieste.length) {
       const STATO = { richiesto: 'in attesa', approvato: 'approvato', consegnato: 'consegnato', rifiutato: 'non approvato' };
       h += '<h4>Le tue richieste</h4><ul class="lista-ordini">' + d.richieste.map(x =>
         `<li><div class="ordine-testa"><strong>${esc(x.premio)}</strong><span class="stato stato-${x.stato === 'rifiutato' ? 'annullato' : x.stato === 'richiesto' ? 'inviato' : 'pagato'}">${esc(STATO[x.stato])}</span></div>`
-        + `<p class="ordine-dati">${esc(x.data)} · ${x.costo} 💎</p></li>`).join('') + '</ul>';
+        + `<p class="ordine-dati">${esc(x.data)} · ${gemme(x.costo)}</p></li>`).join('') + '</ul>';
     }
     h += '</div>';
 
     h += '<div class="blocco"><h3>La classifica</h3><p class="aiuto">Diamanti vinti quest’anno dagli agenti Pro Farmer.</p><ol class="classifica">';
     d.classifica.forEach((x, i) => {
-      h += `<li class="${x.io ? 'io' : ''}"><span class="classifica-pos">${i + 1}</span><span class="classifica-nome">${esc(x.nome)}${x.io ? ' (tu)' : ''}</span><b>${x.diamanti} 💎</b></li>`;
+      h += `<li class="${x.io ? 'io' : ''}"><span class="classifica-pos">${i + 1}</span><span class="classifica-nome">${esc(x.nome)}${x.io ? ' (tu)' : ''}</span><b>${gemme(x.diamanti)}</b></li>`;
     });
     h += '</ol></div>';
 
     if (d.movimenti.length) {
       h += '<div class="blocco"><h3>Gli ultimi diamanti</h3><ul class="lista-ordini">' + d.movimenti.map(m =>
-        `<li><div class="ordine-testa"><strong>${esc(m.motivo)}</strong><span class="diamanti-mov${m.quanti < 0 ? ' meno' : ''}">${m.quanti > 0 ? '+' : ''}${m.quanti} 💎</span></div>`
+        `<li><div class="ordine-testa"><strong>${esc(m.motivo)}</strong><span class="diamanti-mov${m.quanti < 0 ? ' meno' : ''}">${m.quanti > 0 ? '+' : '−'}${gemme(Math.abs(m.quanti))}</span></div>`
         + `<p class="ordine-dati">${esc(m.data)}</p></li>`).join('') + '</ul></div>';
     }
     return h;
   }
 
+  /* La Legenda dei 💎: il regolamento, in Profilo (Giulio, 25/10/2026).
+     I traguardi e i valori vengono dal database: se Pro Farmer li cambia,
+     la legenda è già aggiornata. */
+  function legendaDiamanti() {
+    const d = area.diamanti;
+    let h = '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Legenda dei 💎</h3>'
+      + '<span>Il regolamento dei Diamanti piùLact</span></summary><div class="legenda-corpo">';
+    h += '<h4>Come funziona</h4><ul>'
+      + `<li>I diamanti si vincono raggiungendo i traguardi qui sotto. Valgono solo gli ordini <strong>consegnati</strong> (o pagati): un ordine annullato non conta.</li>`
+      + `<li>${gemme(1)} un diamante azzurro vale 1. ${gemme(10)} un diamante viola vale 10: dieci azzurri fanno un viola.</li>`
+      + '<li>Li conta il sistema da solo, appena Pro Farmer segna un ordine come consegnato. Ti arriva una notifica.</li>'
+      + '<li>Si spendono nel <strong>catalogo premi</strong>: chiedi il premio, Pro Farmer approva e scala i diamanti, poi te lo consegna. Se una richiesta non viene approvata, i diamanti restano tuoi.</li>'
+      + '<li>La <strong>classifica</strong> conta i diamanti vinti dall’inizio dell’anno. Gli altri agenti vedono solo il tuo nome e i diamanti, mai tonnellate o soldi.</li>'
+      + '<li>Quando un agente vince almeno 3 diamanti, gli altri ricevono una notifica senza il suo nome (al massimo una al giorno).</li></ul>';
+    if (d && d.traguardi && d.traguardi.length) {
+      h += '<h4>I traguardi</h4>';
+      let gruppo = null;
+      d.traguardi.forEach(t => {
+        if (t.gruppo !== gruppo) { if (gruppo !== null) h += '</dl>'; gruppo = t.gruppo; h += `<p class="legenda-gruppo">${esc(gruppo || 'Altri')}</p><dl class="legenda-traguardi">`; }
+        h += `<div><dt>${esc(t.nome)}</dt><dd>${gemme(t.diamanti)}<span>${esc(t.descrizione)}</span></dd></div>`;
+      });
+      h += '</dl>';
+    } else {
+      h += '<p class="aiuto">I traguardi si caricano con la tua area: riapri il Profilo tra un attimo.</p>';
+    }
+    h += '<h4>Le regole che tengono il gioco pulito</h4><ul>'
+      + '<li>Un riordino vale se arriva almeno <strong>21 giorni</strong> dopo l’ordine precedente dello stesso cliente.</li>'
+      + '<li><strong>Motrice e bilico</strong> si contano sulle tonnellate consegnate nello stesso mese, e si sommano: chi arriva al bilico ha vinto anche la motrice.</li>'
+      + '<li>La <strong>costanza</strong> vuole almeno un ordine consegnato in ogni mese, senza salti: un mese vuoto fa ripartire la serie.</li>'
+      + '<li>Il <strong>nuovo venditore</strong> lo approva Pro Farmer. Vale quando consegna il primo ordine a un cliente nuovo; poi per il suo primo anno ricevi 1 diamante ogni volta che vince.</li>'
+      + '<li>Il <strong>feedback positivo</strong> lo assegna Pro Farmer dopo aver chiamato il cliente: una volta l’anno per cliente.</li>'
+      + '<li>Pro Farmer può dare <strong>bonus</strong> a mano, sempre con il motivo, e cambiare i valori dei traguardi: le modifiche valgono da quel momento, le vincite già fatte restano.</li></ul>';
+    return h + '</div></details>';
+  }
+
   function agganciaDiamanti() {
     if (!area.diamanti) caricaDiamanti();
+    const l = document.getElementById('d-legenda');
+    if (l) l.addEventListener('click', () => {
+      apri('profilo');
+      const el = document.getElementById('legenda-diamanti');
+      if (el) { el.open = true; el.scrollIntoView({ block: 'start' }); }
+    });
     pannello().querySelectorAll('[data-premio]').forEach(b => b.addEventListener('click', () => {
       if (!confirm(`Chiedi «${b.dataset.nome}» per ${b.dataset.costo} diamanti? Pro Farmer ti conferma la richiesta.`)) return;
       b.disabled = true;
@@ -1330,7 +1389,8 @@ const Venditori = (() => {
 
   function disegnaProfilo() {
     const p = area.profilo;
-    let h = bloccoFoto() + '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo"><tbody>';
+    let h = bloccoFoto() + (cond.ruolo === 'agente' ? legendaDiamanti() : '')
+      + '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo"><tbody>';
     h += `<tr><th>Nome</th><td>${esc(p.nome)}</td></tr>`;
     h += `<tr><th>Ruolo</th><td>${esc(RUOLI[p.ruolo] || p.ruolo)}</td></tr>`;
     h += `<tr><th>E-mail</th><td>${p.email ? esc(p.email) : 'non registrata: chiedila a Pro Farmer, così ricevi copia dei tuoi ordini'}</td></tr>`;

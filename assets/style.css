@@ -1126,3 +1126,38 @@ img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo
 .classifica b{white-space:nowrap}
 .diamanti-mov{font-weight:700;color:#14612F;white-space:nowrap}
 .diamanti-mov.meno{color:var(--testo-2)}
+
+/* i diamanti disegnati: azzurro = 1, viola = 10 (25/10/2026) */
+.gemme{display:inline-flex;align-items:center;gap:1px;white-space:nowrap;vertical-align:middle;font-weight:700}
+.gemma{width:1.15em;height:1.15em;flex:0 0 auto}
+.gemma path:first-child{stroke:none}
+.gemma-azzurra path:first-child{fill:#3FA2F2}
+.gemma-viola path:first-child{fill:#8B4FE6}
+.gemma .gemma-luce{fill:none;stroke:rgba(255,255,255,.6);stroke-width:1.1;stroke-linejoin:round}
+.diamanti-saldo span{font-size:18px;font-weight:600;color:#DCE6F2}
+.diamanti-icone{margin:8px 0 0;font-size:24px}
+.diamanti-icone .gemma{width:1.25em;height:1.25em;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.traguardi-gruppo{padding:18px 0 4px !important;border-top:0 !important;font-size:13px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:#8B4FE6}
+.traguardi-gruppo:first-child{padding-top:4px !important}
+.premi .bottone .gemme{font-size:15px}
+.premi .bottone:not(.bottone-fantasma) .gemme{color:#fff}
+
+/* Legenda dei 💎, in Profilo (25/10/2026) */
+.legenda > summary{display:flex;flex-direction:column;gap:2px;list-style:none;cursor:pointer;position:relative;padding-right:32px}
+.legenda > summary::-webkit-details-marker{display:none}
+.legenda > summary::after{content:"";position:absolute;right:4px;top:8px;width:10px;height:10px;border-right:2px solid var(--testo-2);
+  border-bottom:2px solid var(--testo-2);transform:rotate(45deg);transition:transform .2s var(--ease-out)}
+.legenda[open] > summary::after{transform:rotate(-135deg);top:14px}
+.legenda > summary h3{margin:0}
+.legenda > summary span{font-size:14.5px;color:var(--testo-2)}
+.legenda-corpo h4{margin:20px 0 8px;font-size:16px}
+.legenda-corpo ul{margin:0;padding-left:20px}
+.legenda-corpo li{margin:0 0 8px;font-size:15px;line-height:1.5}
+.legenda-gruppo{margin:14px 0 4px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8B4FE6}
+.legenda-traguardi{margin:0}
+.legenda-traguardi > div{padding:10px 0;border-top:1px solid var(--crema-2)}
+.legenda-traguardi dt{font-weight:600;font-size:15.5px}
+.legenda-traguardi dd{margin:4px 0 0;display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--testo-2)}
+.legenda-traguardi dd .gemme{flex:0 0 auto;font-size:15px}
+.link-legenda{padding:0;font:inherit;font-weight:600;color:#F4CF7A;background:none;border:0;text-decoration:underline;cursor:pointer}

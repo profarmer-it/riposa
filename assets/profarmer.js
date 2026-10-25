@@ -589,6 +589,17 @@ const ProFarmer = (() => {
      Richieste da approvare, bonus a mano, classifica, catalogo e traguardi.
      Approvare scala i diamanti; rifiutare li restituisce. Cambiare i
      traguardi vale da ora in poi: le vincite passate restano. */
+  // azzurro = 1, viola = 10: come nell'area dell'agente (venditori.js)
+  const GEMMA = c => `<svg class="gemma gemma-${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l5 6-10 12L2 9z"/><path class="gemma-luce" d="M7 3l2.6 6L12 3l2.4 6L17 3M2 9h20M9.6 9L12 21l2.4-12"/></svg>`;
+  function gemme(n) {
+    n = Math.max(0, Math.round(Math.abs(Number(n) || 0)));
+    const viola = Math.floor(n / 10), azzurri = n % 10;
+    if (!n) return `<span class="gemme">0 ${GEMMA('azzurra')}</span>`;
+    const icone = viola + azzurri <= 8 ? GEMMA('viola').repeat(viola) + GEMMA('azzurra').repeat(azzurri)
+      : (viola ? `${GEMMA('viola')}×${viola} ` : '') + (azzurri ? `${GEMMA('azzurra')}×${azzurri}` : '');
+    return `<span class="gemme" title="${n} diamanti">${icone}</span>`;
+  }
+
   function premi(corpo) {
     const D = dati.diamanti;
     const aperte = D.richieste.filter(r => r.stato === 'richiesto' || r.stato === 'approvato');
@@ -598,7 +609,7 @@ const ProFarmer = (() => {
     h += '<ul class="lista-clienti">';
     aperte.forEach(r => {
       h += `<li><div class="cliente-testa"><strong>${esc(r.premio)}</strong><span class="pf-proprietario">${esc(STATO[r.stato])}</span></div>`
-        + `<p class="cliente-dati">${esc(r.nome)} · ${r.costo} 💎 · ${esc(dataIt(r.creato_il))}</p>`
+        + `<p class="cliente-dati">${esc(r.nome)} · ${gemme(r.costo)} ${r.costo} · ${esc(dataIt(r.creato_il))}</p>`
         + '<p class="errore" hidden></p><div class="azioni pf-azioni">'
         + (r.stato === 'richiesto'
           ? `<button type="button" class="bottone" data-decidi="${esc(r.id)}" data-stato="approvato">Approva</button>`
@@ -615,10 +626,21 @@ const ProFarmer = (() => {
       + '<label class="pf-largo">Motivo<input name="motivo" maxlength="200" placeholder="es. fiera di Cremona, cliente importante"></label>'
       + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Assegna</button></div></form></div>';
 
+    // feedback positivo: Pro Farmer ha chiamato il cliente, il giudizio è buono
+    const agenti = dati.venditori.filter(a => a.ruolo === 'agente' && a.attivo);
+    h += '<div class="blocco"><h3>Feedback positivo</h3><p class="aiuto">Avete chiamato un cliente di un agente e il giudizio è positivo: '
+      + 'l’agente vince i diamanti del traguardo «Feedback positivo». Una volta l’anno per cliente.</p>'
+      + '<form id="pf-feedback" novalidate><div class="pf-campi">'
+      + '<label>Agente<select name="agente" class="pf-select" id="pf-fb-agente"><option value="">Scegli…</option>'
+      + agenti.map(a => `<option value="${esc(a.id)}">${esc(a.nome)}</option>`).join('') + '</select></label>'
+      + '<label>Cliente<select name="cliente" class="pf-select" id="pf-fb-cliente"><option value="">Prima l’agente</option></select></label>'
+      + '<label class="pf-largo">Nota <small>(facoltativa, l’agente la legge)</small><input name="nota" maxlength="150"></label>'
+      + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Assegna il feedback</button></div></form></div>';
+
     // classifica
     const cl = D.agenti.slice().sort((a, b) => b.vinti_anno - a.vinti_anno || a.nome.localeCompare(b.nome));
     h += '<div class="blocco"><h3>Classifica agenti</h3><p class="aiuto">Diamanti vinti quest’anno; tra parentesi il saldo da spendere. Gli agenti vedono solo nomi e diamanti vinti.</p><ol class="classifica">'
-      + cl.map((a, i) => `<li><span class="classifica-pos">${i + 1}</span><span class="classifica-nome">${esc(a.nome)}</span><b>${a.vinti_anno} 💎 <small>(${a.saldo})</small></b></li>`).join('')
+      + cl.map((a, i) => `<li><span class="classifica-pos">${i + 1}</span><span class="classifica-nome">${esc(a.nome)}</span><b>${gemme(a.vinti_anno)} <small>${a.vinti_anno} (saldo ${a.saldo})</small></b></li>`).join('')
       + '</ol></div>';
 
     // catalogo
@@ -642,7 +664,7 @@ const ProFarmer = (() => {
 
     if (D.movimenti.length) {
       h += '<div class="blocco"><h3>Ultimi movimenti</h3><ul class="cr-eventi">' + D.movimenti.slice(0, 20).map(m =>
-        `<li><button type="button" tabindex="-1"><span class="cr-tipo cr-cliente"></span><span class="cr-testo">${esc(m.nome)}: ${m.quanti > 0 ? '+' : ''}${m.quanti} 💎<small>${esc(m.motivo)}</small></span><time>${esc(quandoBreve(m.creato_il))}</time></button></li>`).join('')
+        `<li><button type="button" tabindex="-1"><span class="cr-tipo cr-cliente"></span><span class="cr-testo">${esc(m.nome)}: ${m.quanti > 0 ? '+' : '−'}${gemme(m.quanti)}<small>${esc(m.motivo)}</small></span><time>${esc(quandoBreve(m.creato_il))}</time></button></li>`).join('')
         + '</ul></div>';
     }
     corpo.innerHTML = h;
@@ -653,6 +675,19 @@ const ProFarmer = (() => {
       salva(b, () => sb.rpc('decidi_premio', { p_richiesta: b.dataset.decidi, p_stato: b.dataset.stato, p_note: null }),
         { approvato: 'Richiesta approvata', rifiutato: 'Richiesta rifiutata', consegnato: 'Premio consegnato' }[b.dataset.stato]);
     }));
+    const fa = document.getElementById('pf-fb-agente'), fc = document.getElementById('pf-fb-cliente');
+    if (fa) fa.addEventListener('change', () => {
+      const suoi = dati.clienti.filter(c => c.venditore_id === fa.value);
+      fc.innerHTML = suoi.length ? suoi.map(c => `<option value="${esc(c.id)}">${esc(c.ragione)}</option>`).join('') : '<option value="">Nessun cliente</option>';
+    });
+    const ff = document.getElementById('pf-feedback');
+    if (ff) ff.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const d = new FormData(ff), err = ff.querySelector('.errore');
+      if (!d.get('agente') || !d.get('cliente')) { err.textContent = 'Scegli l’agente e il cliente.'; err.hidden = false; return; }
+      salva(ff.querySelector('button'), () => sb.rpc('feedback_positivo', { p_venditore: d.get('agente'), p_cliente: d.get('cliente'), p_note: String(d.get('nota') || '').trim() || null }),
+        'Feedback positivo assegnato');
+    });
     const fb = document.getElementById('pf-bonus');
     if (fb) fb.addEventListener('submit', ev => {
       ev.preventDefault();
@@ -662,7 +697,7 @@ const ProFarmer = (() => {
       if (motivo.length < 3) { err.textContent = 'Scrivi il motivo: l’agente lo vede.'; err.hidden = false; return; }
       const nome = (D.agenti.find(a => a.id === d.get('agente')) || {}).nome;
       salva(fb.querySelector('button'), () => sb.rpc('bonus_diamanti', { p_venditore: d.get('agente'), p_quanti: q, p_motivo: motivo }),
-        `${q > 0 ? '+' : ''}${q} 💎 a ${nome}`);
+        `${q > 0 ? "+" : ""}${q} diamanti a ${nome}`);
     });
     document.getElementById('pf-nuovo-premio').addEventListener('click', () => {
       const n = document.getElementById('pf-premio-nuovo');
@@ -845,6 +880,9 @@ const ProFarmer = (() => {
       + campo('provvigione_perc', 'Provvigione piùLact %', x.provvigione_perc, 'number', ' step="0.1" min="0" max="100"', 'solo-agente')
       + campo('valide_fino', 'Condizioni valide fino al', x.valide_fino, 'date', '', 'non-interno')
       + `<label class="pf-spunta"><input type="checkbox" name="attivo"${x.attivo !== false ? ' checked' : ''}> Attivo (può entrare)</label>`
+      + '<label class="solo-agente">Presentato da <small>(l’agente che l’ha portato: vale per i Diamanti)</small><select name="presentato_da" class="pf-select">'
+      + '<option value="">Nessuno</option>' + dati.venditori.filter(a => a.ruolo === 'agente' && a.id !== x.id)
+        .map(a => `<option value="${esc(a.id)}"${x.presentato_da === a.id ? ' selected' : ''}>${esc(a.nome)}</option>`).join('') + '</select></label>'
       + `<label class="pf-largo">Note interne<textarea name="note" rows="2">${esc(v(x.note))}</textarea></label>`
       + '</div>';
     if (!nuovo) {
@@ -907,7 +945,8 @@ const ProFarmer = (() => {
             provvigione_perc: nulloSeVuoto(d.get('provvigione_perc')),
             valide_fino: nulloSeVuoto(d.get('valide_fino')),
             attivo: d.get('attivo') === 'on',
-            note: nulloSeVuoto(String(d.get('note') || '').trim())
+            note: nulloSeVuoto(String(d.get('note') || '').trim()),
+            presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null
           };
           const err = f.querySelector('.errore');
           if (!riga.nome) { err.textContent = 'Serve il nome.'; err.hidden = false; return; }
