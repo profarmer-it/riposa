@@ -509,10 +509,11 @@ const Venditori = (() => {
       ricevi(r);
       sincronizzaNotifiche();
       caricaDiamanti();
+      caricaContatti();
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       // le scorciatoie dell'app (tieni premuta l'icona) e i link delle notifiche
-      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti',
+      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti', '#contatti': 'contatti',
                     '#gestione': cond.ruolo === 'interno' ? 'gestione' : null }[location.hash];
       if (vai) { history.replaceState(null, '', location.pathname); apri(vai); return; }
       apri(scheda);
@@ -620,6 +621,9 @@ const Venditori = (() => {
     ];
     // Pro Farmer gestisce da qui ordini, venditori, condizioni e materiali
     if (cond.ruolo === 'agente') {
+      const nuovi = (area.contatti || []).filter(x => x.stato === 'nuovo').length, tutti = (area.contatti || []).length;
+      tessere.splice(nuovi ? 1 : 3, 0, ['contatti', 'Contatti da Riposa',
+        nuovi ? `${nuovi} ${nuovi === 1 ? 'allevatore da chiamare' : 'allevatori da chiamare'}` : tutti ? `${tutti} ${tutti === 1 ? 'contatto' : 'contatti'} della tua zona` : 'Gli allevatori della tua zona', false, !!nuovi]);
       const d = area.diamanti;
       tessere.splice(2, 0, ['diamanti', 'I miei diamanti',
         d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, buoni e classifica', false, true]);
@@ -681,7 +685,8 @@ const Venditori = (() => {
       return;
     }
     const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
-                      materiali: disegnaMateriali, profilo: disegnaProfilo, mappa: disegnaMappa, diamanti: disegnaDiamanti }[id];
+                      materiali: disegnaMateriali, profilo: disegnaProfilo, mappa: disegnaMappa, diamanti: disegnaDiamanti,
+                      contatti: disegnaContatti }[id];
     p.innerHTML = disegna();
     if (id !== 'home') entra(p);
     if (id === 'home') {
@@ -694,6 +699,7 @@ const Venditori = (() => {
     if (id === 'clienti') agganciaClienti();
     if (id === 'mappa') avviaMappa();
     if (id === 'diamanti') agganciaDiamanti();
+    if (id === 'contatti') agganciaContatti();
     if (id === 'materiali') agganciaMateriali();
     if (id === 'profilo') { agganciaNotifiche(); agganciaFoto(); }
   }
@@ -1185,6 +1191,85 @@ const Venditori = (() => {
     const bisestile = new Date(o.getFullYear(), 1, 29).getMonth() === 1;
     return c.compleanno_mese === m && (c.compleanno_giorno === g || (c.compleanno_giorno === 29 && m === 2 && g === 28 && !bisestile));
   }
+  /* ------------------------------------------------- contatti da Riposa
+     Dal 25/10/2026, solo per gli agenti. Gli allevatori che hanno fatto il
+     calcolo su Riposa e che Pro Farmer ha passato all'agente della loro
+     provincia (22-lead-agli-agenti.sql): contatti, stalla e calcolo. L'agente
+     li chiama e segna com'è andata; Pro Farmer riceve la notizia. */
+  const ESITI_CONTATTO = { richiamato: 'Richiamato', cliente: 'Diventato cliente', 'non interessato': 'Non interessato' };
+  function caricaContatti() {
+    if (!cond || cond.ruolo !== 'agente') return Promise.resolve();
+    return rpc('lead_agente').then(l => {
+      area.contatti = Array.isArray(l) ? l : [];
+      if (scheda === 'home') apri('home');
+      if (scheda === 'contatti') apri('contatti');
+    }).catch(() => {});
+  }
+  function whatsappContatto(x) {
+    let n = String(x.telefono || '').replace(/[^\d+]/g, '');
+    if (!n) return '';
+    n = n.startsWith('+') ? n.slice(1) : n.startsWith('00') ? n.slice(2) : '39' + n;
+    const testo = `Buongiorno ${String(x.nome || '').split(' ')[0]}, sono ${area.profilo.nome || ''}, agente piùLact di Pro Farmer per la sua zona. `
+      + 'Ho visto il calcolo che ha fatto con Riposa: possiamo sentirci?';
+    return `https://wa.me/${n}?text=${encodeURIComponent(testo)}`;
+  }
+  function disegnaContatti() {
+    const lista = area.contatti || [];
+    const ZONA = { materassino: 'materassino', buca: 'cuccette a buca', lettiera: 'lettiera', compost: 'compost barn' };
+    const data = iso => iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    let h = '<div class="blocco"><h3>Contatti da Riposa</h3><p class="aiuto">Allevatori della tua zona che hanno fatto il calcolo '
+      + 'su Riposa e hanno chiesto di essere ricontattati. Te li passa Pro Farmer: chiamali e segna com’è andata.</p>';
+    if (!lista.length) h += '<p class="aiuto">Per ora nessun contatto. Quando Pro Farmer te ne passa uno, ti arriva una notifica.</p>';
+    h += '<ul class="lista-clienti">';
+    lista.forEach(x => {
+      const tel = String(x.telefono || '').replace(/[^\d+]/g, ''), wa = whatsappContatto(x);
+      const stalla = [ZONA[x.zona] || x.zona, x.cuccette && `${x.cuccette} cuccette`, x.mq && `${x.mq} m²`, x.capi && `${x.capi} capi`,
+        x.mungitura === 'robot' ? 'robot' : ''].filter(Boolean).join(' · ');
+      const calcolo = [x.prodotto, x.dose, x.frequenza, x.kg_mese && `${x.kg_mese} kg al mese`].filter(Boolean).join(' · ');
+      h += `<li class="contatto" data-id="${esc(x.id)}"><div class="cliente-testa"><strong>${esc(x.azienda)}</strong>`
+        + `<span class="stato stato-${x.stato === 'nuovo' ? 'inviato' : x.stato === 'cliente' ? 'pagato' : x.stato === 'non interessato' ? 'annullato' : 'confermato'}">`
+        + `${esc(x.stato === 'nuovo' ? 'Da chiamare' : ESITI_CONTATTO[x.stato] || x.stato)}</span></div>`
+        + `<p class="cliente-dati">${esc([x.nome, x.provincia, 'calcolo del ' + data(x.creato_il)].filter(Boolean).join(' · '))}</p>`
+        + (stalla ? `<p class="cliente-dati">${esc(stalla)}</p>` : '')
+        + (calcolo ? `<p class="cliente-dati"><strong>${esc(calcolo)}</strong></p>` : '')
+        + '<div class="azioni">'
+        + (tel ? `<a class="bottone" href="tel:${esc(tel)}">Chiama</a>` : '')
+        + (wa ? `<a class="bottone bottone-fantasma" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : '')
+        + `<a class="bottone bottone-fantasma" href="mailto:${esc(x.email)}">E-mail</a></div>`
+        + `<details class="contatto-calcolo"><summary>Il calcolo che ha ricevuto</summary><p>${esc(String(x.riepilogo || '').replace(/\*/g, '')).replace(/\n/g, '<br>')}</p></details>`
+        + `<form class="contatto-esito" data-id="${esc(x.id)}" novalidate><p class="cliente-dati">Com’è andata?</p><div class="esiti">`
+        + Object.entries(ESITI_CONTATTO).map(([k, n]) => `<label class="esito-scelta"><input type="radio" name="stato" value="${esc(k)}"${x.stato === k ? ' checked' : ''}><span>${esc(n)}</span></label>`).join('')
+        + `</div><label class="contatto-note">Note per Pro Farmer <span class="opzionale">facoltativo</span><textarea name="note" rows="2" maxlength="500">${esc(x.note_agente || '')}</textarea></label>`
+        + '<p class="errore" hidden></p><div class="azioni"><button type="submit" class="bottone">Salva</button>'
+        + (x.stato === 'cliente' ? `<button type="button" class="bottone bottone-fantasma" data-fai-cliente="${esc(x.id)}">Aggiungilo ai clienti</button>` : '')
+        + '</div></form></li>';
+    });
+    return h + '</ul></div>';
+  }
+  function agganciaContatti() {
+    const p = pannello();
+    p.querySelectorAll('.contatto-esito').forEach(f => f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const d = new FormData(f), err = f.querySelector('.errore'), b = f.querySelector('button[type=submit]');
+      if (!d.get('stato')) { err.textContent = 'Scegli com’è andata.'; err.hidden = false; return; }
+      b.disabled = true; b.textContent = 'Salvo…';
+      rpc('esito_lead_agente', { p_lead: f.dataset.id, p_stato: d.get('stato'), p_note: String(d.get('note') || '') })
+        .then(caricaContatti)
+        .catch(e => { b.disabled = false; b.textContent = 'Salva'; err.textContent = e.delDatabase ? e.message : 'Non salvato: riprova tra poco.'; err.hidden = false; });
+    }));
+    // diventato cliente: il modulo del cliente nuovo, già riempito con quello che sappiamo
+    p.querySelectorAll('[data-fai-cliente]').forEach(b => b.addEventListener('click', () => {
+      const x = (area.contatti || []).find(c => c.id === b.dataset.faiCliente);
+      if (!x) return;
+      apri('clienti');
+      moduloCliente(null);
+      const metti = (id, val) => { const el = document.getElementById('cl-' + id); if (el && val) el.value = val; };
+      metti('ragione', x.azienda); metti('telefono', x.telefono); metti('email', x.email); metti('referente', x.nome);
+      metti('provincia', x.sigla || x.provincia); metti('capi', x.capi);
+      const m = document.getElementById('cl-modulo'); if (m) m.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  }
+
   function whatsappAuguri(c) {
     let n = String(c.telefono || '').replace(/[^\d+]/g, '');
     if (!n) return '';

@@ -1273,3 +1273,16 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 
 /* 25/10/2026 — lo scorrimento automatico dopo la zona si ferma con un po' d'aria sopra */
 #blocco-cuccette,#blocco-superficie{scroll-margin-top:24px}
+
+/* 25/10/2026 — i contatti da Riposa dell'agente */
+.contatto .azioni{margin-top:12px}
+.contatto-esito .esiti{margin-top:6px}
+@media (min-width:640px){ .contatto-esito .esiti{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.contatto-calcolo{margin:14px 0 0;font-size:14px}
+.contatto-calcolo summary{cursor:pointer;font-weight:600;color:var(--blu-scuro,#1B5FA8);padding:6px 0}
+.contatto-calcolo p{margin:8px 0 0;padding:12px 14px;background:var(--crema);border-radius:10px;line-height:1.5}
+.contatto-note{display:block;margin-top:12px;font-weight:600;font-size:15px}
+.contatto-note textarea{display:block;width:100%;margin-top:6px;font:inherit;font-weight:400}
+.pf-lead-agente{margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#EEF4FB}
+.contatto-esito .esiti input:checked + span{background:#E3EEFB;border-color:var(--blu);color:var(--navy)}
+.contatto-esito .esiti input:focus-visible + span{outline:2px solid var(--blu);outline-offset:2px}

@@ -667,7 +667,8 @@ function spuntaConsenso() {
     // con un gesto, non trovato già fatto (GDPR). Senza spunta il risultato
     // arriva lo stesso; lo script non crea il contatto in ActiveCampaign.
     + '<input type="checkbox" id="c-consenso" name="consenso">'
-    + '<span>Acconsento a essere ricontattato da Pro Farmer e a ricevere '
+    // dal 25/10/2026 il lead può andare all'agente della provincia: il consenso lo dice
+    + '<span>Acconsento a essere ricontattato da Pro Farmer o da un suo agente di zona e a ricevere '
     + 'informazioni su piùLact. Ho letto l’' + link + '.</span>'
     + '</label>';
 }

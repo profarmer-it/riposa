@@ -266,6 +266,41 @@ const ProFarmer = (() => {
   const STATI_LEAD = { nuovo: 'Da richiamare', richiamato: 'Richiamato', cliente: 'Diventato cliente',
     'non interessato': 'Non interessato', prova: 'Prova / da ignorare' };
   const ZONE = { materassino: 'materassino', buca: 'cuccetta a buca', lettiera: 'lettiera', compost: 'compost barn' };
+  /* Dal 25/10/2026 il lead può andare all'agente della provincia (22-lead-agli-agenti.sql).
+     Prima decide Pro Farmer: «Direzionale» lo tiene per sé e non va mai a un agente.
+     Se no, la Gestione propone l'agente che ha la provincia nelle sue zone e
+     «Passa all'agente» glielo manda, con una notifica. Solo col consenso. */
+  const agentiAttivi = () => dati.venditori.filter(a => a.ruolo === 'agente' && a.attivo);
+  const agentiDellaProvincia = x => agentiAttivi().filter(a => x.provincia_sigla && (a.province || []).includes(x.provincia_sigla));
+  function bloccoAgente(x) {
+    const nome = id => (dati.venditori.find(a => a.id === id) || {}).nome || 'un agente';
+    let h = '<div class="pf-lead-agente">';
+    if (x.direzionale) {
+      h += '<p class="cliente-dati"><strong>Direzionale</strong>: lo segue Pro Farmer, non va agli agenti.</p>'
+        + `<div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="0">Non più direzionale</button></div>`;
+    } else if (x.assegnato_a) {
+      h += `<p class="cliente-dati">Passato a <strong>${esc(nome(x.assegnato_a))}</strong> il ${esc(dataIt(x.assegnato_il))}.`
+        + (x.esito_agente_il ? ` Il ${esc(dataIt(x.esito_agente_il))} l’agente ha segnato: <strong>${esc(STATI_LEAD[x.stato] || x.stato)}</strong>${x.note_agente ? ' · «' + esc(x.note_agente) + '»' : ''}.` : ' L’agente non ha ancora segnato com’è andata.')
+        + '</p><div class="azioni pf-azioni">'
+        + `<button type="button" class="bottone bottone-fantasma" data-riprendi="${esc(x.id)}">Riprendilo</button>`
+        + `<button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="1">Segna direzionale</button></div>`;
+    } else if (!x.consenso || x.stato === 'prova') {
+      h += `<p class="cliente-dati">${x.stato === 'prova' ? 'È una prova' : 'Senza consenso a essere ricontattato'}: non si passa agli agenti.</p>`;
+    } else {
+      const proposti = agentiDellaProvincia(x);
+      const altri = agentiAttivi().filter(a => !proposti.includes(a));
+      h += `<p class="cliente-dati">${proposti.length
+          ? `Agente della provincia ${esc(x.provincia_sigla)}: <strong>${esc(proposti.map(a => a.nome).join(', '))}</strong>.`
+          : `Nessun agente ha la provincia ${esc(x.provincia_sigla || x.provincia)} nelle sue zone: sceglilo dall’elenco o tienilo direzionale.`}</p>`
+        + '<div class="pf-campi"><label>Agente<select class="pf-select" data-agente-di="' + esc(x.id) + '">'
+        + (proposti.length ? '' : '<option value="">Scegli l’agente</option>')
+        + proposti.concat(altri).map(a => `<option value="${esc(a.id)}">${esc(a.nome)}${proposti.includes(a) ? ' (della zona)' : ''}</option>`).join('')
+        + '</select></label></div><div class="azioni pf-azioni">'
+        + `<button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="1">Direzionale: lo seguiamo noi</button>`
+        + `<button type="button" class="bottone" data-passa="${esc(x.id)}">Passa all’agente</button></div>`;
+    }
+    return h + '<p class="errore" hidden></p></div>';
+  }
 
   function lead(corpo) {
     const lista = dati.lead.filter(x => filtroLead === 'tutti' || x.stato === filtroLead);
@@ -281,10 +316,12 @@ const ProFarmer = (() => {
     else h += casellaCerca('lead', 'Cerca azienda, nome, provincia, e-mail');
     h += '<ul class="lista-clienti" data-lista-di="lead">';
     lista.forEach(x => {
-      const sotto = [x.nome, x.provincia, dataIt(x.creato_il), x.consenso ? '' : 'senza consenso'].filter(Boolean).join(' · ');
+      const chi = x.direzionale ? 'direzionale' : x.assegnato_a ? 'a ' + ((dati.venditori.find(a => a.id === x.assegnato_a) || {}).nome || 'un agente') : '';
+      const sotto = [x.nome, x.provincia, dataIt(x.creato_il), x.consenso ? '' : 'senza consenso', chi].filter(Boolean).join(' · ');
       h += `<li data-cerca="${esc([x.azienda, x.nome, x.provincia, x.email, x.telefono].join(' '))}"><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
         + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span></span>`
         + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
+        + bloccoAgente(x)
         + `<form class="pf-lead" data-id="${esc(x.id)}" novalidate>`
         + '<p class="cliente-dati">'
         + `<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>`
@@ -308,6 +345,20 @@ const ProFarmer = (() => {
     document.getElementById('pf-filtro-lead').addEventListener('change', ev => { filtroLead = ev.target.value; mostra(); });
     corpo.querySelectorAll('.pf-dettagli').forEach(d => d.addEventListener('toggle', () => {
       if (d.open) leadAperti.add(d.dataset.id); else leadAperti.delete(d.dataset.id);
+    }));
+    corpo.querySelectorAll('[data-passa]').forEach(b => b.addEventListener('click', () => {
+      const sel = corpo.querySelector(`[data-agente-di="${b.dataset.passa}"]`);
+      const ag = dati.venditori.find(a => a.id === sel.value);
+      if (!ag) { const e = b.closest('.pf-lead-agente').querySelector('.errore'); e.textContent = 'Scegli l’agente.'; e.hidden = false; return; }
+      salva(b, () => sb.rpc('assegna_lead', { p_lead: b.dataset.passa, p_venditore: ag.id }), `Lead passato a ${ag.nome}`);
+    }));
+    corpo.querySelectorAll('[data-riprendi]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Riprendi il lead? L’agente non lo vede più.')) return;
+      salva(b, () => sb.rpc('assegna_lead', { p_lead: b.dataset.riprendi, p_venditore: null }), 'Lead ripreso');
+    }));
+    corpo.querySelectorAll('[data-direzionale]').forEach(b => b.addEventListener('click', () => {
+      const si = b.dataset.si === '1';
+      salva(b, () => sb.rpc('lead_direzionale', { p_lead: b.dataset.direzionale, p_si: si }), si ? 'Lead direzionale: lo seguite voi' : 'Lead non più direzionale');
     }));
     corpo.querySelectorAll('.pf-lead').forEach(f => f.addEventListener('submit', ev => {
       ev.preventDefault();
@@ -927,6 +978,7 @@ const ProFarmer = (() => {
       + campo('provvigione_perc', 'Provvigione piùLact %', x.provvigione_perc, 'number', ' step="0.1" min="0" max="100"', 'solo-agente')
       + campo('valide_fino', 'Condizioni valide fino al', x.valide_fino, 'date', '', 'non-interno')
       + `<label class="pf-spunta"><input type="checkbox" name="attivo"${x.attivo !== false ? ' checked' : ''}> Attivo (può entrare)</label>`
+      + campo('province', 'Province che segue (sigle: LO, CR, PC)', (x.province || []).join(', '), 'text', ' autocapitalize="characters"', 'solo-agente')
       + '<label class="solo-agente">Presentato da <small>(l’agente che l’ha portato: vale per i Diamanti)</small><select name="presentato_da" class="pf-select">'
       + '<option value="">Nessuno</option>' + dati.venditori.filter(a => a.ruolo === 'agente' && a.id !== x.id)
         .map(a => `<option value="${esc(a.id)}"${x.presentato_da === a.id ? ' selected' : ''}>${esc(a.nome)}</option>`).join('') + '</select></label>'
@@ -993,7 +1045,10 @@ const ProFarmer = (() => {
             valide_fino: nulloSeVuoto(d.get('valide_fino')),
             attivo: d.get('attivo') === 'on',
             note: nulloSeVuoto(String(d.get('note') || '').trim()),
-            presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null
+            presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null,
+            // le zone dell'agente: i lead di queste province gli vengono proposti (22-lead-agli-agenti.sql)
+            province: d.get('ruolo') === 'agente'
+              ? [...new Set((String(d.get('province') || '').toUpperCase().match(/\b[A-Z]{2}\b/g) || []))] : []
           };
           const err = f.querySelector('.errore');
           if (!riga.nome) { err.textContent = 'Serve il nome.'; err.hidden = false; return; }
