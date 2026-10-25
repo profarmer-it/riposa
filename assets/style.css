@@ -1270,3 +1270,6 @@ main.contenitore{padding-bottom:72px}
 html.apertura-finita .eroe h1{animation:ap-su .7s var(--ease-out) .1s both}
 html.apertura-finita .eroe-testo{animation:ap-su .7s var(--ease-out) .8s both}
 html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56,.64,1) 1.4s both}
+
+/* 25/10/2026 — lo scorrimento automatico dopo la zona si ferma con un po' d'aria sopra */
+#blocco-cuccette,#blocco-superficie{scroll-margin-top:24px}

@@ -73,6 +73,10 @@ modulo.addEventListener('change', e => {
     boxCucc.hidden  = suSuperficie;
     titoloLettiera.firstChild.textContent = suSuperficie
       ? 'Cosa usi oggi in lettiera? ' : 'Cosa usi oggi in cuccetta? ';
+    // scelta la zona, la pagina scende da sola alla domanda dopo (Giulio, 25/10/2026)
+    const dopo = suSuperficie ? boxSup : boxCucc;
+    const piano = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => dopo.scrollIntoView({ behavior: piano ? 'auto' : 'smooth', block: 'start' }));
     return;
   }
 
