@@ -569,7 +569,7 @@ const Venditori = (() => {
   function disegnaBarra() {
     const el = barra();
     let h = '<div class="account">'
-      + `<span class="account-iniziali" aria-hidden="true">${esc(iniziali(cond.nome))}</span>`
+      + avatar('account-iniziali')
       + `<div class="account-nome"><strong>${esc(cond.nome)}</strong><span>${esc(RUOLI[cond.ruolo] || cond.ruolo)}</span></div>`
       + '<button type="button" class="account-esci" id="v-esci">Esci</button>'
       + '</div>';
@@ -681,7 +681,7 @@ const Venditori = (() => {
     if (id === 'clienti') agganciaClienti();
     if (id === 'mappa') avviaMappa();
     if (id === 'materiali') agganciaMateriali();
-    if (id === 'profilo') agganciaNotifiche();
+    if (id === 'profilo') { agganciaNotifiche(); agganciaFoto(); }
   }
 
   /* La sezione nuova compare con una dissolvenza breve dal basso: il
@@ -1118,9 +1118,95 @@ const Venditori = (() => {
 
   /* ---------------------------------------------------------------- profilo */
 
+  /* ------------------------------------------------------- la foto del profilo
+     Dal 25/10/2026. Scatta o scegli dalla galleria: il telefono la ritaglia
+     quadrata, la porta a 400×400 e la ricodifica in JPEG (così spariscono i
+     dati nascosti dello scatto, GPS compreso), poi la carica nella cartella
+     del venditore su Supabase Storage. Vedi 14-foto-profilo.sql. */
+  const FOTO_LATO = 400;
+
+  function avatar(classe) {
+    const f = area && area.profilo && area.profilo.foto;
+    return f
+      ? `<img class="${classe} account-foto" src="${esc(f)}" alt="" width="46" height="46">`
+      : `<span class="${classe}" aria-hidden="true">${esc(iniziali(cond.nome))}</span>`;
+  }
+
+  function bloccoFoto() {
+    const ha = !!area.profilo.foto;
+    return '<div class="blocco blocco-foto"><h3>La tua foto</h3><div class="foto-riga">'
+      + avatar('foto-grande')
+      + '<div class="foto-azioni">'
+      + '<label class="bottone foto-bottone"><input type="file" accept="image/*" capture="user" id="f-scatta" hidden>Scatta una foto</label>'
+      + '<label class="bottone bottone-fantasma foto-bottone"><input type="file" accept="image/*" id="f-galleria" hidden>Scegli dalla galleria</label>'
+      + (ha ? '<button type="button" class="foto-togli" id="f-togli">Togli la foto</button>' : '')
+      + '</div></div><p class="aiuto" id="f-stato">La vedono Pro Farmer e, accanto al tuo nome, chi lavora con te nell’app.</p></div>';
+  }
+
+  // la foto dal file: ritaglio quadrato al centro, 400×400, JPEG
+  function preparaFoto(file) {
+    const dalFile = window.createImageBitmap
+      ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file))
+      : Promise.reject(new Error('vecchio'));
+    const conImmagine = () => new Promise((ok, ko) => {
+      const img = new Image(); const u = URL.createObjectURL(file);
+      img.onload = () => { URL.revokeObjectURL(u); ok(img); };
+      img.onerror = () => { URL.revokeObjectURL(u); ko(new Error('formato')); };
+      img.src = u;
+    });
+    return dalFile.catch(conImmagine).then(img => {
+      const w = img.width, h = img.height, lato = Math.min(w, h);
+      const c = document.createElement('canvas'); c.width = c.height = FOTO_LATO;
+      const g = c.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(img, (w - lato) / 2, (h - lato) / 2, lato, lato, 0, 0, FOTO_LATO, FOTO_LATO);
+      return new Promise((ok, ko) => c.toBlob(b => b ? ok(b) : ko(new Error('formato')), 'image/jpeg', 0.86));
+    });
+  }
+
+  function agganciaFoto() {
+    const stato = document.getElementById('f-stato');
+    if (!stato) return;
+    const dopo = (testo) => { aggiorna(); apri('profilo'); const s2 = document.getElementById('f-stato'); if (s2) { s2.textContent = testo; s2.classList.add('foto-ok'); } };
+    const carica = file => {
+      if (!file) return;
+      if (navigator.onLine === false) { stato.textContent = 'Sei senza rete: riprova quando torna il segnale.'; return; }
+      stato.textContent = 'Preparo la foto…'; stato.classList.remove('foto-ok');
+      preparaFoto(file).then(blob => {
+        stato.textContent = 'Carico la foto…';
+        return collegamento().auth.getUser().then(() => rpc('mio_id')).then(mio => {
+          const percorso = `${mio}/profilo.jpg`;
+          return collegamento().storage.from('foto-profilo').upload(percorso, blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' })
+            .then(({ error }) => {
+              if (error) throw error;
+              const url = collegamento().storage.from('foto-profilo').getPublicUrl(percorso).data.publicUrl + '?t=' + Date.now();
+              return rpc('salva_foto', { indirizzo: url }).then(() => url);
+            });
+        });
+      }).then(url => { area.profilo.foto = url; dopo('✓ Foto salvata.'); })
+        .catch(e => {
+          stato.textContent = /formato/.test(String(e && e.message))
+            ? 'Questa immagine non si apre: scegli una foto JPEG o PNG.'
+            : 'La foto non è stata salvata: riprova tra poco.';
+        });
+    };
+    ['f-scatta', 'f-galleria'].forEach(id => {
+      const i = document.getElementById(id);
+      if (i) i.addEventListener('change', () => { carica(i.files && i.files[0]); i.value = ''; });
+    });
+    const togli = document.getElementById('f-togli');
+    if (togli) togli.addEventListener('click', () => {
+      if (!confirm('Tolgo la tua foto? Tornano le iniziali.')) return;
+      rpc('mio_id').then(mio => collegamento().storage.from('foto-profilo').remove([`${mio}/profilo.jpg`]))
+        .then(() => rpc('salva_foto', { indirizzo: null }))
+        .then(() => { area.profilo.foto = null; dopo('Foto tolta.'); })
+        .catch(() => { stato.textContent = 'Non sono riuscito a toglierla: riprova tra poco.'; });
+    });
+  }
+
   function disegnaProfilo() {
     const p = area.profilo;
-    let h = '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo"><tbody>';
+    let h = bloccoFoto() + '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo"><tbody>';
     h += `<tr><th>Nome</th><td>${esc(p.nome)}</td></tr>`;
     h += `<tr><th>Ruolo</th><td>${esc(RUOLI[p.ruolo] || p.ruolo)}</td></tr>`;
     h += `<tr><th>E-mail</th><td>${p.email ? esc(p.email) : 'non registrata: chiedila a Pro Farmer, così ricevi copia dei tuoi ordini'}</td></tr>`;

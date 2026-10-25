@@ -1080,3 +1080,17 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .cliente-indirizzo{margin:6px 0 0;font-size:15px;color:var(--testo)}
 .cliente-indirizzo a{color:var(--link);font-weight:600}
 .cliente-indirizzo-manca{color:#9A5B00;font-size:14px}
+
+/* la foto del profilo (25/10/2026) */
+img.account-foto{object-fit:cover;border-radius:50%;display:block;background:var(--crema-2)}
+img.account-iniziali{flex:0 0 46px;width:46px;height:46px}
+.foto-riga{display:flex;align-items:center;gap:18px;margin-top:10px}
+.foto-grande{flex:0 0 96px;width:96px;height:96px;border-radius:50%;display:grid;place-items:center;
+  background:var(--navy);color:var(--bianco);font-weight:600;font-size:30px;letter-spacing:.04em}
+.app-pro .foto-grande{background:linear-gradient(135deg,#15305A,var(--notte));color:var(--oro-chiaro)}
+img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo)}
+.foto-azioni{display:grid;gap:8px;flex:1;min-width:0}
+.foto-bottone{display:flex;align-items:center;justify-content:center;min-height:46px;padding:10px 14px;font-size:15px;cursor:pointer}
+.foto-togli{min-height:40px;font:inherit;font-size:14px;color:var(--testo-2);background:none;border:0;text-decoration:underline;cursor:pointer}
+#f-stato.foto-ok{color:#14612F;font-weight:600}
+@media (max-width:360px){ .foto-riga{flex-direction:column;align-items:stretch} .foto-grande{align-self:center} }
