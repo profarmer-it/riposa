@@ -146,17 +146,33 @@ const ProFarmer = (() => {
   }
 
   /* Salva, ricarica e ridisegna; l'errore resta vicino al bottone. */
-  function salva(bottone, lavoro) {
+  function salva(bottone, lavoro, conferma) {
     const testo = bottone.textContent;
     const err = bottone.closest('form, li, .blocco').querySelector('.errore');
     bottone.disabled = true; bottone.textContent = 'Salvo…';
     return Promise.resolve().then(lavoro).then(r => {
       if (r && r.error) throw new Error(r.error.message);
       return carica();
-    }).then(mostra).catch(e => {
+    }).then(() => { mostra(); avvisa(conferma || 'Salvato'); }).catch(e => {
       bottone.disabled = false; bottone.textContent = testo;
       if (err) { err.textContent = 'Non salvato: ' + e.message; err.hidden = false; }
     });
+  }
+
+  /* La conferma dopo un salvataggio: un avviso in basso che sparisce da solo
+     (24/10/2026). role=status: lo legge anche il lettore dello schermo. */
+  let timerAvviso = null;
+  function avvisa(testo) {
+    let el = document.getElementById('pf-conferma');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pf-conferma'; el.className = 'pf-conferma'; el.setAttribute('role', 'status');
+      document.body.appendChild(el);
+    }
+    el.textContent = '✓ ' + testo;
+    el.classList.remove('visibile'); void el.offsetWidth; el.classList.add('visibile');
+    clearTimeout(timerAvviso);
+    timerAvviso = setTimeout(() => el.classList.remove('visibile'), 3200);
   }
 
   /* ---------------------------------------------------------------- ordini */
@@ -289,6 +305,7 @@ const ProFarmer = (() => {
     corpo.querySelectorAll('.pf-lead').forEach(f => f.addEventListener('submit', ev => {
       ev.preventDefault();
       const d = new FormData(f);
+      leadAperti.delete(f.dataset.id);
       salva(f.querySelector('button[type=submit]'), () => sb.from('lead')
         .update({ stato: d.get('stato'), note_pf: nulloSeVuoto(String(d.get('note_pf') || '').trim()) }).eq('id', f.dataset.id));
     }));
@@ -377,6 +394,8 @@ const ProFarmer = (() => {
     if (prov.length) h += '<p class="cliente-dati">Da dove, negli ultimi 30 giorni: ' + prov.map(([p, n]) => `${esc(p)} <strong>${n}</strong>`).join(' · ') + '</p>';
     h += '</div>';
 
+    h += statistiche(validi, t) + riordini(validi);
+
     // cosa è successo: ordini, lead, clienti nuovi, in ordine di tempo
     const eventi = [];
     dati.ordini.slice(0, 40).forEach(o => eventi.push({ quando: o.creato_il, dove: 'ordini', icona: 'ordine',
@@ -402,6 +421,106 @@ const ProFarmer = (() => {
       sezione = b.dataset.vai; cambiata = true; mostra(); window.scrollTo(0, 0);
     }));
   }
+  /* Statistiche: ultimi 12 mesi, tonnellate mese per mese, formati, da chi. */
+  const KG = { bigbag: 600, sacchi: 1200, ballette: 850 };
+  function statistiche(validi, t) {
+    const oggiD = new Date();
+    const mesi = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(oggiD.getFullYear(), oggiD.getMonth() - i, 1);
+      mesi.push({ chiave: d.getFullYear() * 12 + d.getMonth(), nome: d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', ''), t: 0, n: 0 });
+    }
+    const primo = mesi[0].chiave;
+    const anno = validi.filter(o => { const d = new Date(o.creato_il); return d.getFullYear() * 12 + d.getMonth() >= primo; });
+    anno.forEach(o => {
+      const d = new Date(o.creato_il); const m = mesi.find(x => x.chiave === d.getFullYear() * 12 + d.getMonth());
+      if (m) { m.t += Number(o.t) || 0; m.n++; }
+    });
+    const max = Math.max(1, ...mesi.map(m => m.t));
+    const tot = anno.reduce((x, o) => x + (Number(o.t) || 0), 0);
+    let h = '<div class="blocco"><h3>Statistiche</h3><p class="aiuto">Ultimi 12 mesi, ordini non annullati.</p>';
+    h += '<div class="cr-mesi" role="img" aria-label="Tonnellate ordinate mese per mese">';
+    mesi.forEach(m => {
+      h += `<div class="cr-mese" title="${esc(m.nome)}: ${t(m.t)} t, ${m.n} ordini"><span class="cr-mese-val">${m.t ? t(m.t) : ''}</span>`
+        + `<span class="cr-mese-barra" style="height:${Math.max(2, Math.round(m.t / max * 100))}%"></span><span class="cr-mese-nome">${esc(m.nome)}</span></div>`;
+    });
+    h += '</div>';
+    // i formati, in tonnellate
+    const formati = { bigbag: 0, sacchi: 0, ballette: 0 };
+    anno.forEach(o => Object.keys(formati).forEach(k => { formati[k] += (Number(o[k]) || 0) * KG[k] / 1000; }));
+    const totF = Object.values(formati).reduce((a, b) => a + b, 0) || 1;
+    const nomiF = { bigbag: 'piùLact big bag', sacchi: 'piùLact sacchi', ballette: 'Pronto ballette' };
+    h += '<div class="cr-formati">' + Object.entries(formati).map(([k, v]) =>
+      `<i class="cr-f-${k}" style="width:${v / totF * 100}%"></i>`).join('') + '</div>';
+    h += '<p class="cr-legenda">' + Object.entries(formati).map(([k, v]) =>
+      `<span><i class="cr-f-${k}"></i>${esc(nomiF[k])} <strong>${t(v)} t</strong> (${Math.round(v / totF * 100)}%)</span>`).join('') + '</p>';
+    // da chi
+    const ruoloDi = o => o.ruolo === 'interno' ? 'diretti' : o.ruolo;
+    const perRuolo = { diretti: 0, agente: 0, rivenditore: 0 };
+    anno.forEach(o => { perRuolo[ruoloDi(o)] = (perRuolo[ruoloDi(o)] || 0) + (Number(o.t) || 0); });
+    const clientiAttivi = new Set(anno.map(o => o.cliente_id).filter(Boolean)).size;
+    h += '<dl class="numeri soldi">'
+      + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(tot)}<small>in 12 mesi</small></dd></div>`
+      + `<div class="numero-cella"><dt>Ordine medio</dt><dd>${anno.length ? t(tot / anno.length) : '—'} t<small>${anno.length} ordini</small></dd></div>`
+      + `<div class="numero-cella"><dt>Clienti attivi</dt><dd>${clientiAttivi}<small>con almeno un ordine</small></dd></div>`
+      + `<div class="numero-cella"><dt>Da chi</dt><dd class="cr-da-chi">${['diretti', 'agente', 'rivenditore'].map(r =>
+          `${tot ? Math.round(perRuolo[r] / tot * 100) : 0}%`).join(' · ')}<small>diretti · agenti · rivenditori</small></dd></div>`
+      + '</dl></div>';
+    return h;
+  }
+
+  /* Riordini: per ogni cliente con almeno due ordini, ogni quanti giorni
+     riordina in media e quando ci aspettiamo il prossimo. Chi è in ritardo o
+     ci arriva nei prossimi 14 giorni va chiamato; chi ha ordinato una volta
+     sola più di 60 giorni fa e non è tornato, anche. */
+  function riordini(validi) {
+    const giorno = 864e5, oggiT = Date.now();
+    const perCliente = new Map();
+    validi.filter(o => o.cliente_id).forEach(o => {
+      const l = perCliente.get(o.cliente_id) || []; l.push(o); perCliente.set(o.cliente_id, l);
+    });
+    const attesi = [], unaVolta = [];
+    let conRiordino = 0;
+    perCliente.forEach((l, id) => {
+      l.sort((a, b) => String(a.creato_il).localeCompare(String(b.creato_il)));
+      const ultimo = l[l.length - 1];
+      const c = dati.clienti.find(x => x.id === id) || { ragione: ultimo.cliente, venditore_id: ultimo.venditore_id };
+      if (l.length >= 2) {
+        conRiordino++;
+        const giorni = (new Date(ultimo.creato_il) - new Date(l[0].creato_il)) / giorno / (l.length - 1);
+        const atteso = new Date(new Date(ultimo.creato_il).getTime() + giorni * giorno);
+        if (atteso.getTime() <= oggiT + 14 * giorno) attesi.push({ c, ultimo, ogni: Math.round(giorni), atteso, n: l.length });
+      } else if (oggiT - new Date(ultimo.creato_il).getTime() > 60 * giorno) {
+        unaVolta.push({ c, ultimo });
+      }
+    });
+    attesi.sort((a, b) => a.atteso - b.atteso);
+    const totClienti = perCliente.size;
+    let h = '<div class="blocco"><h3>Riordini</h3>'
+      + `<p class="aiuto">${totClienti ? `${conRiordino} clienti su ${totClienti} hanno riordinato almeno una volta (${Math.round(conRiordino / totClienti * 100)}%).` : 'I riordini compaiono dal secondo ordine di un cliente.'} `
+      + 'Il prossimo ordine atteso è calcolato da ogni quanto il cliente ha ordinato finora.</p>';
+    if (attesi.length) {
+      h += '<h4>Da riordinare a breve</h4><ul class="lista-clienti">';
+      attesi.forEach(x => {
+        const tardi = x.atteso.getTime() < oggiT;
+        h += `<li><div class="cliente-testa"><strong>${esc(x.c.ragione || '—')}</strong>`
+          + `<span class="pf-proprietario${tardi ? ' cr-tardi' : ''}">${tardi ? 'in ritardo' : 'atteso'} il ${esc(dataIt(x.atteso.toISOString()))}</span></div>`
+          + `<p class="cliente-dati">${esc(nomeVenditore(x.c.venditore_id))} · ${x.n} ordini, ogni ~${x.ogni} giorni · ultimo il ${esc(dataIt(x.ultimo.creato_il))}: ${esc(pezzi(x.ultimo))}</p></li>`;
+      });
+      h += '</ul>';
+    }
+    if (unaVolta.length) {
+      h += `<h4>Un ordine solo, poi più niente</h4><p class="aiuto">Hanno ordinato una volta più di 60 giorni fa: vale una telefonata.</p><ul class="lista-clienti">`;
+      unaVolta.sort((a, b) => String(a.ultimo.creato_il).localeCompare(String(b.ultimo.creato_il))).slice(0, 15).forEach(x => {
+        h += `<li><div class="cliente-testa"><strong>${esc(x.c.ragione || '—')}</strong><span>${esc(dataIt(x.ultimo.creato_il))}</span></div>`
+          + `<p class="cliente-dati">${esc(nomeVenditore(x.c.venditore_id))} · ${esc(pezzi(x.ultimo))}</p></li>`;
+      });
+      h += '</ul>';
+    }
+    if (!attesi.length && !unaVolta.length && totClienti) h += '<p class="aiuto">Nessun riordino in ritardo o atteso nei prossimi 14 giorni.</p>';
+    return h + '</div>';
+  }
+
   function pezzi_(o) { return pezzi(o) + (o.t ? ` · ${num(Number(o.t), 1)} t` : ''); }
   function quandoBreve(iso) {
     if (!iso) return '';
@@ -455,7 +574,7 @@ const ProFarmer = (() => {
       if (nuovo === f.dataset.prima) return;
       const ragione = f.querySelector('strong').textContent;
       if (!confirm(`Sposto ${ragione} a ${nomeVenditore(nuovo)}? Il venditore di prima non lo vedrà più; gli ordini già fatti restano suoi.`)) return;
-      salva(f.querySelector('button[type=submit]'), () => sb.from('clienti').update({ venditore_id: nuovo }).eq('id', f.dataset.id));
+      salva(f.querySelector('button[type=submit]'), () => sb.from('clienti').update({ venditore_id: nuovo }).eq('id', f.dataset.id), `${ragione} spostato`);
     }));
   }
 
@@ -541,7 +660,7 @@ const ProFarmer = (() => {
       if (riga.titolo.length < 3 || riga.testo.length < 3) { err.textContent = 'Servono il titolo e il testo.'; err.hidden = false; return; }
       const a = riga.provincia ? `agli allevatori di ${riga.provincia}` : 'a tutti gli allevatori con le notifiche';
       if (!confirm(`Mando «${riga.titolo}» ${a}${quando ? ' alla data scelta' : ' entro 15 minuti'}?`)) return;
-      salva(f.querySelector('button[type=submit]'), () => sb.from('messaggi_allevatori').insert(riga));
+      salva(f.querySelector('button[type=submit]'), () => sb.from('messaggi_allevatori').insert(riga), 'Messaggio programmato');
     });
     corpo.querySelectorAll('[data-togli-messaggio]').forEach(b => b.addEventListener('click', () => {
       if (!confirm('Annullo questo messaggio? Non partirà.')) return;
@@ -664,15 +783,16 @@ const ProFarmer = (() => {
           if (!riga.nome) { err.textContent = 'Serve il nome.'; err.hidden = false; return; }
           if (riga.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(riga.email)) { err.textContent = 'L’e-mail non sembra valida.'; err.hidden = false; return; }
           const id = f.dataset.id;
+          if (id) aperti.delete(id);   // salvata, la scheda si chiude
           salva(f.querySelector('button[type=submit]'), () => id
             ? sb.from('venditori').update(riga).eq('id', id)
-            : sb.from('venditori').insert(riga));
+            : sb.from('venditori').insert(riga), id ? `Scheda di ${riga.nome} salvata` : `${riga.nome} aggiunto ai venditori`);
         });
         const inv = f.querySelector('[data-invita]');
-        if (inv) inv.addEventListener('click', () => salva(inv, () =>
+        if (inv) inv.addEventListener('click', () => { aperti.delete(f.dataset.id); salva(inv, () =>
           sb.functions.invoke('invita', { body: { id: f.dataset.id } }).then(x => {
             if (x.error) throw new Error('invito non partito, riprova più tardi');
-          })));
+          }), 'Invito mandato'); });
       });
     }
   }

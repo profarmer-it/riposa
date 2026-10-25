@@ -1026,3 +1026,28 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .cr-testo{font-size:15px;line-height:1.35}
 .cr-testo small{display:block;margin-top:2px;font-size:13.5px;color:var(--testo-2)}
 .cr-eventi time{font-size:13px;color:var(--testo-2);white-space:nowrap}
+
+/* la conferma dopo un salvataggio nella Gestione (24/10/2026) */
+.pf-conferma{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));z-index:900;
+  max-width:calc(100% - 32px);padding:13px 20px;border-radius:99px;background:#14612F;color:#fff;
+  font-weight:600;font-size:15.5px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  opacity:0;transform:translate(-50%,16px);pointer-events:none;transition:opacity .2s ease,transform .25s var(--ease-out)}
+.pf-conferma.visibile{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){ .pf-conferma{transition:opacity .2s ease;transform:translate(-50%,0)} }
+
+/* Cruscotto: statistiche e riordini (24/10/2026) */
+.cr-mesi{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:170px;margin:14px 0 4px}
+.cr-mese{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.cr-mese-barra{width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--blu),var(--navy-2))}
+.cr-mese-val{font-size:11.5px;font-weight:600;color:var(--testo-2);margin-bottom:3px;white-space:nowrap}
+.cr-mese-nome{font-size:12.5px;color:var(--testo-2);margin-top:5px}
+.cr-formati{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:18px 0 8px;background:var(--crema-2)}
+.cr-formati i,.cr-legenda i{display:block;height:100%}
+.cr-f-bigbag{background:var(--blu)}
+.cr-f-sacchi{background:#8CC4F7}
+.cr-f-ballette{background:#C9912E}
+.cr-legenda{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 14px;font-size:14px;color:var(--testo-2)}
+.cr-legenda span{display:inline-flex;align-items:center;gap:6px}
+.cr-legenda i{width:10px;height:10px;border-radius:3px}
+.cr-da-chi{font-size:20px !important}
+.pf-proprietario.cr-tardi{background:#FDECEA;color:#A3261B}
