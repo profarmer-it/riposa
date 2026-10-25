@@ -439,7 +439,9 @@ const PASSI_RAGIONAMENTO = [
   'Verifico i formati e la quantità da ordinare…'
 ];
 
-const DURATA_RAGIONAMENTO = 2500;
+/* 4,5 secondi (Giulio, 25/10/2026): i passi si spuntano uno alla volta, la
+   barra avanza a scatti morbidi con loro, poi un attimo di «fatto». */
+const DURATA_RAGIONAMENTO = 4500;
 
 function bovinaChePensa() {
   return `
@@ -474,30 +476,29 @@ function bovinaChePensa() {
 }
 
 function mostraRagionamento(r) {
+  const n = PASSI_RAGIONAMENTO.length, passo = 950;          // 4 passi × 0,95 s, poi «fatto»
   let h = '<div class="ragiona">';
   h += bovinaChePensa();
-  h += '<p class="ragiona-titolo">Sto ragionando sulla tua stalla</p>';
-  h += '<p class="ragiona-passo" id="ragiona-passo">' + esc(PASSI_RAGIONAMENTO[0]) + '</p>';
+  h += '<p class="ragiona-titolo" id="ragiona-titolo">Sto ragionando sulla tua stalla</p>';
+  h += '<ol class="ragiona-passi">' + PASSI_RAGIONAMENTO.map(p =>
+    `<li><span class="ragiona-segno" aria-hidden="true"></span>${esc(p.replace(/…$/, ''))}</li>`).join('') + '</ol>';
   h += '<div class="ragiona-barra"><span id="ragiona-avanzamento"></span></div>';
   h += '</div>';
   mostra(h);
 
-  const testo = document.getElementById('ragiona-passo');
+  const voci = document.querySelectorAll('.ragiona-passi li');
   const barra = document.getElementById('ragiona-avanzamento');
-  requestAnimationFrame(() => { barra.style.width = '100%'; });
-
-  const intervallo = DURATA_RAGIONAMENTO / PASSI_RAGIONAMENTO.length;
-  PASSI_RAGIONAMENTO.forEach((passo, i) => {
-    if (i === 0) return;
-    setTimeout(() => {
-      testo.style.opacity = '0';
-      setTimeout(() => {
-        testo.textContent = passo;
-        testo.style.opacity = '1';
-      }, 140);
-    }, intervallo * i);
-  });
-
+  // ogni chiamata ridisegna tutti i passi: l'ordine dei timer non conta
+  const avanza = i => {
+    voci.forEach((v, j) => { v.className = j < i ? 'fatto' : j === i ? 'in-corso' : ''; });
+    barra.style.width = Math.round((i + (i < n ? .6 : 0)) / n * 100) + '%';
+  };
+  setTimeout(() => avanza(0), 30);
+  for (let i = 1; i <= n; i++) setTimeout(() => avanza(i), passo * i);
+  setTimeout(() => {
+    const t = document.getElementById('ragiona-titolo');
+    if (t) { t.textContent = 'Fatto: ecco la tua soluzione'; t.classList.add('ragiona-fatto'); }
+  }, passo * n + 50);
   setTimeout(() => mostraContatti(r), DURATA_RAGIONAMENTO);
 }
 

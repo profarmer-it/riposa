@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Riposa — il dosaggio giusto di piùLact per la tua stalla</title>
 <meta name="description" content="Calcola in due minuti quale prodotto della gamma piùLact serve alla tua stalla, quanto ne serve e come si usa. Uno strumento Pro Farmer.">
-<link rel="stylesheet" href="assets/style.css?v=20261125s">
+<link rel="stylesheet" href="assets/style.css?v=20261125v">
 <!-- App installabile (anche su iPhone: Condividi → Aggiungi alla schermata Home) -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icone/favicon-32.png">
@@ -46,10 +46,14 @@
      Si vede solo con la classe con-apertura su <html>, decisa dallo script in testa. -->
 <div class="apertura" id="apertura" aria-hidden="true">
   <svg class="apertura-segno" viewBox="0 0 200 200" aria-hidden="true">
-    <defs><linearGradient id="ap-croce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FC4F2"/><stop offset="1" stop-color="#4A7DF7"/></linearGradient></defs>
+    <defs><linearGradient id="ap-croce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FC4F2"/><stop offset="1" stop-color="#4A7DF7"/></linearGradient>
+      <linearGradient id="ap-riflesso" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <clipPath id="ap-sagoma"><rect x="73" y="16" width="54" height="168" rx="9"/><rect x="16" y="73" width="168" height="54" rx="9"/></clipPath></defs>
     <circle class="ap-alone" cx="100" cy="100" r="70"/>
     <rect class="ap-v" x="73" y="16" width="54" height="168" rx="9" fill="url(#ap-croce)"/>
     <rect class="ap-h" x="16" y="73" width="168" height="54" rx="9" fill="url(#ap-croce)"/>
+    <!-- un riflesso di luce che attraversa la croce appena formata -->
+    <g clip-path="url(#ap-sagoma)"><rect class="ap-riflesso" x="-60" y="0" width="60" height="200" fill="url(#ap-riflesso)" transform="skewX(-18)"/></g>
     <g transform="translate(54 54)"><g class="ap-bovina">
       <ellipse cx="19" cy="34" rx="7.5" ry="12" transform="rotate(-34 19 34)" fill="#D7E3F0"/>
       <ellipse cx="73" cy="34" rx="7.5" ry="12" transform="rotate(34 73 34)" fill="#D7E3F0"/>
@@ -59,12 +63,12 @@
       <path d="M46 24c-9 0-16 4-19 10 5 2 11 1 15-2 3 3 8 4 12 3-1-6-4-10-8-11z" fill="#2F86E0"/>
       <ellipse cx="46" cy="68" rx="17.5" ry="12" fill="#8CC4F5"/>
       <circle cx="39.5" cy="67" r="2.4" fill="#0E2340"/><circle cx="52.5" cy="67" r="2.4" fill="#0E2340"/>
-      <circle cx="36" cy="44" r="3.6" fill="#0E2340"/><circle cx="56" cy="44" r="3.6" fill="#0E2340"/>
+      <circle class="ap-occhio" cx="36" cy="44" r="3.6" fill="#0E2340"/><circle class="ap-occhio" cx="56" cy="44" r="3.6" fill="#0E2340"/>
       <circle cx="37.2" cy="42.8" r="1.2" fill="#fff"/><circle cx="57.2" cy="42.8" r="1.2" fill="#fff"/>
     </g></g>
-    <circle class="ap-bolla ap-b1" cx="146" cy="74" r="5"/>
-    <circle class="ap-bolla ap-b2" cx="160" cy="60" r="7"/>
-    <circle class="ap-bolla ap-b3" cx="177" cy="42" r="9.5"/>
+    <circle class="ap-bolla ap-b1" cx="146" cy="62" r="4.5"/>
+    <circle class="ap-bolla ap-b2" cx="161" cy="46" r="6.5"/>
+    <circle class="ap-bolla ap-b3" cx="179" cy="26" r="9"/>
   </svg>
   <p class="apertura-nome">Riposa</p>
   <p class="apertura-sotto">il dosaggio giusto di piùLact</p>
@@ -270,9 +274,9 @@
 </footer>
 
 <script src="assets/vendor/supabase-2.45.4.js"></script>
-<script src="assets/regole.js?v=20261125s"></script>
-<script src="assets/app.js?v=20261125s"></script>
-<script src="assets/allevatore.js?v=20261125s"></script>
+<script src="assets/regole.js?v=20261125v"></script>
+<script src="assets/app.js?v=20261125v"></script>
+<script src="assets/allevatore.js?v=20261125v"></script>
 <!-- RIPOSA PRO: qui strumenti/genera-pro.mjs aggiunge gli script dei venditori -->
 <script>
   /* L'app installabile: il service worker tiene la pagina sul telefono, così
