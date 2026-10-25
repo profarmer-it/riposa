@@ -22,7 +22,7 @@
      nel browser una volta per visita, mai con «riduci movimento». */
   try {
     var app = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-    if (/[?&]apertura=prova/.test(location.search)) sessionStorage.removeItem('riposa-pro-apertura');
+    if (/[?&]apertura=(prova|ferma)/.test(location.search)) sessionStorage.removeItem('riposa-pro-apertura');
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches && (app || sessionStorage.getItem('riposa-pro-apertura') !== '1')) {
       document.documentElement.classList.add('con-apertura');
       sessionStorage.setItem('riposa-pro-apertura', '1');
@@ -76,7 +76,7 @@
       setTimeout(function () { el.remove(); document.documentElement.classList.remove('con-apertura'); }, 450);
     }
     el.addEventListener('pointerdown', chiudi);
-    if (/[?&]apertura=prova/.test(location.search)) return;   // per i collaudi: resta finché non si tocca
+    if (/[?&]apertura=ferma/.test(location.search)) return;   // solo per i fotogrammi di collaudo: resta finché non si tocca
     setTimeout(chiudi, el.classList.contains('apertura-pro') ? 1900 : 3900);
   })();
 </script>

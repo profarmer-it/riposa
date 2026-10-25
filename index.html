@@ -29,7 +29,7 @@
     /* L'apertura animata (24/10/2026): nell'app installata a ogni apertura,
        nel browser una volta per visita. Mai a chi ha chiesto meno movimento. */
     try {
-      if (/[?&]apertura=prova/.test(location.search)) sessionStorage.removeItem('riposa-apertura');
+      if (/[?&]apertura=(prova|ferma)/.test(location.search)) sessionStorage.removeItem('riposa-apertura');
       var app = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
       var vista = sessionStorage.getItem('riposa-apertura') === '1';
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches && (app || !vista)) {
@@ -86,7 +86,7 @@
       setTimeout(function () { el.remove(); document.documentElement.classList.remove('con-apertura'); }, 450);
     }
     el.addEventListener('pointerdown', chiudi);
-    if (/[?&]apertura=prova/.test(location.search)) return;   // per i collaudi: resta finché non si tocca
+    if (/[?&]apertura=ferma/.test(location.search)) return;   // solo per i fotogrammi di collaudo: resta finché non si tocca
     setTimeout(chiudi, el.classList.contains('apertura-pro') ? 1900 : 3900);
   })();
 </script>

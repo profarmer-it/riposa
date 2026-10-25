@@ -45,7 +45,7 @@ cambia(/<script data-solo-allevatore>[\s\S]*?<\/script>\n/, `<script>
      nel browser una volta per visita, mai con «riduci movimento». */
   try {
     var app = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-    if (/[?&]apertura=prova/.test(location.search)) sessionStorage.removeItem('riposa-pro-apertura');
+    if (/[?&]apertura=(prova|ferma)/.test(location.search)) sessionStorage.removeItem('riposa-pro-apertura');
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches && (app || sessionStorage.getItem('riposa-pro-apertura') !== '1')) {
       document.documentElement.classList.add('con-apertura');
       sessionStorage.setItem('riposa-pro-apertura', '1');
