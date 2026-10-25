@@ -1094,3 +1094,35 @@ img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo
 .foto-togli{min-height:40px;font:inherit;font-size:14px;color:var(--testo-2);background:none;border:0;text-decoration:underline;cursor:pointer}
 #f-stato.foto-ok{color:#14612F;font-weight:600}
 @media (max-width:360px){ .foto-riga{flex-direction:column;align-items:stretch} .foto-grande{align-self:center} }
+
+/* ------------------------------------------- i Diamanti piùLact (25/10/2026) */
+.diamanti-testa{text-align:center;background:linear-gradient(140deg,#15305A 0%,#0A1628 70%);color:#DCE6F2;border-color:transparent}
+.diamanti-saldo{display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0 0}
+.diamanti-saldo span{font-size:38px}
+.diamanti-saldo b{font-family:Fraunces,Georgia,serif;font-size:58px;line-height:1;color:#F4CF7A}
+.diamanti-sotto{margin:6px 0 0;font-weight:600;color:#fff}
+.diamanti-testa .aiuto{color:#B9CBE0}
+.diamanti-testa .aiuto strong{color:#fff}
+.traguardi{list-style:none;margin:10px 0 0;padding:0}
+.traguardi li{padding:14px 0;border-top:1px solid var(--crema-2)}
+.traguardo-testa{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.traguardo-testa strong{font-size:16px}
+.traguardo-premio{font-size:15px;white-space:nowrap}
+.traguardo-barra{height:10px;margin:10px 0 6px;border-radius:99px;background:var(--crema-2);overflow:hidden}
+.traguardo-barra i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#F4CF7A,#C9912E);transition:width .6s var(--ease-out)}
+.traguardi p{margin:4px 0 0;font-size:14.5px;color:var(--testo-2)}
+.premi{list-style:none;margin:10px 0 0;padding:0}
+.premi li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--crema-2)}
+.premi strong{display:block;font-size:16px}
+.premi small{display:block;font-size:14px;color:var(--testo-2)}
+.premi .bottone{width:auto;min-width:86px;padding:10px 14px;font-size:15px;white-space:nowrap}
+.classifica{list-style:none;margin:10px 0 0;padding:0;counter-reset:none}
+.classifica li{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px}
+.classifica li:nth-child(odd){background:var(--crema)}
+.classifica li.io{background:#FFF6E5;box-shadow:inset 0 0 0 1.5px #F0D29A}
+.classifica-pos{flex:0 0 26px;font-weight:700;color:var(--testo-2);text-align:center}
+.classifica li:nth-child(-n+3) .classifica-pos{color:#C9912E}
+.classifica-nome{flex:1;min-width:0;font-weight:600}
+.classifica b{white-space:nowrap}
+.diamanti-mov{font-weight:700;color:#14612F;white-space:nowrap}
+.diamanti-mov.meno{color:var(--testo-2)}

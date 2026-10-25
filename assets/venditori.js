@@ -508,10 +508,11 @@ const Venditori = (() => {
       }
       ricevi(r);
       sincronizzaNotifiche();
+      caricaDiamanti();
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       // le scorciatoie dell'app (tieni premuta l'icona) e i link delle notifiche
-      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa',
+      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti',
                     '#gestione': cond.ruolo === 'interno' ? 'gestione' : null }[location.hash];
       if (vai) { history.replaceState(null, '', location.pathname); apri(vai); return; }
       apri(scheda);
@@ -537,7 +538,7 @@ const Venditori = (() => {
 
   /* Ricarica clienti e ordini dopo un salvataggio, senza cambiare scheda. */
   function ricarica() {
-    return rpc('area').then(r => { if (r && r.ok) ricevi(r); });
+    return rpc('area').then(r => { if (r && r.ok) ricevi(r); }).then(caricaDiamanti);
   }
 
   function nomeSoldi() {
@@ -553,6 +554,7 @@ const Venditori = (() => {
     calcolo: '<path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h2M12 18h4"/>',
     diretto: '<path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
     clienti: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 14.5c1.8.8 3 2.6 3 4.5"/>',
+    diamanti: '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 6 3-6M12 9v12"/>',
     mappa: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
     ordini: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
     soldi: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.5c-.7-.9-1.8-1.5-3-1.5-2.2 0-4 2.2-4 5s1.8 5 4 5c1.2 0 2.3-.6 3-1.5M6.5 11h6M6.5 13.5h6"/>',
@@ -617,6 +619,11 @@ const Venditori = (() => {
       ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
     // Pro Farmer gestisce da qui ordini, venditori, condizioni e materiali
+    if (cond.ruolo === 'agente') {
+      const d = area.diamanti;
+      tessere.splice(2, 0, ['diamanti', 'I miei diamanti',
+        d ? `${d.saldo} 💎${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, premi e classifica', false, true]);
+    }
     if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Cruscotto e gestione', 'Cosa succede oggi: ordini, lead, allevatori, venditori', false, true]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
@@ -668,7 +675,7 @@ const Venditori = (() => {
       return;
     }
     const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
-                      materiali: disegnaMateriali, profilo: disegnaProfilo, mappa: disegnaMappa }[id];
+                      materiali: disegnaMateriali, profilo: disegnaProfilo, mappa: disegnaMappa, diamanti: disegnaDiamanti }[id];
     p.innerHTML = disegna();
     if (id !== 'home') entra(p);
     if (id === 'home') {
@@ -680,6 +687,7 @@ const Venditori = (() => {
     agganciaCerca(p);
     if (id === 'clienti') agganciaClienti();
     if (id === 'mappa') avviaMappa();
+    if (id === 'diamanti') agganciaDiamanti();
     if (id === 'materiali') agganciaMateriali();
     if (id === 'profilo') { agganciaNotifiche(); agganciaFoto(); }
   }
@@ -774,6 +782,122 @@ const Venditori = (() => {
         const ok = !q || normale(li.dataset.cerca).includes(q); li.hidden = !ok; if (ok) visti++;
       });
       p.querySelector(`[data-vuoto="${c.dataset.lista}"]`).hidden = visti > 0;
+    }));
+  }
+
+  /* -------------------------------------------------------------- diamanti
+     Dal 25/10/2026, solo per gli agenti. I traguardi li calcola il database
+     sugli ordini CONSEGNATI (15-diamanti.sql): qui si mostrano il saldo, i
+     traguardi in corso, il catalogo dei premi, le richieste e la classifica
+     (solo nomi e diamanti, mai tonnellate o soldi degli altri). */
+  function caricaDiamanti() {
+    if (!cond || cond.ruolo !== 'agente') return Promise.resolve();
+    return rpc('diamanti_agente').then(d => {
+      area.diamanti = d;
+      // in home cambia solo il testo della tessera: niente ridisegno, la pagina non salta
+      const t = document.querySelector('[data-apri="diamanti"] span');
+      if (scheda === 'home' && t && d) t.textContent = `${d.saldo} 💎` + (posizioneInClassifica(d) ? ` · ${posizioneInClassifica(d)}° in classifica` : '');
+      if (scheda === 'diamanti') apri('diamanti');
+    }).catch(() => {});
+  }
+  function posizioneInClassifica(d) {
+    const i = (d.classifica || []).findIndex(x => x.io);
+    return i >= 0 && d.classifica[i].diamanti > 0 ? i + 1 : 0;
+  }
+  const gemme = n => n > 0 && n <= 6 ? '💎'.repeat(n) : `${n} 💎`;
+
+  // i traguardi in corso, dagli ordini consegnati o pagati che l'agente ha già
+  function progressi(d) {
+    const ok = area.ordini.filter(o => ['consegnato', 'pagato'].includes(o.stato));
+    const mese = s => { const [g, m, a] = String(s).split('/').map(Number); return a * 12 + m - 1; };
+    const oggi = new Date(), adesso = oggi.getFullYear() * 12 + oggi.getMonth();
+    const mesi = new Set(ok.map(o => mese(o.data)));
+    // la serie: i mesi di fila fino a questo (se ha già ordinato) o fino al mese scorso
+    let serie = 0, m = mesi.has(adesso) ? adesso : adesso - 1;
+    while (mesi.has(m)) { serie++; m--; }
+    const nomeMese = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+    const out = [];
+    (d.traguardi || []).forEach(t => {
+      const lungo = { costanza3: 3, costanza6: 6, costanza12: 12 }[t.codice];
+      if (lungo) {
+        const fatto = serie % lungo, manca = lungo - fatto;
+        const testo = mesi.has(adesso)
+          ? `${fatto || lungo} ${(fatto || lungo) === 1 ? 'mese' : 'mesi'} su ${lungo}${fatto === 0 && serie ? ': vinto!' : ''}`
+          : `${fatto} su ${lungo}: manda un ordine entro il ${nomeMese}`;
+        out.push({ t, valore: fatto || (serie && mesi.has(adesso) ? lungo : 0), max: lungo, testo, nota: manca && mesi.has(adesso) ? `ne mancano ${manca}` : '' });
+      } else if (t.codice === 'volume' && t.soglia) {
+        const q = Math.floor(oggi.getMonth() / 3);
+        const tq = ok.filter(o => { const mm = mese(o.data); return Math.floor(mm / 12) === oggi.getFullYear() && Math.floor((mm % 12) / 3) === q; })
+          .reduce((x, o) => x + (Number(o.t) || 0), 0);
+        out.push({ t, valore: Math.min(tq, t.soglia), max: Number(t.soglia), testo: tq >= t.soglia
+          ? `${num(tq, 1)} t in questo trimestre: traguardo raggiunto!`
+          : `${num(tq, 1)} t su ${num(t.soglia)} t in questo trimestre` });
+      } else {
+        out.push({ t, testo: t.descrizione });
+      }
+    });
+    return out;
+  }
+
+  function disegnaDiamanti() {
+    const d = area.diamanti;
+    if (!d) return '<div class="blocco"><p class="aiuto">Carico i tuoi diamanti…</p></div>';
+    const pos = posizioneInClassifica(d);
+    let h = '<div class="blocco diamanti-testa">'
+      + `<p class="diamanti-saldo"><span>💎</span><b>${d.saldo}</b></p>`
+      + `<p class="diamanti-sotto">${d.disponibili !== d.saldo ? `${d.disponibili} disponibili · ` : ''}${d.vinti_anno} vinti quest’anno${pos ? ` · ${pos}° in classifica` : ''}</p>`
+      + '<p class="aiuto">Si vincono con gli ordini <strong>consegnati</strong> e si spendono nel catalogo premi.</p></div>';
+
+    h += '<div class="blocco"><h3>I traguardi</h3><ul class="traguardi">';
+    progressi(d).forEach(x => {
+      h += `<li><div class="traguardo-testa"><strong>${esc(x.t.nome)}</strong><span class="traguardo-premio">${gemme(x.t.diamanti)}</span></div>`
+        + (x.max ? `<div class="traguardo-barra"><i style="width:${Math.round(x.valore / x.max * 100)}%"></i></div>` : '')
+        + `<p>${esc(x.testo)}${x.nota ? ` · ${esc(x.nota)}` : ''}</p></li>`;
+    });
+    h += '</ul></div>';
+
+    h += '<div class="blocco"><h3>Il catalogo premi</h3>';
+    if (!d.premi.length) h += '<p class="aiuto">Pro Farmer sta preparando il catalogo: i diamanti intanto si accumulano.</p>';
+    h += '<ul class="premi">';
+    d.premi.forEach(p => {
+      const posso = d.disponibili >= p.costo;
+      h += `<li><div><strong>${esc(p.nome)}</strong>${p.descrizione ? `<small>${esc(p.descrizione)}</small>` : ''}</div>`
+        + `<button type="button" class="bottone${posso ? '' : ' bottone-fantasma'}" data-premio="${esc(p.id)}" data-nome="${esc(p.nome)}" data-costo="${p.costo}"${posso ? '' : ' disabled'}>`
+        + `${p.costo} 💎</button></li>`;
+    });
+    h += '</ul><p class="errore" id="premio-errore" hidden></p>';
+    if (d.richieste.length) {
+      const STATO = { richiesto: 'in attesa', approvato: 'approvato', consegnato: 'consegnato', rifiutato: 'non approvato' };
+      h += '<h4>Le tue richieste</h4><ul class="lista-ordini">' + d.richieste.map(x =>
+        `<li><div class="ordine-testa"><strong>${esc(x.premio)}</strong><span class="stato stato-${x.stato === 'rifiutato' ? 'annullato' : x.stato === 'richiesto' ? 'inviato' : 'pagato'}">${esc(STATO[x.stato])}</span></div>`
+        + `<p class="ordine-dati">${esc(x.data)} · ${x.costo} 💎</p></li>`).join('') + '</ul>';
+    }
+    h += '</div>';
+
+    h += '<div class="blocco"><h3>La classifica</h3><p class="aiuto">Diamanti vinti quest’anno dagli agenti Pro Farmer.</p><ol class="classifica">';
+    d.classifica.forEach((x, i) => {
+      h += `<li class="${x.io ? 'io' : ''}"><span class="classifica-pos">${i + 1}</span><span class="classifica-nome">${esc(x.nome)}${x.io ? ' (tu)' : ''}</span><b>${x.diamanti} 💎</b></li>`;
+    });
+    h += '</ol></div>';
+
+    if (d.movimenti.length) {
+      h += '<div class="blocco"><h3>Gli ultimi diamanti</h3><ul class="lista-ordini">' + d.movimenti.map(m =>
+        `<li><div class="ordine-testa"><strong>${esc(m.motivo)}</strong><span class="diamanti-mov${m.quanti < 0 ? ' meno' : ''}">${m.quanti > 0 ? '+' : ''}${m.quanti} 💎</span></div>`
+        + `<p class="ordine-dati">${esc(m.data)}</p></li>`).join('') + '</ul></div>';
+    }
+    return h;
+  }
+
+  function agganciaDiamanti() {
+    if (!area.diamanti) caricaDiamanti();
+    pannello().querySelectorAll('[data-premio]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm(`Chiedi «${b.dataset.nome}» per ${b.dataset.costo} diamanti? Pro Farmer ti conferma la richiesta.`)) return;
+      b.disabled = true;
+      rpc('chiedi_premio', { p_premio: b.dataset.premio }).then(caricaDiamanti).catch(e => {
+        const err = document.getElementById('premio-errore');
+        err.textContent = e.delDatabase ? e.message : 'La richiesta non è partita: riprova tra poco.';
+        err.hidden = false; b.disabled = false;
+      });
     }));
   }
 
