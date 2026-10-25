@@ -793,6 +793,29 @@ function consiglioTrasporto(r) {
     + 'le condizioni migliori le definisci con lo staff Pro Farmer';
 }
 
+/* La fornitura per l'e-mail all'allevatore (Giulio, 25/10/2026): un numero
+   secco, con le stesse regole di consiglioTrasporto. Trimestre per big bag e
+   sacchi (arrotondato al camion quando ci si avvicina), mese per le ballette. */
+function fornituraConsigliata(r) {
+  const c = r.confezioneConsigliata, T = TRASPORTO;
+  if (!c || !r.kgMese) return null;
+  if (c.kg === T.ballettaKg) {
+    const servono = Math.ceil(r.kgMese * T.mesiOrizzonteBallette / T.ballettaKg);
+    const n = Math.max(Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale, T.balletteMinimo);
+    return { mesi: T.mesiOrizzonteBallette, testo: `${num(n)} ballette da ${num(T.ballettaKg)} kg, circa ${ton(n * T.ballettaKg)} t` };
+  }
+  const kg3 = r.kgMese * T.mesiOrizzonte;
+  if (c.kg === 25) {
+    const n = Math.max(Math.ceil(kg3 / T.bancaleKg), T.bancaliMinimo);
+    return { mesi: T.mesiOrizzonte, testo: `${num(n)} bancali di sacchi da 25 kg, ${ton(n * T.bancaleKg)} t` };
+  }
+  if (c.kg !== T.bigBagKg) return null;
+  let n = Math.max(Math.ceil(kg3 / T.bigBagKg), T.bigBagMinimo);
+  if (n >= T.sogliaBilico && n <= T.bilico) n = T.bilico;
+  else if (n >= T.sogliaMotrice && n <= T.motrice) n = T.motrice;
+  return { mesi: T.mesiOrizzonte, testo: `${num(n)} Big Bag da ${num(T.bigBagKg)} kg, ${ton(n * T.bigBagKg)} t` };
+}
+
 function testoRiepilogo(dati, r) {
   const d = r.dati, s = r.scenario, p = r.prodotto;
   const L = [];
@@ -912,6 +935,13 @@ function inviaLead(dati, r) {
     formato:        r.confezioneConsigliata ? r.confezioneConsigliata.etichetta : '',
     premium:        scelta ? scelta.prodotto.nome : '',
     riepilogo:      testoRiepilogo(dati, r),
+    // l'e-mail all'allevatore, a punti (25/10/2026)
+    distribuzione:  r.scenario && r.scenario.distribuzione ? maiuscola(r.scenario.distribuzione) : '',
+    perDistribuzione: r.superficie
+                    ? `${num(r.dosePerMq, 2)} kg per m\u00B2, ${kg(r.kgApplicazione)} kg in tutto`
+                    : (r.dosePerCuccetta ? `${kg(r.dosePerCuccetta)} kg per cuccetta, ${kg(r.kgApplicazione)} kg per tutta la stalla` : ''),
+    fornitura:      (fornituraConsigliata(r) || {}).testo || '',
+    fornituraMesi:  (fornituraConsigliata(r) || {}).mesi || '',
     // l'app sul telefono (24/10/2026): il telefono che ha già fatto un calcolo si fa riconoscere
     kgPezzo:        r.confezioneConsigliata ? r.confezioneConsigliata.kg : '',
     app:            typeof Allevatore !== 'undefined' ? Allevatore.credenziali() : null
