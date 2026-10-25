@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Riposa — il dosaggio giusto di piùLact per la tua stalla</title>
 <meta name="description" content="Calcola in due minuti quale prodotto della gamma piùLact serve alla tua stalla, quanto ne serve e come si usa. Uno strumento Pro Farmer.">
-<link rel="stylesheet" href="assets/style.css?v=20261125z">
+<link rel="stylesheet" href="assets/style.css?v=20261125za">
 <!-- App installabile (anche su iPhone: Condividi → Aggiungi alla schermata Home) -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icone/favicon-32.png">
@@ -74,7 +74,8 @@
   <p class="apertura-sotto">il dosaggio giusto di piùLact</p>
 </div>
 <script>
-  /* Dopo 1,9 secondi (o al primo tocco) l'apertura si dissolve e la pagina entra. */
+  /* Dopo 3,9 secondi (o al primo tocco) l'apertura si dissolve e la pagina entra.
+     Riposa Pro (stesso script, copiato da genera-pro.mjs) resta a 1,9 secondi. */
   (function () {
     var el = document.getElementById('apertura'), via = false;
     if (!document.documentElement.classList.contains('con-apertura')) { el.remove(); return; }
@@ -86,7 +87,7 @@
     }
     el.addEventListener('pointerdown', chiudi);
     if (/[?&]apertura=prova/.test(location.search)) return;   // per i collaudi: resta finché non si tocca
-    setTimeout(chiudi, 1900);
+    setTimeout(chiudi, el.classList.contains('apertura-pro') ? 1900 : 3900);
   })();
 </script>
 <!-- /APERTURA -->
@@ -274,9 +275,9 @@
 </footer>
 
 <script src="assets/vendor/supabase-2.45.4.js"></script>
-<script src="assets/regole.js?v=20261125z"></script>
-<script src="assets/app.js?v=20261125z"></script>
-<script src="assets/allevatore.js?v=20261125z"></script>
+<script src="assets/regole.js?v=20261125za"></script>
+<script src="assets/app.js?v=20261125za"></script>
+<script src="assets/allevatore.js?v=20261125za"></script>
 <!-- RIPOSA PRO: qui strumenti/genera-pro.mjs aggiunge gli script dei venditori -->
 <script>
   /* L'app installabile: il service worker tiene la pagina sul telefono, così

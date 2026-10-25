@@ -1251,3 +1251,22 @@ main.contenitore{padding-bottom:72px}
 .ap-occhio{transform-box:fill-box;transform-origin:center;animation:ap-batte .24s ease-in-out 1.45s}
 @keyframes ap-batte{50%{transform:scaleY(.1)}}
 @media (prefers-reduced-motion:reduce){.ap-riflesso,.ap-occhio{animation:none}}
+
+/* 25/10/2026 — l'apertura di Riposa (allevatore) più lenta di 2 secondi, frasi
+   in sequenza (Giulio). Riposa Pro resta com'era. Si chiude a 3,9 s (index.html). */
+.apertura:not(.apertura-pro) .ap-v{animation-duration:.8s;animation-delay:.15s}
+.apertura:not(.apertura-pro) .ap-h{animation-duration:.8s;animation-delay:.45s}
+.apertura:not(.apertura-pro) .ap-alone{animation-duration:1.4s;animation-delay:.9s}
+.apertura:not(.apertura-pro) .ap-bovina{animation-duration:.7s;animation-delay:1s}
+.apertura:not(.apertura-pro) .ap-riflesso{animation-duration:1.1s;animation-delay:1.45s}
+.apertura:not(.apertura-pro) .ap-bolla{animation-duration:.4s}
+.apertura:not(.apertura-pro) .ap-b1{animation-delay:1.8s}
+.apertura:not(.apertura-pro) .ap-b2{animation-delay:1.95s}
+.apertura:not(.apertura-pro) .ap-b3{animation-delay:2.1s}
+.apertura:not(.apertura-pro) .apertura-nome{animation-duration:.7s;animation-delay:2s}
+.apertura:not(.apertura-pro) .apertura-sotto{animation-duration:.7s;animation-delay:2.75s}
+.apertura:not(.apertura-pro) .ap-occhio{animation-delay:2.5s}
+/* dopo l'apertura: prima la domanda, poi la frase, poi la bovina */
+html.apertura-finita .eroe h1{animation:ap-su .7s var(--ease-out) .1s both}
+html.apertura-finita .eroe-testo{animation:ap-su .7s var(--ease-out) .8s both}
+html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56,.64,1) 1.4s both}
