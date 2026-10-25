@@ -270,34 +270,57 @@ const ProFarmer = (() => {
      Prima decide Pro Farmer: «Direzionale» lo tiene per sé e non va mai a un agente.
      Se no, la Gestione propone l'agente che ha la provincia nelle sue zone e
      «Passa all'agente» glielo manda, con una notifica. Solo col consenso. */
-  const agentiAttivi = () => dati.venditori.filter(a => a.ruolo === 'agente' && a.attivo);
-  const agentiDellaProvincia = x => agentiAttivi().filter(a => x.provincia_sigla && (a.province || []).includes(x.provincia_sigla));
+  /* La zona di un venditore: sigle (LO) e regioni intere (Lombardia), dal 25/10/2026
+     anche per i rivenditori (23-zone-regioni-rivenditori.sql). */
+  const REGIONI = {
+    'Abruzzo': 'AQ CH PE TE', 'Basilicata': 'MT PZ', 'Calabria': 'CS CZ KR RC VV', 'Campania': 'AV BN CE NA SA',
+    'Emilia-Romagna': 'BO FC FE MO PC PR RA RE RN', 'Friuli-Venezia Giulia': 'GO PN TS UD', 'Lazio': 'FR LT RI RM VT',
+    'Liguria': 'GE IM SP SV', 'Lombardia': 'BG BS CO CR LC LO MB MI MN PV SO VA', 'Marche': 'AN AP FM MC PU', 'Molise': 'CB IS',
+    'Piemonte': 'AL AT BI CN NO TO VB VC', 'Puglia': 'BA BR BT FG LE TA', 'Sardegna': 'CA NU OR SS SU',
+    'Sicilia': 'AG CL CT EN ME PA RG SR TP', 'Toscana': 'AR FI GR LI LU MS PI PO PT SI', 'Trentino-Alto Adige': 'BZ TN',
+    'Umbria': 'PG TR', 'Valle d’Aosta': 'AO', 'Veneto': 'BL PD RO TV VE VI VR'
+  };
+  const chiaveZona = t => String(t).toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
+  const SIGLE = new Set(Object.values(REGIONI).join(' ').split(' '));
+  // «LO, CR, Emilia Romagna» → ['LO', 'CR', 'Emilia-Romagna']; quello che non riconosce va in «scartati»
+  function leggiZona(testo) {
+    const out = [], scartati = [];
+    String(testo || '').split(/[,;\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => {
+      const regione = Object.keys(REGIONI).find(n => chiaveZona(n) === chiaveZona(t));
+      const sigla = t.toUpperCase();
+      if (regione) out.push(regione); else if (SIGLE.has(sigla)) out.push(sigla); else scartati.push(t);
+    });
+    return { zona: [...new Set(out)], scartati };
+  }
+  const sigleDellaZona = z => (z || []).flatMap(x => REGIONI[x] ? REGIONI[x].split(' ') : [x]);
+  const agentiAttivi = () => dati.venditori.filter(a => (a.ruolo === 'agente' || a.ruolo === 'rivenditore') && a.attivo);
+  const agentiDellaProvincia = x => agentiAttivi().filter(a => x.provincia_sigla && sigleDellaZona(a.province).includes(x.provincia_sigla));
   function bloccoAgente(x) {
     const nome = id => (dati.venditori.find(a => a.id === id) || {}).nome || 'un agente';
     let h = '<div class="pf-lead-agente">';
     if (x.direzionale) {
-      h += '<p class="cliente-dati"><strong>Direzionale</strong>: lo segue Pro Farmer, non va agli agenti.</p>'
+      h += '<p class="cliente-dati"><strong>Direzionale</strong>: lo segue Pro Farmer, non va ad agenti o rivenditori.</p>'
         + `<div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="0">Non più direzionale</button></div>`;
     } else if (x.assegnato_a) {
       h += `<p class="cliente-dati">Passato a <strong>${esc(nome(x.assegnato_a))}</strong> il ${esc(dataIt(x.assegnato_il))}.`
-        + (x.esito_agente_il ? ` Il ${esc(dataIt(x.esito_agente_il))} l’agente ha segnato: <strong>${esc(STATI_LEAD[x.stato] || x.stato)}</strong>${x.note_agente ? ' · «' + esc(x.note_agente) + '»' : ''}.` : ' L’agente non ha ancora segnato com’è andata.')
+        + (x.esito_agente_il ? ` Il ${esc(dataIt(x.esito_agente_il))} ha segnato: <strong>${esc(STATI_LEAD[x.stato] || x.stato)}</strong>${x.note_agente ? ' · «' + esc(x.note_agente) + '»' : ''}.` : ' Non ha ancora segnato com’è andata.')
         + '</p><div class="azioni pf-azioni">'
         + `<button type="button" class="bottone bottone-fantasma" data-riprendi="${esc(x.id)}">Riprendilo</button>`
         + `<button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="1">Segna direzionale</button></div>`;
     } else if (!x.consenso || x.stato === 'prova') {
-      h += `<p class="cliente-dati">${x.stato === 'prova' ? 'È una prova' : 'Senza consenso a essere ricontattato'}: non si passa agli agenti.</p>`;
+      h += `<p class="cliente-dati">${x.stato === 'prova' ? 'È una prova' : 'Senza consenso a essere ricontattato'}: non si passa ad agenti o rivenditori.</p>`;
     } else {
       const proposti = agentiDellaProvincia(x);
       const altri = agentiAttivi().filter(a => !proposti.includes(a));
       h += `<p class="cliente-dati">${proposti.length
-          ? `Agente della provincia ${esc(x.provincia_sigla)}: <strong>${esc(proposti.map(a => a.nome).join(', '))}</strong>.`
-          : `Nessun agente ha la provincia ${esc(x.provincia_sigla || x.provincia)} nelle sue zone: sceglilo dall’elenco o tienilo direzionale.`}</p>`
-        + '<div class="pf-campi"><label>Agente<select class="pf-select" data-agente-di="' + esc(x.id) + '">'
-        + (proposti.length ? '' : '<option value="">Scegli l’agente</option>')
-        + proposti.concat(altri).map(a => `<option value="${esc(a.id)}">${esc(a.nome)}${proposti.includes(a) ? ' (della zona)' : ''}</option>`).join('')
+          ? `Della zona (${esc(x.provincia_sigla)}): <strong>${esc(proposti.map(a => a.nome).join(', '))}</strong>.`
+          : `Nessun agente o rivenditore ha ${esc(x.provincia_sigla || x.provincia)} nella sua zona: sceglilo dall’elenco o tienilo direzionale.`}</p>`
+        + '<div class="pf-campi"><label>A chi<select class="pf-select" data-agente-di="' + esc(x.id) + '">'
+        + (proposti.length ? '' : '<option value="">Scegli a chi passarlo</option>')
+        + proposti.concat(altri).map(a => `<option value="${esc(a.id)}">${esc(a.nome)} · ${a.ruolo === 'rivenditore' ? 'rivenditore' : 'agente'}${proposti.includes(a) ? ' (della zona)' : ''}</option>`).join('')
         + '</select></label></div><div class="azioni pf-azioni">'
         + `<button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="1">Direzionale: lo seguiamo noi</button>`
-        + `<button type="button" class="bottone" data-passa="${esc(x.id)}">Passa all’agente</button></div>`;
+        + `<button type="button" class="bottone" data-passa="${esc(x.id)}">Passalo</button></div>`;
     }
     return h + '<p class="errore" hidden></p></div>';
   }
@@ -349,11 +372,11 @@ const ProFarmer = (() => {
     corpo.querySelectorAll('[data-passa]').forEach(b => b.addEventListener('click', () => {
       const sel = corpo.querySelector(`[data-agente-di="${b.dataset.passa}"]`);
       const ag = dati.venditori.find(a => a.id === sel.value);
-      if (!ag) { const e = b.closest('.pf-lead-agente').querySelector('.errore'); e.textContent = 'Scegli l’agente.'; e.hidden = false; return; }
+      if (!ag) { const e = b.closest('.pf-lead-agente').querySelector('.errore'); e.textContent = 'Scegli a chi passarlo.'; e.hidden = false; return; }
       salva(b, () => sb.rpc('assegna_lead', { p_lead: b.dataset.passa, p_venditore: ag.id }), `Lead passato a ${ag.nome}`);
     }));
     corpo.querySelectorAll('[data-riprendi]').forEach(b => b.addEventListener('click', () => {
-      if (!confirm('Riprendi il lead? L’agente non lo vede più.')) return;
+      if (!confirm('Riprendi il lead? Il venditore non lo vede più.')) return;
       salva(b, () => sb.rpc('assegna_lead', { p_lead: b.dataset.riprendi, p_venditore: null }), 'Lead ripreso');
     }));
     corpo.querySelectorAll('[data-direzionale]').forEach(b => b.addEventListener('click', () => {
@@ -978,7 +1001,7 @@ const ProFarmer = (() => {
       + campo('provvigione_perc', 'Provvigione piùLact %', x.provvigione_perc, 'number', ' step="0.1" min="0" max="100"', 'solo-agente')
       + campo('valide_fino', 'Condizioni valide fino al', x.valide_fino, 'date', '', 'non-interno')
       + `<label class="pf-spunta"><input type="checkbox" name="attivo"${x.attivo !== false ? ' checked' : ''}> Attivo (può entrare)</label>`
-      + campo('province', 'Province che segue (sigle: LO, CR, PC)', (x.province || []).join(', '), 'text', ' autocapitalize="characters"', 'solo-agente')
+      + campo('province', 'Zona: province o regioni (es. LO, CR, Emilia-Romagna)', (x.province || []).join(', '), 'text', '', 'non-interno')
       + '<label class="solo-agente">Presentato da <small>(l’agente che l’ha portato: vale per i Diamanti)</small><select name="presentato_da" class="pf-select">'
       + '<option value="">Nessuno</option>' + dati.venditori.filter(a => a.ruolo === 'agente' && a.id !== x.id)
         .map(a => `<option value="${esc(a.id)}"${x.presentato_da === a.id ? ' selected' : ''}>${esc(a.nome)}</option>`).join('') + '</select></label>'
@@ -1047,11 +1070,12 @@ const ProFarmer = (() => {
             note: nulloSeVuoto(String(d.get('note') || '').trim()),
             presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null,
             // le zone dell'agente: i lead di queste province gli vengono proposti (22-lead-agli-agenti.sql)
-            province: d.get('ruolo') === 'agente'
-              ? [...new Set((String(d.get('province') || '').toUpperCase().match(/\b[A-Z]{2}\b/g) || []))] : []
+            province: d.get('ruolo') === 'interno' ? [] : leggiZona(d.get('province')).zona
           };
+          const nonCapite = d.get('ruolo') === 'interno' ? [] : leggiZona(d.get('province')).scartati;
           const err = f.querySelector('.errore');
           if (!riga.nome) { err.textContent = 'Serve il nome.'; err.hidden = false; return; }
+          if (nonCapite.length) { err.textContent = `Nella zona non riconosco: ${nonCapite.join(', ')}. Scrivi la sigla della provincia (LO) o il nome della regione (Lombardia).`; err.hidden = false; return; }
           if (riga.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(riga.email)) { err.textContent = 'L’e-mail non sembra valida.'; err.hidden = false; return; }
           const id = f.dataset.id;
           if (id) aperti.delete(id);   // salvata, la scheda si chiude

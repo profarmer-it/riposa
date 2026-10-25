@@ -620,10 +620,12 @@ const Venditori = (() => {
       ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
     // Pro Farmer gestisce da qui ordini, venditori, condizioni e materiali
-    if (cond.ruolo === 'agente') {
+    if (cond.ruolo === 'agente' || cond.ruolo === 'rivenditore') {
       const nuovi = (area.contatti || []).filter(x => x.stato === 'nuovo').length, tutti = (area.contatti || []).length;
       tessere.splice(nuovi ? 1 : 3, 0, ['contatti', 'Contatti da Riposa',
         nuovi ? `${nuovi} ${nuovi === 1 ? 'allevatore da chiamare' : 'allevatori da chiamare'}` : tutti ? `${tutti} ${tutti === 1 ? 'contatto' : 'contatti'} della tua zona` : 'Gli allevatori della tua zona', false, !!nuovi]);
+    }
+    if (cond.ruolo === 'agente') {
       const d = area.diamanti;
       tessere.splice(2, 0, ['diamanti', 'I miei diamanti',
         d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, buoni e classifica', false, true]);
@@ -1192,13 +1194,13 @@ const Venditori = (() => {
     return c.compleanno_mese === m && (c.compleanno_giorno === g || (c.compleanno_giorno === 29 && m === 2 && g === 28 && !bisestile));
   }
   /* ------------------------------------------------- contatti da Riposa
-     Dal 25/10/2026, solo per gli agenti. Gli allevatori che hanno fatto il
+     Dal 25/10/2026, per agenti e rivenditori. Gli allevatori che hanno fatto il
      calcolo su Riposa e che Pro Farmer ha passato all'agente della loro
      provincia (22-lead-agli-agenti.sql): contatti, stalla e calcolo. L'agente
      li chiama e segna com'è andata; Pro Farmer riceve la notizia. */
   const ESITI_CONTATTO = { richiamato: 'Richiamato', cliente: 'Diventato cliente', 'non interessato': 'Non interessato' };
   function caricaContatti() {
-    if (!cond || cond.ruolo !== 'agente') return Promise.resolve();
+    if (!cond || (cond.ruolo !== 'agente' && cond.ruolo !== 'rivenditore')) return Promise.resolve();
     return rpc('lead_agente').then(l => {
       area.contatti = Array.isArray(l) ? l : [];
       if (scheda === 'home') apri('home');
@@ -1209,7 +1211,7 @@ const Venditori = (() => {
     let n = String(x.telefono || '').replace(/[^\d+]/g, '');
     if (!n) return '';
     n = n.startsWith('+') ? n.slice(1) : n.startsWith('00') ? n.slice(2) : '39' + n;
-    const testo = `Buongiorno ${String(x.nome || '').split(' ')[0]}, sono ${area.profilo.nome || ''}, agente piùLact di Pro Farmer per la sua zona. `
+    const testo = `Buongiorno ${String(x.nome || '').split(' ')[0]}, sono ${area.profilo.nome || ''}, ${cond.ruolo === 'rivenditore' ? 'rivenditore' : 'agente'} piùLact di Pro Farmer per la sua zona. `
       + 'Ho visto il calcolo che ha fatto con Riposa: possiamo sentirci?';
     return `https://wa.me/${n}?text=${encodeURIComponent(testo)}`;
   }
