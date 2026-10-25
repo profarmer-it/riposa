@@ -1075,3 +1075,8 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .pf-conferma{left:16px;right:16px;margin:0 auto;width:fit-content;transform:translateY(16px)}
 .pf-conferma.visibile{transform:none}
 @media (prefers-reduced-motion:reduce){ .pf-conferma{transform:none} }
+
+/* l'indirizzo del cliente, in chiaro nella scheda (25/10/2026) */
+.cliente-indirizzo{margin:6px 0 0;font-size:15px;color:var(--testo)}
+.cliente-indirizzo a{color:var(--link);font-weight:600}
+.cliente-indirizzo-manca{color:#9A5B00;font-size:14px}

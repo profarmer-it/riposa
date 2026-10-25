@@ -552,10 +552,11 @@ const ProFarmer = (() => {
       const ord = dati.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato');
       const luogo = [c.comune, c.provincia].filter(Boolean).join(' · ');
       const diretto = diretti.has(c.venditore_id);
-      h += `<li data-cerca="${esc([c.ragione, c.piva, c.comune, c.provincia, c.referente, nomeVenditore(c.venditore_id)].join(' '))}">`
+      h += `<li data-cerca="${esc([c.ragione, c.piva, c.indirizzo, c.comune, c.provincia, c.referente, nomeVenditore(c.venditore_id)].join(' '))}">`
         + `<form class="pf-cliente" data-id="${esc(c.id)}" data-prima="${esc(c.venditore_id)}" novalidate>`
         + `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong><span class="pf-proprietario${diretto ? ' diretto' : ''}">${esc(diretto ? 'Diretto Pro Farmer' : nomeVenditore(c.venditore_id))}</span></div>`
-        + `<p class="cliente-dati">${esc(['P.IVA ' + c.piva, luogo, c.telefono].filter(Boolean).join(' · '))}</p>`
+        + `<p class="cliente-indirizzo">${esc([c.indirizzo, luogo.replace(' · ', ' ')].filter(Boolean).join(', ') || 'Indirizzo da completare')}</p>`
+        + `<p class="cliente-dati">${esc(['P.IVA ' + c.piva, c.telefono, c.referente].filter(Boolean).join(' · '))}</p>`
         + `<p class="cliente-dati">${ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'}, l’ultimo il ${esc(dataIt(ord[0].creato_il))}` : 'Nessun ordine'}</p>`
         + '<div class="pf-campi"><label>Assegnato a' + selectVenditore('venditore_id', c.venditore_id, false) + '</label></div>'
         + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone" disabled>Sposta</button></div>'

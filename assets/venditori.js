@@ -69,13 +69,13 @@ const Venditori = (() => {
     { id: 'telefono', etichetta: 'Telefono', obbligatorio: true, tipo: 'tel' },
     { id: 'email', etichetta: 'E-mail', tipo: 'email' },
     { id: 'referente', etichetta: 'Referente' },
-    { id: 'indirizzo', etichetta: 'Indirizzo di consegna' },
+    { id: 'indirizzo', etichetta: 'Indirizzo (via e numero, per la consegna)' },
     { id: 'comune', etichetta: 'Comune' },
     { id: 'provincia', etichetta: 'Provincia' },
     { id: 'capi', etichetta: 'Capi in lattazione', tipo: 'number' }
   ];
   /* Nel modulo d'ordine, per un cliente nuovo, servono solo questi. */
-  const CAMPI_ORDINE = ['ragione', 'piva', 'pec', 'sdi', 'telefono', 'indirizzo', 'email', 'provincia'];
+  const CAMPI_ORDINE = ['ragione', 'piva', 'pec', 'sdi', 'telefono', 'email', 'indirizzo', 'comune', 'provincia'];
 
   /* La stessa regola di mancaNelCliente() nello script Google: se cambi una,
      cambia l'altra. Restituisce il messaggio da mostrare, o ''. */
@@ -914,9 +914,15 @@ const Venditori = (() => {
     h += '<ul class="lista-clienti" data-lista-di="v-clienti">';
     area.clienti.slice().sort((a, b) => a.ragione.localeCompare(b.ragione, 'it')).forEach(c => {
       const ord = ordiniDelCliente(c.id);
-      const luogo = [c.comune, c.provincia].filter(Boolean).join(' · ');
-      h += `<li class="cliente" data-cerca="${esc([c.ragione, c.piva, c.comune, c.provincia, c.referente].join(' '))}">`;
-      h += `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong>${luogo ? `<span>${esc(luogo)}</span>` : ''}</div>`;
+      h += `<li class="cliente" data-cerca="${esc([c.ragione, c.piva, c.indirizzo, c.comune, c.provincia, c.referente].join(' '))}">`;
+      h += `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong></div>`;   // comune e provincia sono nella riga dell'indirizzo
+      // l'indirizzo in chiaro, e se la mappa l'ha trovato, il navigatore a un tocco
+      const dove = [c.indirizzo, [c.comune, c.provincia].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+      h += dove
+        ? `<p class="cliente-indirizzo">${esc(dove)}`
+          + (c.lat && c.lng ? ` · <a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Portami qui</a>` : '')
+          + '</p>'
+        : '<p class="cliente-indirizzo cliente-indirizzo-manca">Indirizzo da completare: tocca Modifica.</p>';
       h += '<p class="cliente-dati">';
       if (c.piva) h += `P.IVA ${esc(c.piva)} · `;
       if (c.referente) h += `${esc(c.referente)} · `;
