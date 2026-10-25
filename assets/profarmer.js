@@ -22,13 +22,13 @@ const ProFarmer = (() => {
   let box = null;
   let sezione = 'cruscotto';   // dal 24/10/2026 si apre sul cruscotto
   let cambiata = false;      // la sezione è appena cambiata: il contenuto entra con .entra
-  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [], diamanti: null, premi: [], traguardi: [] };
+  let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [], diamanti: null, premi: [], traguardi: [], chiamate: [], chiamateFatte: [] };
   let filtroLead = 'nuovo';
   const leadAperti = new Set();
   let filtroStato = 'aperti';
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Ordini', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', provvigioni: 'Provvigioni',
+  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Ordini', chiamate: 'Chiamate', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', provvigioni: 'Provvigioni',
                     venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
   /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
   const cerca = {};
@@ -64,13 +64,16 @@ const ProFarmer = (() => {
       sb.from('clienti').select('*').order('ragione'),
       sb.rpc('diamanti_gestione'),
       sb.from('premi').select('*').order('posizione').order('costo'),
-      sb.from('traguardi').select('*').order('posizione')
-    ]).then(([o, ve, c, m, le, al, me, cl, di, pr, tr]) => {
-      const err = [o, ve, c, m, le, al, me, cl, di, pr, tr].find(x => x.error);
+      sb.from('traguardi').select('*').order('posizione'),
+      sb.rpc('chiamate_da_fare'),
+      sb.rpc('chiamate_fatte')
+    ]).then(([o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf]) => {
+      const err = [o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
                allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [],
-               diamanti: di.data || { agenti: [], movimenti: [], richieste: [] }, premi: pr.data || [], traguardi: tr.data || [] };
+               diamanti: di.data || { agenti: [], movimenti: [], richieste: [] }, premi: pr.data || [], traguardi: tr.data || [],
+               chiamate: ch.data || [], chiamateFatte: cf.data || [] };
     });
   }
 
@@ -99,7 +102,7 @@ const ProFarmer = (() => {
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
     setTimeout(() => agganciaCerca(corpo), 0);
-    ({ cruscotto: cruscotto, ordini: ordini, clienti: clienti, lead: lead, allevatori: allevatori, premi: premi, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    ({ cruscotto: cruscotto, ordini: ordini, chiamate: chiamate, clienti: clienti, lead: lead, allevatori: allevatori, premi: premi, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
   }
 
   /* La casella di ricerca di una lista: filtra le righe mentre si scrive,
@@ -341,6 +344,7 @@ const ProFarmer = (() => {
     let h = '<div class="blocco"><h3>Da fare adesso</h3><div class="cr-subito">';
     const subito = [
       ['ordini', daSeguire.length, 'ordini da seguire', 'inviati, confermati o consegnati, non ancora pagati'],
+      ['chiamate', dati.chiamate.length, 'chiamate di feedback', 'ai clienti, dopo il 1°, 3°, 5°… ordine'],
       ['lead', leadNuovi.length, 'lead da richiamare', 'allevatori che hanno fatto il calcolo'],
       ['allevatori', caldi.length, 'allevatori a fine scorta', 'nei prossimi 14 giorni: chiamarli'],
       ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini'],
@@ -535,6 +539,60 @@ const ProFarmer = (() => {
     return giorni === 0 ? `oggi ${hm}` : giorni === 1 ? `ieri ${hm}` : giorni < 7 ? `${giorni} giorni fa` : dataIt(iso);
   }
 
+  /* ---------------------------------------------------------------- chiamate
+     Dal 25/10/2026, regola di Giulio: si chiama il cliente per sentire com'è
+     andata dopo il 1° ordine consegnato, dopo il 3° e poi ogni due ordini.
+     Chiamata e valutazione: esito e voto. Positivo per un cliente di un agente
+     = i diamanti del «Feedback positivo» all'agente. «Non raggiunto» la
+     lascia da fare (e conta i tentativi). */
+  const ESITI = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo', non_raggiunto: 'Non raggiunto' };
+  function chiamate(corpo) {
+    let h = '<div class="blocco"><h3>Chiamate di feedback da fare</h3>'
+      + '<p class="aiuto">Dopo il 1° ordine consegnato di un cliente, dopo il 3° e poi ogni due ordini (5°, 7°…): una telefonata per sentire com’è andata. '
+      + 'Con esito positivo, se il cliente è di un agente, l’agente vince i suoi diamanti.</p>';
+    if (!dati.chiamate.length) h += '<p class="aiuto"><strong>Nessuna chiamata da fare.</strong></p>';
+    h += '<ul class="lista-clienti chiamate">';
+    dati.chiamate.forEach(x => {
+      const tel = String(x.telefono || '').replace(/[^\d+]/g, '');
+      h += `<li><form class="pf-chiamata" data-cliente="${esc(x.cliente_id)}" data-dopo="${x.dopo_ordine}" data-ragione="${esc(x.ragione)}" novalidate>`
+        + `<div class="cliente-testa"><strong>${esc(x.ragione)}</strong><span class="pf-proprietario">dopo il ${x.dopo_ordine}° ordine</span></div>`
+        + `<p class="cliente-dati">${esc([x.referente, [x.comune, x.provincia].filter(Boolean).join(' '), x.ruolo === 'interno' ? 'cliente diretto' : 'cliente di ' + x.venditore].filter(Boolean).join(' · '))}`
+        + ` · ${x.ordini} ordini, l’ultimo il ${esc(dataIt(x.ultimo))}${x.tentativi ? ` · ${x.tentativi} ${x.tentativi === 1 ? 'tentativo' : 'tentativi'} a vuoto` : ''}</p>`
+        + (tel ? `<a class="bottone chiama-cliente" href="tel:${esc(tel)}">Chiama ${esc(x.telefono)}</a>` : '<p class="cliente-dati">Senza telefono.</p>')
+        + '<fieldset class="esiti"><legend>Com’è andata?</legend>'
+        + Object.entries(ESITI).map(([k, n]) => `<label class="esito-scelta esito-${k}"><input type="radio" name="esito" value="${k}"><span>${n}</span></label>`).join('')
+        + '</fieldset>'
+        + '<fieldset class="voto"><legend>Voto del cliente</legend>'
+        + [1, 2, 3, 4, 5].map(n => `<label><input type="radio" name="voto" value="${n}"><span aria-label="${n} su 5">${n}</span></label>`).join('')
+        + '</fieldset>'
+        + '<label class="pf-nota">Nota <small>(facoltativa)</small><textarea name="note" rows="2" maxlength="500"></textarea></label>'
+        + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Registra la chiamata</button></div></form></li>';
+    });
+    h += '</ul></div>';
+    if (dati.chiamateFatte.length) {
+      h += '<div class="blocco"><h3>Chiamate fatte</h3><ul class="lista-clienti">' + dati.chiamateFatte.map(f =>
+        `<li><div class="cliente-testa"><strong>${esc(f.ragione)}</strong><span class="pf-proprietario esito-${esc(f.esito)}">${esc(ESITI[f.esito] || f.esito)}${f.voto ? ' · ' + f.voto + '/5' : ''}</span></div>`
+        + `<p class="cliente-dati">dopo il ${f.dopo_ordine}° ordine · ${esc(f.venditore || '')} · ${esc(dataIt(f.fatta_il))}${f.da ? ' · ' + esc(f.da) : ''}</p>`
+        + (f.note ? `<p class="cliente-note">${esc(f.note)}</p>` : '') + '</li>').join('') + '</ul></div>';
+    }
+    corpo.innerHTML = h;
+    corpo.querySelectorAll('.pf-chiamata').forEach(f => {
+      // con «non raggiunto» il voto non serve
+      f.addEventListener('change', () => { f.querySelector('.voto').hidden = (new FormData(f).get('esito') === 'non_raggiunto'); });
+      f.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const d = new FormData(f), err = f.querySelector('.errore');
+        const esito = d.get('esito'), voto = d.get('voto') ? Number(d.get('voto')) : null;
+        if (!esito) { err.textContent = 'Scegli com’è andata.'; err.hidden = false; return; }
+        if (esito !== 'non_raggiunto' && !voto) { err.textContent = 'Dai il voto del cliente, da 1 a 5.'; err.hidden = false; return; }
+        salva(f.querySelector('button[type=submit]'), () => sb.rpc('registra_chiamata', {
+          p_cliente: f.dataset.cliente, p_dopo_ordine: Number(f.dataset.dopo), p_esito: esito, p_voto: esito === 'non_raggiunto' ? null : voto,
+          p_note: String(d.get('note') || '').trim() || null }),
+          esito === 'non_raggiunto' ? `${f.dataset.ragione}: da richiamare` : `Chiamata a ${f.dataset.ragione} registrata`);
+      });
+    });
+  }
+
   /* ---------------------------------------------------------------- clienti
      Dal 24/10/2026. Tutti i clienti: quelli DIRETTI, seguiti da Pro Farmer
      (intestati al venditore interno), e quelli di agenti e rivenditori.
@@ -626,16 +684,9 @@ const ProFarmer = (() => {
       + '<label class="pf-largo">Motivo<input name="motivo" maxlength="200" placeholder="es. fiera di Cremona, cliente importante"></label>'
       + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Assegna</button></div></form></div>';
 
-    // feedback positivo: Pro Farmer ha chiamato il cliente, il giudizio è buono
-    const agenti = dati.venditori.filter(a => a.ruolo === 'agente' && a.attivo);
-    h += '<div class="blocco"><h3>Feedback positivo</h3><p class="aiuto">Avete chiamato un cliente di un agente e il giudizio è positivo: '
-      + 'l’agente vince i diamanti del traguardo «Feedback positivo». Una volta l’anno per cliente.</p>'
-      + '<form id="pf-feedback" novalidate><div class="pf-campi">'
-      + '<label>Agente<select name="agente" class="pf-select" id="pf-fb-agente"><option value="">Scegli…</option>'
-      + agenti.map(a => `<option value="${esc(a.id)}">${esc(a.nome)}</option>`).join('') + '</select></label>'
-      + '<label>Cliente<select name="cliente" class="pf-select" id="pf-fb-cliente"><option value="">Prima l’agente</option></select></label>'
-      + '<label class="pf-largo">Nota <small>(facoltativa, l’agente la legge)</small><input name="nota" maxlength="150"></label>'
-      + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Assegna il feedback</button></div></form></div>';
+    // il feedback positivo ora nasce dalle Chiamate (17-chiamate-feedback.sql)
+    h += '<div class="blocco"><h3>Feedback positivo</h3><p class="aiuto">Si assegna da solo quando registrate una chiamata '
+      + 'con esito positivo nella scheda <strong>Chiamate</strong>: dopo il 1° ordine consegnato di un cliente, dopo il 3° e poi ogni due ordini.</p></div>';
 
     // classifica
     const cl = D.agenti.slice().sort((a, b) => b.vinti_anno - a.vinti_anno || a.nome.localeCompare(b.nome));
@@ -675,19 +726,6 @@ const ProFarmer = (() => {
       salva(b, () => sb.rpc('decidi_premio', { p_richiesta: b.dataset.decidi, p_stato: b.dataset.stato, p_note: null }),
         { approvato: 'Richiesta approvata', rifiutato: 'Richiesta rifiutata', consegnato: 'Premio consegnato' }[b.dataset.stato]);
     }));
-    const fa = document.getElementById('pf-fb-agente'), fc = document.getElementById('pf-fb-cliente');
-    if (fa) fa.addEventListener('change', () => {
-      const suoi = dati.clienti.filter(c => c.venditore_id === fa.value);
-      fc.innerHTML = suoi.length ? suoi.map(c => `<option value="${esc(c.id)}">${esc(c.ragione)}</option>`).join('') : '<option value="">Nessun cliente</option>';
-    });
-    const ff = document.getElementById('pf-feedback');
-    if (ff) ff.addEventListener('submit', ev => {
-      ev.preventDefault();
-      const d = new FormData(ff), err = ff.querySelector('.errore');
-      if (!d.get('agente') || !d.get('cliente')) { err.textContent = 'Scegli l’agente e il cliente.'; err.hidden = false; return; }
-      salva(ff.querySelector('button'), () => sb.rpc('feedback_positivo', { p_venditore: d.get('agente'), p_cliente: d.get('cliente'), p_note: String(d.get('nota') || '').trim() || null }),
-        'Feedback positivo assegnato');
-    });
     const fb = document.getElementById('pf-bonus');
     if (fb) fb.addEventListener('submit', ev => {
       ev.preventDefault();

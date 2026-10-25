@@ -936,7 +936,7 @@ const Venditori = (() => {
       + '<li><strong>Motrice e bilico</strong> si contano sulle tonnellate consegnate nello stesso mese, e si sommano: chi arriva al bilico ha vinto anche la motrice.</li>'
       + '<li>La <strong>costanza</strong> vuole almeno un ordine consegnato in ogni mese, senza salti: un mese vuoto fa ripartire la serie.</li>'
       + '<li>Il <strong>nuovo venditore</strong> lo approva Pro Farmer. Vale quando consegna il primo ordine a un cliente nuovo; poi per il suo primo anno ricevi 1 diamante ogni volta che vince.</li>'
-      + '<li>Il <strong>feedback positivo</strong> lo assegna Pro Farmer dopo aver chiamato il cliente: una volta l’anno per cliente.</li>'
+      + '<li>Il <strong>feedback</strong>: Pro Farmer chiama il tuo cliente dopo il suo 1° ordine consegnato, dopo il 3° e poi ogni due ordini (5°, 7°…). Se il giudizio è positivo vinci i diamanti, a ogni chiamata.</li>'
       + '<li>Pro Farmer può dare <strong>bonus</strong> a mano, sempre con il motivo, e cambiare i valori dei traguardi: le modifiche valgono da quel momento, le vincite già fatte restano.</li></ul>';
     return h + '</div></details>';
   }

@@ -1161,3 +1161,29 @@ img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo
 .legenda-traguardi dd{margin:4px 0 0;display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--testo-2)}
 .legenda-traguardi dd .gemme{flex:0 0 auto;font-size:15px}
 .link-legenda{padding:0;font:inherit;font-weight:600;color:#F4CF7A;background:none;border:0;text-decoration:underline;cursor:pointer}
+
+/* Gestione → Chiamate di feedback (25/10/2026) */
+.chiama-cliente{display:inline-flex;width:auto;margin:10px 0 4px;padding:11px 18px;text-decoration:none}
+.esiti,.voto{margin:14px 0 0;padding:0;border:0}
+.esiti legend,.voto legend{margin-bottom:8px;font-weight:600;font-size:15px}
+.esiti{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:640px){ .esiti{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.esiti label,.voto label{position:relative;cursor:pointer}
+.esiti input,.voto input{position:absolute;opacity:0;width:1px;height:1px}
+.esiti span{display:flex;align-items:center;justify-content:center;min-height:46px;padding:8px;border-radius:10px;
+  border:1.5px solid var(--bordo);background:var(--bianco);font-weight:600;font-size:15px}
+.esiti .esito-positivo input:checked + span{background:#E2F3E6;border-color:#2E9E5B;color:#14612F}
+.esiti .esito-neutro input:checked + span{background:var(--crema-2);border-color:var(--testo-2)}
+.esiti .esito-negativo input:checked + span{background:#FDECEA;border-color:#C0392B;color:#A3261B}
+.esiti .esito-non_raggiunto input:checked + span{background:#FFF6E5;border-color:#F0D29A;color:#9A5B00}
+.voto{display:flex;gap:8px;flex-wrap:wrap}
+.voto legend{width:100%}
+.voto span{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;border:1.5px solid var(--bordo);
+  background:var(--bianco);font-weight:700;font-size:17px}
+.voto input:checked + span{background:var(--navy);border-color:var(--navy);color:#fff}
+.esiti input:focus-visible + span,.voto input:focus-visible + span{outline:2px solid var(--blu);outline-offset:2px}
+.pf-nota{display:flex;flex-direction:column;gap:5px;margin-top:14px;font-size:14px;font-weight:600;color:var(--testo-2)}
+.pf-nota textarea{width:100%;padding:10px 12px;border:1px solid var(--bordo);border-radius:10px}
+.pf-proprietario.esito-positivo{background:#E2F3E6;color:#14612F}
+.pf-proprietario.esito-negativo{background:#FDECEA;color:#A3261B}
+.pf-proprietario.esito-non_raggiunto{background:#FFF6E5;color:#9A5B00}
