@@ -799,21 +799,29 @@ function consiglioTrasporto(r) {
 function fornituraConsigliata(r) {
   const c = r.confezioneConsigliata, T = TRASPORTO;
   if (!c || !r.kgMese) return null;
+  /* Sotto l'ordine minimo la fornitura non è più di uno o tre mesi: si dice
+     che è il minimo e quanti mesi copre (come in consiglioTrasporto). */
+  const esito = (n, kgPezzo, testo, mesi, minimo) => minimo
+    ? { testo, mesi, minimo: true, copre: Math.round(n * kgPezzo / r.kgMese) }
+    : { testo, mesi, minimo: false };
   if (c.kg === T.ballettaKg) {
     const servono = Math.ceil(r.kgMese * T.mesiOrizzonteBallette / T.ballettaKg);
-    const n = Math.max(Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale, T.balletteMinimo);
-    return { mesi: T.mesiOrizzonteBallette, testo: `${num(n)} ballette da ${num(T.ballettaKg)} kg, circa ${ton(n * T.ballettaKg)} t` };
+    const pari = Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale;
+    const n = Math.max(pari, T.balletteMinimo);
+    return esito(n, T.ballettaKg, `${num(n)} ballette da ${num(T.ballettaKg)} kg, circa ${ton(n * T.ballettaKg)} t`,
+      T.mesiOrizzonteBallette, servono < T.balletteMinimo);
   }
   const kg3 = r.kgMese * T.mesiOrizzonte;
   if (c.kg === 25) {
-    const n = Math.max(Math.ceil(kg3 / T.bancaleKg), T.bancaliMinimo);
-    return { mesi: T.mesiOrizzonte, testo: `${num(n)} bancali di sacchi da 25 kg, ${ton(n * T.bancaleKg)} t` };
+    const servono = Math.ceil(kg3 / T.bancaleKg), n = Math.max(servono, T.bancaliMinimo);
+    return esito(n, T.bancaleKg, `${num(n)} bancali di sacchi da 25 kg, ${ton(n * T.bancaleKg)} t`, T.mesiOrizzonte, servono < T.bancaliMinimo);
   }
   if (c.kg !== T.bigBagKg) return null;
-  let n = Math.max(Math.ceil(kg3 / T.bigBagKg), T.bigBagMinimo);
+  const servono = Math.ceil(kg3 / T.bigBagKg);
+  let n = Math.max(servono, T.bigBagMinimo);
   if (n >= T.sogliaBilico && n <= T.bilico) n = T.bilico;
   else if (n >= T.sogliaMotrice && n <= T.motrice) n = T.motrice;
-  return { mesi: T.mesiOrizzonte, testo: `${num(n)} Big Bag da ${num(T.bigBagKg)} kg, ${ton(n * T.bigBagKg)} t` };
+  return esito(n, T.bigBagKg, `${num(n)} Big Bag da ${num(T.bigBagKg)} kg, ${ton(n * T.bigBagKg)} t`, T.mesiOrizzonte, servono < T.bigBagMinimo);
 }
 
 function testoRiepilogo(dati, r) {
@@ -942,6 +950,7 @@ function inviaLead(dati, r) {
                     : (r.dosePerCuccetta ? `${kg(r.dosePerCuccetta)} kg per cuccetta, ${kg(r.kgApplicazione)} kg per tutta la stalla` : ''),
     fornitura:      (fornituraConsigliata(r) || {}).testo || '',
     fornituraMesi:  (fornituraConsigliata(r) || {}).mesi || '',
+    fornituraCopre: (fornituraConsigliata(r) || {}).minimo ? fornituraConsigliata(r).copre : '',
     // l'app sul telefono (24/10/2026): il telefono che ha già fatto un calcolo si fa riconoscere
     kgPezzo:        r.confezioneConsigliata ? r.confezioneConsigliata.kg : '',
     app:            typeof Allevatore !== 'undefined' ? Allevatore.credenziali() : null
