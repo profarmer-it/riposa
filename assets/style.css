@@ -1211,3 +1211,8 @@ img.foto-grande{object-fit:cover;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--bordo
 .pf-proprietario.cr-oggi{background:#FFF0F6;color:#8A1F52;font-weight:700}
 .esiti-diretto{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
 .pf-proprietario.esito-fatta{background:#E3EEFB;color:var(--navy)}
+
+/* 25/10/2026 — buoni acquisto e scadenza dei diamanti */
+.avviso-scadenza{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#FFF4E0;color:#7A4A00;font-size:15px}
+.avviso-scadenza strong{color:#7A4A00}
+.blocco .traguardo-barra{margin-top:8px}

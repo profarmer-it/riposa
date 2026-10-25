@@ -622,7 +622,7 @@ const Venditori = (() => {
     if (cond.ruolo === 'agente') {
       const d = area.diamanti;
       tessere.splice(2, 0, ['diamanti', 'I miei diamanti',
-        d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, premi e classifica', false, true]);
+        d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, buoni e classifica', false, true]);
     }
     if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Cruscotto e gestione', 'Cosa succede oggi: ordini, lead, allevatori, venditori', false, true]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
@@ -794,7 +794,7 @@ const Venditori = (() => {
   /* -------------------------------------------------------------- diamanti
      Dal 25/10/2026, solo per gli agenti. I traguardi li calcola il database
      sugli ordini CONSEGNATI (15-diamanti.sql): qui si mostrano il saldo, i
-     traguardi in corso, il catalogo dei premi, le richieste e la classifica
+     traguardi in corso, i buoni acquisto, le richieste e la classifica
      (solo nomi e diamanti, mai tonnellate o soldi degli altri). */
   function caricaDiamanti() {
     if (!cond || cond.ruolo !== 'agente') return Promise.resolve();
@@ -867,7 +867,7 @@ const Venditori = (() => {
       + `<p class="diamanti-saldo"><b>${d.saldo}</b><span>${d.saldo === 1 ? 'diamante' : 'diamanti'}</span></p>`
       + `<p class="diamanti-icone">${gemme(d.saldo)}</p>`
       + `<p class="diamanti-sotto">${d.disponibili !== d.saldo ? `${d.disponibili} disponibili · ` : ''}${d.vinti_anno} vinti quest’anno${pos ? ` · ${pos}° in classifica` : ''}</p>`
-      + '<p class="aiuto">Si vincono con gli ordini <strong>consegnati</strong> e si spendono nel catalogo premi. '
+      + '<p class="aiuto">Si vincono con gli ordini <strong>consegnati</strong> e si riscattano in buoni acquisto. '
       + '<button type="button" class="link-legenda" id="d-legenda">Leggi il regolamento</button></p></div>';
 
     h += '<div class="blocco"><h3>I traguardi</h3><p class="aiuto">10 diamanti azzurri fanno un diamante viola.</p><ul class="traguardi">';
@@ -880,16 +880,28 @@ const Venditori = (() => {
     });
     h += '</ul></div>';
 
-    h += '<div class="blocco"><h3>Il catalogo premi</h3>';
-    if (!d.premi.length) h += '<p class="aiuto">Pro Farmer sta preparando il catalogo: i diamanti intanto si accumulano.</p>';
-    h += '<ul class="premi">';
-    d.premi.forEach(p => {
-      const posso = d.disponibili >= p.costo;
-      h += `<li><div><strong>${esc(p.nome)}</strong>${p.descrizione ? `<small>${esc(p.descrizione)}</small>` : ''}</div>`
-        + `<button type="button" class="bottone${posso ? '' : ' bottone-fantasma'}" data-premio="${esc(p.id)}" data-nome="${esc(p.nome)}" data-costo="${p.costo}"${posso ? '' : ' disabled'}>`
-        + `${gemme(p.costo)}</button></li>`;
-    });
-    h += '</ul><p class="errore" id="premio-errore" hidden></p>';
+    /* I buoni acquisto (Giulio, 25/10/2026): 1 diamante = 4 €, buoni da 100 €
+       (25 diamanti) e multipli. I valori arrivano dal database (regole_diamanti). */
+    const euro = Number(d.euro) || 4, taglio = Number(d.taglio) || 25, buono = taglio * euro;
+    const tagli = Math.min(Math.floor(d.disponibili / taglio), 8);
+    h += '<div class="blocco"><h3>Riscatta un buono acquisto</h3>';
+    if (tagli < 1) {
+      const manca = taglio - Math.max(d.disponibili, 0);
+      h += `<p class="aiuto">Il primo buono, da <strong>${buono} €</strong>, si riscatta con ${taglio} diamanti: te ne mancano <strong>${manca}</strong>.</p>`
+        + `<div class="traguardo-barra"><i style="width:${Math.round(Math.max(d.disponibili, 0) / taglio * 100)}%"></i></div>`;
+    } else {
+      h += `<p class="aiuto">Scegli il valore: Pro Farmer approva e ti manda il buono.</p><ul class="premi">`;
+      for (let t = 1; t <= tagli; t++) {
+        h += `<li><div><strong>Buono da ${t * buono} €</strong></div>`
+          + `<button type="button" class="bottone" data-buono="${t}" data-euro="${t * buono}" data-costo="${t * taglio}">${gemme(t * taglio)}</button></li>`;
+      }
+      h += '</ul>';
+    }
+    const sc = d.scadenza || {};
+    h += sc.quanti > 0
+      ? `<p class="avviso-scadenza"><strong>${sc.quanti} ${sc.quanti === 1 ? 'diamante scade' : 'diamanti scadono'} il ${esc(sc.data)}.</strong> Riscattali prima: si spendono per primi i più vecchi.</p>`
+      : `<p class="aiuto">I diamanti vinti quest’anno si riscattano entro il ${esc(sc.data || '31 marzo dell’anno prossimo')}.</p>`;
+    h += '<p class="errore" id="premio-errore" hidden></p>';
     if (d.richieste.length) {
       const STATO = { richiesto: 'in attesa', approvato: 'approvato', consegnato: 'consegnato', rifiutato: 'non approvato' };
       h += '<h4>Le tue richieste</h4><ul class="lista-ordini">' + d.richieste.map(x =>
@@ -917,13 +929,15 @@ const Venditori = (() => {
      la legenda è già aggiornata. */
   function legendaDiamanti() {
     const d = area.diamanti;
+    const euro = Number(d && d.euro) || 4, taglio = Number(d && d.taglio) || 25;
     let h = '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Legenda dei 💎</h3>'
       + '<span>Il regolamento dei Diamanti piùLact</span></summary><div class="legenda-corpo">';
     h += '<h4>Come funziona</h4><ul>'
       + `<li>I diamanti si vincono raggiungendo i traguardi qui sotto. Valgono solo gli ordini <strong>consegnati</strong> (o pagati): un ordine annullato non conta.</li>`
       + `<li>${gemme(1)} un diamante azzurro vale 1. ${gemme(10)} un diamante viola vale 10: dieci azzurri fanno un viola.</li>`
+      + `<li>Ogni diamante vale <strong>${euro} €</strong>: un viola vale ${10 * euro} €.</li>`
       + '<li>Li conta il sistema da solo, appena Pro Farmer segna un ordine come consegnato. Ti arriva una notifica.</li>'
-      + '<li>Si spendono nel <strong>catalogo premi</strong>: chiedi il premio, Pro Farmer approva e scala i diamanti, poi te lo consegna. Se una richiesta non viene approvata, i diamanti restano tuoi.</li>'
+      + `<li>Si riscattano in <strong>buoni acquisto</strong> da ${taglio * euro} € (${taglio} diamanti) e multipli: ${2 * taglio * euro} €, ${3 * taglio * euro} €… Chiedi il buono, Pro Farmer approva e scala i diamanti. Se una richiesta non viene approvata, i diamanti restano tuoi.</li>`
       + '<li>La <strong>classifica</strong> conta i diamanti vinti dall’inizio dell’anno. Gli altri agenti vedono solo il tuo nome e i diamanti, mai tonnellate o soldi.</li>'
       + '<li>Quando un agente vince almeno 3 diamanti, gli altri ricevono una notifica senza il suo nome (al massimo una al giorno).</li></ul>';
     if (d && d.traguardi && d.traguardi.length) {
@@ -944,6 +958,12 @@ const Venditori = (() => {
       + '<li>Il <strong>nuovo venditore</strong> lo approva Pro Farmer. Vale quando consegna il primo ordine a un cliente nuovo; poi per il suo primo anno ricevi 1 diamante ogni volta che vince.</li>'
       + '<li>Il <strong>feedback</strong>: Pro Farmer chiama il tuo cliente dopo il suo 1° ordine consegnato, dopo il 3° e poi ogni due ordini (5°, 7°…). Se il giudizio è positivo vinci i diamanti, a ogni chiamata.</li>'
       + '<li>Pro Farmer può dare <strong>bonus</strong> a mano, sempre con il motivo, e cambiare i valori dei traguardi: le modifiche valgono da quel momento, le vincite già fatte restano.</li></ul>';
+    h += '<h4>La scadenza</h4><ul>'
+      + '<li>La stagione va da <strong>gennaio a dicembre</strong>. I diamanti vinti in un anno si riscattano entro il <strong>31 marzo</strong> dell’anno dopo: quelli rimasti scadono.</li>'
+      + '<li>Quando riscatti un buono si spendono per primi i diamanti <strong>più vecchi</strong>. Il minimo di ' + taglio + ' vale sul totale: puoi sommare diamanti di due stagioni.</li>'
+      + '<li>Ti avvisiamo con una notifica il 1° febbraio, il 1° marzo e il 25 marzo, se hai diamanti in scadenza.</li>'
+      + '<li>Se un ordine consegnato viene <strong>annullato</strong>, si tolgono i diamanti che aveva fatto vincere (anche costanza e volumi del mese, se non bastano più gli altri ordini).</li>'
+      + '<li>Se il rapporto con Pro Farmer si chiude, hai <strong>30 giorni</strong> per chiedere il buono a Pro Farmer: poi i diamanti decadono.</li></ul>';
     return h + '</div></details>';
   }
 
@@ -955,10 +975,10 @@ const Venditori = (() => {
       const el = document.getElementById('legenda-diamanti');
       if (el) { el.open = true; el.scrollIntoView({ block: 'start' }); }
     });
-    pannello().querySelectorAll('[data-premio]').forEach(b => b.addEventListener('click', () => {
-      if (!confirm(`Chiedi «${b.dataset.nome}» per ${b.dataset.costo} diamanti? Pro Farmer ti conferma la richiesta.`)) return;
+    pannello().querySelectorAll('[data-buono]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm(`Chiedi un buono acquisto da ${b.dataset.euro} € per ${b.dataset.costo} diamanti? Pro Farmer ti conferma la richiesta.`)) return;
       b.disabled = true;
-      rpc('chiedi_premio', { p_premio: b.dataset.premio }).then(caricaDiamanti).catch(e => {
+      rpc('chiedi_buono', { p_tagli: Number(b.dataset.buono) }).then(caricaDiamanti).catch(e => {
         const err = document.getElementById('premio-errore');
         err.textContent = e.delDatabase ? e.message : 'La richiesta non è partita: riprova tra poco.';
         err.hidden = false; b.disabled = false;

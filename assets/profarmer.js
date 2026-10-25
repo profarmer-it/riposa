@@ -63,17 +63,16 @@ const ProFarmer = (() => {
       sb.from('messaggi_allevatori').select('*').order('programmato_il', { ascending: false }).limit(100),
       sb.from('clienti').select('*').order('ragione'),
       sb.rpc('diamanti_gestione'),
-      sb.from('premi').select('*').order('posizione').order('costo'),
       sb.from('traguardi').select('*').order('posizione'),
       sb.rpc('chiamate_da_fare'),
       sb.rpc('chiamate_fatte'),
       sb.rpc('compleanni_prossimi')
-    ]).then(([o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf, co]) => {
-      const err = [o, ve, c, m, le, al, me, cl, di, pr, tr, ch, cf, co].find(x => x.error);
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co]) => {
+      const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
                allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [],
-               diamanti: di.data || { agenti: [], movimenti: [], richieste: [] }, premi: pr.data || [], traguardi: tr.data || [],
+               diamanti: di.data || { agenti: [], cessati: [], movimenti: [], richieste: [] }, traguardi: tr.data || [],
                chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [] };
     });
   }
@@ -349,7 +348,7 @@ const ProFarmer = (() => {
       ['lead', leadNuovi.length, 'lead da richiamare', 'allevatori che hanno fatto il calcolo'],
       ['allevatori', caldi.length, 'allevatori a fine scorta', 'nei prossimi 14 giorni: chiamarli'],
       ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini'],
-      ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'premi da approvare', 'richieste degli agenti con i diamanti']
+      ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'buoni da approvare', 'richieste degli agenti con i diamanti']
     ];
     subito.forEach(([dove, n, cosa, sotto]) => {
       h += `<button type="button" class="cr-casella${n ? ' cr-attenzione' : ''}" data-vai="${dove}">`
@@ -670,9 +669,11 @@ const ProFarmer = (() => {
 
   /* ------------------------------------------------------------------ premi
      Dal 25/10/2026: i Diamanti piùLact degli agenti (15-diamanti.sql).
-     Richieste da approvare, bonus a mano, classifica, catalogo e traguardi.
-     Approvare scala i diamanti; rifiutare li restituisce. Cambiare i
-     traguardi vale da ora in poi: le vincite passate restano. */
+     Buoni da approvare, agenti che hanno smesso, bonus a mano, classifica e
+     traguardi. Dal 25/10/2026 i diamanti si riscattano solo in buoni acquisto
+     (1 diamante = 4 €, buoni da 100 €: 20-diamanti-riscatto.sql); il catalogo
+     premi non si usa più. Approvare scala i diamanti; rifiutare li
+     restituisce. Cambiare i traguardi vale da ora in poi. */
   // azzurro = 1, viola = 10: come nell'area dell'agente (venditori.js)
   const GEMMA = c => `<svg class="gemma gemma-${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l5 6-10 12L2 9z"/><path class="gemma-luce" d="M7 3l2.6 6L12 3l2.4 6L17 3M2 9h20M9.6 9L12 21l2.4-12"/></svg>`;
   function gemme(n) {
@@ -687,8 +688,9 @@ const ProFarmer = (() => {
   function premi(corpo) {
     const D = dati.diamanti;
     const aperte = D.richieste.filter(r => r.stato === 'richiesto' || r.stato === 'approvato');
-    const STATO = { richiesto: 'Da approvare', approvato: 'Approvato, da consegnare', consegnato: 'Consegnato', rifiutato: 'Rifiutato' };
-    let h = '<div class="blocco"><h3>Richieste di premio</h3>';
+    const STATO = { richiesto: 'Da approvare', approvato: 'Approvato, da mandare', consegnato: 'Mandato', rifiutato: 'Rifiutato' };
+    const euro = Number(D.euro) || 4, taglio = Number(D.taglio) || 25;
+    let h = '<div class="blocco"><h3>Buoni da approvare</h3>';
     if (!aperte.length) h += '<p class="aiuto">Nessuna richiesta aperta.</p>';
     h += '<ul class="lista-clienti">';
     aperte.forEach(r => {
@@ -698,10 +700,28 @@ const ProFarmer = (() => {
         + (r.stato === 'richiesto'
           ? `<button type="button" class="bottone" data-decidi="${esc(r.id)}" data-stato="approvato">Approva</button>`
             + `<button type="button" class="bottone bottone-fantasma" data-decidi="${esc(r.id)}" data-stato="rifiutato">Rifiuta</button>`
-          : `<button type="button" class="bottone" data-decidi="${esc(r.id)}" data-stato="consegnato">Segna consegnato</button>`)
+          : `<button type="button" class="bottone" data-decidi="${esc(r.id)}" data-stato="consegnato">Segna mandato</button>`)
         + '</div></li>';
     });
     h += '</ul></div>';
+
+    // chi ha smesso: 30 giorni per il buono, lo chiede Pro Farmer per lui
+    if ((D.cessati || []).length) {
+      h += '<div class="blocco"><h3>Agenti che hanno smesso</h3><p class="aiuto">Non entrano più nell’app: '
+        + 'se vogliono il buono lo chiedete voi per loro, entro la data. Poi i diamanti decadono da soli.</p><ul class="lista-clienti">';
+      D.cessati.forEach(a => {
+        const tagli = Math.floor(a.saldo / taglio);
+        h += `<li><div class="cliente-testa"><strong>${esc(a.nome)}</strong><span class="pf-proprietario">fino al ${esc(a.scade_il)}</span></div>`
+          + `<p class="cliente-dati">${gemme(a.saldo)} ${a.saldo} diamanti</p>`
+          + (tagli >= 1
+            ? `<div class="pf-campi"><label>Buono<select class="pf-select" data-tagli-di="${esc(a.id)}">`
+              + Array.from({ length: Math.min(tagli, 8) }, (_, i) => `<option value="${i + 1}">${(i + 1) * taglio * euro} € (${(i + 1) * taglio} diamanti)</option>`).join('')
+              + `</select></label></div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="button" class="bottone" data-buono-per="${esc(a.id)}" data-nome="${esc(a.nome)}">Chiedi il buono per lui</button></div>`
+            : `<p class="aiuto">Non arriva a ${taglio} diamanti: niente buono.</p>`)
+          + '</li>';
+      });
+      h += '</ul></div>';
+    }
 
     // bonus a mano
     h += '<div class="blocco"><h3>Bonus a mano</h3><form id="pf-bonus" novalidate><div class="pf-campi">'
@@ -720,16 +740,9 @@ const ProFarmer = (() => {
       + cl.map((a, i) => `<li><span class="classifica-pos">${i + 1}</span><span class="classifica-nome">${esc(a.nome)}</span><b>${gemme(a.vinti_anno)} <small>${a.vinti_anno} (saldo ${a.saldo})</small></b></li>`).join('')
       + '</ol></div>';
 
-    // catalogo
-    h += '<div class="blocco"><div class="pannello-testa"><h3>Catalogo premi</h3>'
-      + '<button type="button" class="bottone" id="pf-nuovo-premio">Aggiungi premio</button></div>'
-      + '<p class="aiuto">Quello che gli agenti possono chiedere con i diamanti. Togliere «Visibile» lo nasconde senza cancellare le richieste fatte.</p>'
-      + '<div id="pf-premio-nuovo"></div><ul class="lista-clienti">'
-      + dati.premi.map(p => `<li>${moduloPremio(p)}</li>`).join('') + '</ul></div>';
-
     // traguardi
     h += '<div class="blocco"><h3>Traguardi</h3><p class="aiuto">Valgono gli ordini consegnati. Cambiare i diamanti vale da ora in poi.</p><ul class="lista-clienti">';
-    dati.traguardi.filter(t => t.codice !== 'bonus').forEach(t => {
+    dati.traguardi.filter(t => !['bonus', 'scadenza', 'riscatto'].includes(t.codice)).forEach(t => {
       h += `<li><form class="pf-traguardo" data-codice="${esc(t.codice)}" novalidate>`
         + `<div class="cliente-testa"><strong>${esc(t.nome)}</strong></div><p class="cliente-dati">${esc(t.descrizione)}</p><div class="pf-campi">`
         + `<label>Diamanti<input name="diamanti" type="number" min="0" max="1000" step="1" value="${t.diamanti}"></label>`
@@ -747,10 +760,10 @@ const ProFarmer = (() => {
     corpo.innerHTML = h;
 
     corpo.querySelectorAll('[data-decidi]').forEach(b => b.addEventListener('click', () => {
-      const parole = { approvato: 'Approvo la richiesta? I diamanti vengono scalati.', rifiutato: 'Rifiuto la richiesta? I diamanti restano all’agente.', consegnato: 'Segno il premio come consegnato?' };
+      const parole = { approvato: 'Approvo la richiesta? I diamanti vengono scalati.', rifiutato: 'Rifiuto la richiesta? I diamanti restano all’agente.', consegnato: 'Segno il buono come mandato all’agente?' };
       if (!confirm(parole[b.dataset.stato])) return;
       salva(b, () => sb.rpc('decidi_premio', { p_richiesta: b.dataset.decidi, p_stato: b.dataset.stato, p_note: null }),
-        { approvato: 'Richiesta approvata', rifiutato: 'Richiesta rifiutata', consegnato: 'Premio consegnato' }[b.dataset.stato]);
+        { approvato: 'Buono approvato', rifiutato: 'Richiesta rifiutata', consegnato: 'Buono mandato' }[b.dataset.stato]);
     }));
     const fb = document.getElementById('pf-bonus');
     if (fb) fb.addEventListener('submit', ev => {
@@ -763,12 +776,11 @@ const ProFarmer = (() => {
       salva(fb.querySelector('button'), () => sb.rpc('bonus_diamanti', { p_venditore: d.get('agente'), p_quanti: q, p_motivo: motivo }),
         `${q > 0 ? "+" : ""}${q} diamanti a ${nome}`);
     });
-    document.getElementById('pf-nuovo-premio').addEventListener('click', () => {
-      const n = document.getElementById('pf-premio-nuovo');
-      n.innerHTML = '<div class="cliente-modulo"><h4>Nuovo premio</h4>' + moduloPremio({ attivo: true, posizione: dati.premi.length + 1 }) + '</div>';
-      agganciaPremi(n);
-    });
-    agganciaPremi(corpo);
+    corpo.querySelectorAll('[data-buono-per]').forEach(b => b.addEventListener('click', () => {
+      const tagli = Number(corpo.querySelector(`[data-tagli-di="${b.dataset.buonoPer}"]`).value);
+      if (!confirm(`Chiedo per ${b.dataset.nome} un buono da ${tagli * taglio * euro} €? I diamanti vengono scalati subito.`)) return;
+      salva(b, () => sb.rpc('buono_per', { p_venditore: b.dataset.buonoPer, p_tagli: tagli }), `Buono da ${tagli * taglio * euro} € per ${b.dataset.nome}`);
+    }));
     corpo.querySelectorAll('.pf-traguardo').forEach(f => f.addEventListener('submit', ev => {
       ev.preventDefault();
       const d = new FormData(f);
@@ -776,35 +788,6 @@ const ProFarmer = (() => {
       if (d.has('soglia')) riga.soglia = Number(d.get('soglia')) || null;
       salva(f.querySelector('button'), () => sb.from('traguardi').update(riga).eq('codice', f.dataset.codice), 'Traguardo salvato');
     }));
-  }
-
-  function moduloPremio(p) {
-    return `<form class="pf-premio" data-id="${esc(p.id || '')}" novalidate><div class="pf-campi">`
-      + campo('nome', 'Premio', p.nome)
-      + campo('costo', 'Costo in diamanti', p.costo, 'number', ' min="1" step="1"')
-      + `<label class="pf-largo">Descrizione<textarea name="descrizione" rows="2">${esc(v(p.descrizione))}</textarea></label>`
-      + campo('posizione', 'Posizione nell’elenco', p.posizione, 'number', ' step="1"')
-      + `<label class="pf-spunta"><input type="checkbox" name="attivo"${p.attivo !== false ? ' checked' : ''}> Visibile</label>`
-      + '</div><p class="errore" hidden></p><div class="azioni pf-azioni">'
-      + `<button type="submit" class="bottone">${p.id ? 'Salva' : 'Aggiungi'}</button></div></form>`;
-  }
-  function agganciaPremi(dove) {
-    dove.querySelectorAll('.pf-premio').forEach(f => {
-      if (f.dataset.agganciato) return;
-      f.dataset.agganciato = '1';
-      f.addEventListener('submit', ev => {
-        ev.preventDefault();
-        const d = new FormData(f);
-        const riga = { nome: String(d.get('nome') || '').trim(), costo: Math.trunc(Number(d.get('costo')) || 0),
-          descrizione: nulloSeVuoto(String(d.get('descrizione') || '').trim()), posizione: Math.trunc(Number(d.get('posizione')) || 0),
-          attivo: d.get('attivo') === 'on' };
-        const err = f.querySelector('.errore');
-        if (riga.nome.length < 2 || riga.costo < 1) { err.textContent = 'Servono il nome e un costo di almeno 1 diamante.'; err.hidden = false; return; }
-        const id = f.dataset.id;
-        salva(f.querySelector('button[type=submit]'), () => id ? sb.from('premi').update(riga).eq('id', id) : sb.from('premi').insert(riga),
-          id ? 'Premio salvato' : 'Premio aggiunto al catalogo');
-      });
-    });
   }
 
   /* ------------------------------------------------------------- allevatori
