@@ -543,6 +543,7 @@ function mostraContatti(r) {
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
     if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
+    if (!dati.consenso) return errore(err, 'Per ricevere il risultato spunta «Sì, ricontattatemi».');
     err.hidden = true;
 
     datiContatto = dati;
@@ -660,16 +661,16 @@ function mostraConferma(esito) {
 
 function spuntaConsenso() {
   const link = CONFIG.urlPrivacy
-    ? `<a href="${esc(CONFIG.urlPrivacy)}" target="_blank" rel="noopener">informativa privacy</a>`
-    : 'informativa privacy';
+    ? `<a href="${esc(CONFIG.urlPrivacy)}" target="_blank" rel="noopener">Informativa privacy</a>`
+    : 'Informativa privacy';
   return '<label class="consenso pieno">'
-    // non spuntata in partenza: il consenso al ricontatto commerciale va dato
-    // con un gesto, non trovato già fatto (GDPR). Senza spunta il risultato
-    // arriva lo stesso; lo script non crea il contatto in ActiveCampaign.
-    + '<input type="checkbox" id="c-consenso" name="consenso">'
-    // dal 25/10/2026 il lead può andare all'agente della provincia: il consenso lo dice
-    + '<span>Acconsento a essere ricontattato da Pro Farmer o da un suo agente di zona e a ricevere '
-    + 'informazioni su piùLact. Ho letto l’' + link + '.</span>'
+    // non spuntata in partenza: il consenso va dato con un gesto. Dal 26/10/2026
+    // è OBBLIGATORIO per avere il risultato: decisione di Giulio, informato che
+    // per il GDPR (art. 7.4) un consenso condizionato al servizio può non essere
+    // considerato libero. Testo scelto da Giulio.
+    + '<input type="checkbox" id="c-consenso" name="consenso" required aria-required="true">'
+    + '<span><strong>Sì, ricontattatemi:</strong> Pro Farmer o il suo agente di zona, anche con novità su piùLact. '
+    + link + '</span>'
     + '</label>';
 }
 
