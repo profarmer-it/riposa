@@ -262,7 +262,7 @@ const Venditori = (() => {
   }
   function cosaAvvisa() {
     return cond.ruolo === 'interno' ? 'quando un agente o un rivenditore manda un ordine'
-      : cond.ruolo === 'agente' ? 'quando i tuoi ordini sono confermati, consegnati e pagati, e quando ti liquidiamo le provvigioni'
+      : cond.ruolo === 'agente' ? 'quando i tuoi ordini sono confermati e consegnati, quando una provvigione è da fatturare e quando te la saldiamo'
         : 'quando i tuoi ordini sono confermati, consegnati e pagati';
   }
 
