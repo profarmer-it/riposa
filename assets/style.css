@@ -1298,3 +1298,60 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 .percorso-barra i{display:block;height:100%;border-radius:5px;background:var(--blu)}
 .percorso-n{font-size:14px;text-align:right}
 @media (max-width:560px){ .percorso li{grid-template-columns:minmax(0,1fr) auto} .percorso-barra{grid-column:1 / -1;order:3} }
+
+/* ------------------------- la lista «Da eseguire» e Fatture in Cloud, 26/10/2026 */
+/* le fasi: come le schede della Gestione, più piccole, con il numero */
+.pf-fasi{display:flex;gap:6px;overflow-x:auto;margin:4px 0 12px;padding:2px 0 6px;scrollbar-width:none}
+.pf-fasi::-webkit-scrollbar{display:none}
+.pf-fase{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;font:inherit;font-size:14px;font-weight:600;
+  color:var(--navy);background:var(--bianco);border:1.5px solid var(--crema-2);border-radius:99px;cursor:pointer;
+  transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.pf-fase span{min-width:20px;padding:1px 6px;border-radius:99px;background:var(--crema-2);font-size:12px;text-align:center;font-variant-numeric:tabular-nums}
+.pf-fase.attiva{background:var(--navy);border-color:var(--navy);color:var(--bianco)}
+.pf-fase.attiva span{background:rgba(255,255,255,.2)}
+.pf-fase.vuota{opacity:.55}
+.app-pro .pf-fase.attiva{background:var(--notte);border-color:var(--notte)}
+.lista-clienti > li.pf-fase-titolo{padding:14px 0 2px;border:0;background:none;box-shadow:none}
+.pf-fase-titolo h4{margin:0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--testo-2)}
+.pf-etichetta{font-style:normal;font-size:12px;font-weight:700;padding:2px 7px;border-radius:99px;background:#FFF3D6;color:#8A5A00}
+.pf-documenti a{color:inherit;font-weight:600}
+.pf-da-completare{color:#A3261B}
+.pf-azioni .aiuto{align-self:center;margin:0}
+.pf-inline{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--testo-2)}
+.pf-inline input{padding:9px 11px;font:inherit;font-size:16px;font-weight:400;color:var(--testo);border:1px solid var(--crema-2);border-radius:10px;background:var(--bianco)}
+.pf-scheda-fic{margin-top:12px;padding:14px 16px;border:1.5px solid var(--crema-2);border-radius:14px;background:var(--crema, #FBF7EE)}
+.pf-scheda-fic h4{margin:0 0 4px}
+.pf-altro{margin-top:10px}
+.pf-altro > summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--testo-2)}
+
+/* L'anteprima del preventivo per il cliente (venditori.js, 26/10/2026):
+   un foglio sopra l'app, da mostrare o stampare (in stampa resta solo il foglio). */
+.anteprima-preventivo{position:fixed;inset:0;z-index:60;overflow-y:auto;background:rgba(20,36,60,.55);
+  padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.anteprima-barra{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:760px;margin:0 auto 12px}
+.anteprima-foglio{max-width:760px;margin:0 auto;background:#fff;color:#14243C;border-radius:14px;padding:28px 26px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.anteprima-testa{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:2px solid var(--crema-2)}
+.anteprima-logo{height:44px;width:auto;filter:brightness(0) saturate(100%) invert(12%) sepia(30%) saturate(1500%) hue-rotate(190deg)}   /* il logo è bianco: qui blu notte */
+.anteprima-barra .bottone-fantasma{background:var(--bianco)}
+.anteprima-righe th,.anteprima-righe td{white-space:normal;vertical-align:top}
+.anteprima-righe tbody td:first-child,.anteprima-righe thead th:first-child{text-align:left}
+.anteprima-righe tbody td:first-child{font-weight:600;width:48%}
+.anteprima-righe td+td,.anteprima-righe th+th{padding-left:12px}
+.anteprima-righe td:not(:first-child),.anteprima-righe th:not(:first-child){text-align:right}
+@media (max-width:560px){ .anteprima-foglio{padding:20px 16px} .anteprima-righe{font-size:14px} }
+.anteprima-testa div{text-align:right}
+.anteprima-testa strong{display:block;font-size:20px}
+.anteprima-testa span{font-size:14px;color:var(--testo-2)}
+.anteprima-cliente{margin:18px 0;font-size:15px;line-height:1.5}
+.anteprima-righe{width:100%}
+.anteprima-righe td small{display:block;color:var(--testo-2)}
+.anteprima-righe tfoot th{text-align:right;font-weight:600}
+.anteprima-firma{margin-top:22px;font-size:14px;color:var(--testo-2)}
+body.con-anteprima{overflow:hidden}
+.cliente-storico{color:var(--testo-2)}
+@media print{
+  body.con-anteprima > *:not(.anteprima-preventivo){display:none !important}
+  body.con-anteprima .anteprima-preventivo{position:static;background:none;padding:0;overflow:visible}
+  body.con-anteprima .anteprima-barra{display:none}
+  body.con-anteprima .anteprima-foglio{box-shadow:none;border-radius:0;padding:0;max-width:none}
+}

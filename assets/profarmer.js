@@ -25,10 +25,10 @@ const ProFarmer = (() => {
   let dati = { ordini: [], venditori: [], condizioni: null, materiali: [], lead: [], allevatori: [], messaggi: [], clienti: [], diamanti: null, premi: [], traguardi: [], chiamate: [], chiamateFatte: [], compleanni: [] };
   let filtroLead = 'nuovo';
   const leadAperti = new Set();
-  let filtroStato = 'aperti';
+  let filtroStato = 'aperti';   // la fase della lista «Da eseguire» (aperti = tutte quelle da fare)
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Ordini', chiamate: 'Chiamate', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', provvigioni: 'Provvigioni',
+  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Da eseguire', chiamate: 'Chiamate', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', provvigioni: 'Provvigioni',
                     venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
   /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
   const cerca = {};
@@ -194,56 +194,160 @@ const ProFarmer = (() => {
     return p.join(' · ');
   }
 
+  /* La lista «Da eseguire» (26/10/2026, Fase B: prende il posto dell'Excel di
+     Elsa). Gli stati del database restano cinque; le fasi si ricavano da
+     stato + data di consegna + documenti di Fatture in Cloud:
+       Da approvare  inviato (gli ordini degli agenti aspettano Pro Farmer)
+       Da preparare  confermato, senza data di consegna
+       In consegna   confermato, con la data di consegna
+       Da fatturare  consegnato, senza fattura FiC
+       Da incassare  consegnato, con la fattura FiC (la collega il giro notturno)
+       Chiusi        pagato o annullato
+     «Approva e crea preventivo» apre la scheda del preventivo: la funzione
+     `fic` lo scrive in Fatture in Cloud (integrazioni/fatture-in-cloud/). */
+  const FASI = { approvare: 'Da approvare', preparare: 'Da preparare', consegna: 'In consegna',
+                 fatturare: 'Da fatturare', incassare: 'Da incassare', chiusi: 'Chiusi' };
+  const APERTE = ['approvare', 'preparare', 'consegna', 'fatturare', 'incassare'];
+  const VOCI_FIC = { bigbag: 'piùLact big bag', sacchi: 'piùLact sacchi', ballette: 'Ballette piùLact Pronto' };
+  let schedaAperta = null;      // l'ordine con la scheda del preventivo aperta
+  function fase(o) {
+    if (o.stato === 'pagato' || o.stato === 'annullato') return 'chiusi';
+    if (o.stato === 'inviato') return 'approvare';
+    if (o.stato === 'confermato') return o.consegna_prevista ? 'consegna' : 'preparare';
+    return o.fic_fattura_numero ? 'incassare' : 'fatturare';
+  }
+
   function ordini(corpo) {
-    const filtri = { aperti: 'Da seguire', tutti: 'Tutti' };
-    STATI.forEach(s => { filtri[s] = NOME_STATO[s]; });
-    const lista = dati.ordini.filter(o => (filtroStato === 'tutti' ? true
-      : filtroStato === 'aperti' ? !['pagato', 'annullato'].includes(o.stato) : o.stato === filtroStato) && diChi(o.venditore_id));
-    let h = '<div class="blocco"><div class="pannello-testa"><h3>Ordini</h3>'
-      + '<select id="pf-filtro" class="pf-select" aria-label="Quali ordini">'
-      + Object.entries(filtri).map(([k, n]) => `<option value="${k}"${k === filtroStato ? ' selected' : ''}>${esc(n)}</option>`).join('')
-      + '</select></div>'
+    const miei = dati.ordini.filter(o => diChi(o.venditore_id));
+    const conta = {};
+    miei.forEach(o => { const f = fase(o); conta[f] = (conta[f] || 0) + 1; });
+    const lista = miei.filter(o => filtroStato === 'tutti' ? true
+      : filtroStato === 'aperti' ? APERTE.includes(fase(o)) : fase(o) === filtroStato)
+      .sort((a, b) => APERTE.indexOf(fase(a)) - APERTE.indexOf(fase(b)) || String(b.creato_il).localeCompare(String(a.creato_il)));
+    let h = '<div class="blocco"><div class="pannello-testa"><h3>Da eseguire</h3></div>'
+      + '<div class="pf-fasi" role="tablist">'
+      + [['aperti', 'Tutti da fare', APERTE.reduce((s, f) => s + (conta[f] || 0), 0)]]
+        .concat(Object.entries(FASI).map(([k, n]) => [k, n, conta[k] || 0])).concat([['tutti', 'Tutti', miei.length]])
+        .map(([k, n, c]) => `<button type="button" class="pf-fase${k === filtroStato ? ' attiva' : ''}${c ? '' : ' vuota'}" data-fase="${k}" aria-selected="${k === filtroStato}">${esc(n)}<span>${c}</span></button>`).join('')
+      + '</div>'
       + '<div class="pf-filtri"><label>Di chi' + selectVenditore('pf-di-chi', filtroVenditore, true).replace('<select ', '<select id="pf-di-chi-ordini" ') + '</label>'
       + casellaCerca('ordini', 'Cerca cliente, numero, venditore') + '</div>';
     const senzaMail = dati.ordini.filter(o => !o.email_inviata_il);
     if (senzaMail.length) {
       h += `<div class="avviso"><span class="avviso-icona">⚠</span><span>${senzaMail.length} `
         + `${senzaMail.length === 1 ? 'ordine senza e-mail partita' : 'ordini senza e-mail partita'}: `
-        + 'li trovi qui sotto con «Rimanda l’e-mail».</span></div>';
+        + 'li trovi qui sotto, in «Altro», con «Rimanda l’e-mail».</span></div>';
     }
-    if (!lista.length) h += '<p class="aiuto">Nessun ordine qui.</p>';
+    if (!lista.length) h += '<p class="aiuto">Niente qui.</p>';
     h += '<ul class="lista-clienti" data-lista-di="ordini">';
+    let faseDi = null;
     lista.forEach(o => {
-      const vend = o.venditori || {};
-      const soldi = o.ruolo === 'agente' ? `provvigione ${euro(o.provvigione)}`
-        : o.ruolo === 'rivenditore' ? `al rivenditore ${euro(o.totale_rivenditore)} · margine ${euro(o.margine)}` : '';
-      h += `<li data-cerca="${esc([o.cliente, o.numero, vend.nome, (o.cliente_dati || {}).piva].join(' '))}"><form class="pf-ordine" data-id="${esc(o.id)}" novalidate>`
-        + `<div class="cliente-testa"><strong>${esc(o.cliente || (o.ruolo === 'rivenditore' ? 'Magazzino del rivenditore' : '—'))}</strong>`
-        + `<span>n. ${esc(o.numero)} · ${esc(dataIt(o.creato_il))}</span></div>`
-        + `<p class="cliente-dati">${esc(vend.nome || '')} (${esc(RUOLI[o.ruolo] || o.ruolo)}) · ${esc(pezzi(o))}`
-        + `${o.annuale ? ' · fornitura annuale' : ''} · ${num(o.t, 1)} t`
-        + (o.totale_cliente !== null ? ` · al cliente ${euro(o.totale_cliente)}` : '') + (soldi ? ' · ' + soldi : '') + '</p>';
-      const cd = o.cliente_dati || {};
-      const fatt = [cd.piva && 'P.IVA ' + cd.piva, cd.pec && 'PEC ' + cd.pec, cd.sdi && 'SDI ' + cd.sdi, cd.telefono, cd.indirizzo, cd.provincia].filter(Boolean);
-      if (fatt.length) h += `<p class="cliente-dati">${esc(fatt.join(' · '))}</p>`;
-      if (o.note) h += `<p class="cliente-note">Nota del venditore: ${esc(o.note)}</p>`;
-      h += '<div class="pf-campi">'
-        + '<label>Stato<select name="stato" class="pf-select">'
-        + STATI.map(s => `<option value="${s}"${o.stato === s ? ' selected' : ''}>${NOME_STATO[s]}</option>`).join('') + '</select></label>'
-        + (o.ruolo === 'agente'
-          ? `<label>Provvigione saldata il<input type="date" name="liquidata" value="${esc(v(o.provvigione_liquidata_il))}"></label>` : '')
-        + `<label class="pf-largo">Note Pro Farmer <small>(il venditore non le vede)</small><textarea name="note_pf" rows="2">${esc(v(o.note_pf))}</textarea></label>`
-        + '</div>';
-      h += '<p class="cliente-dati">' + (o.email_inviata_il ? `E-mail partita il ${esc(dataIt(o.email_inviata_il))}.`
-        : `<strong>E-mail non partita</strong>${o.email_errore ? ': ' + esc(o.email_errore) : ''}`) + '</p>';
-      h += '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva</button>'
-        + (o.email_inviata_il ? '' : '<button type="button" class="bottone bottone-fantasma" data-rimanda>Rimanda l’e-mail</button>')
-        + '</div></form></li>';
+      const f = fase(o);
+      if (filtroStato === 'aperti' && f !== faseDi) { h += `<li class="pf-fase-titolo" data-cerca=""><h4>${esc(FASI[f])}</h4></li>`; faseDi = f; }
+      h += `<li data-cerca="${esc([o.cliente, o.numero, (o.venditori || {}).nome, (o.cliente_dati || {}).piva, o.fic_preventivo_numero].join(' '))}">${schedaOrdine(o, f)}</li>`;
     });
     h += '</ul></div>';
     corpo.innerHTML = h;
-    document.getElementById('pf-filtro').addEventListener('change', ev => { filtroStato = ev.target.value; mostra(); });
+    corpo.querySelectorAll('[data-fase]').forEach(b => b.addEventListener('click', () => { filtroStato = b.dataset.fase; mostra(); }));
     document.getElementById('pf-di-chi-ordini').addEventListener('change', ev => { filtroVenditore = ev.target.value; mostra(); });
+    agganciaOrdini(corpo);
+  }
+
+  function schedaOrdine(o, f) {
+    const vend = o.venditori || {};
+    const soldi = o.ruolo === 'agente' ? `provvigione ${euro(o.provvigione)}`
+      : o.ruolo === 'rivenditore' ? `al rivenditore ${euro(o.totale_rivenditore)} · margine ${euro(o.margine)}` : '';
+    let h = `<div class="pf-ordine-scheda" data-id="${esc(o.id)}">`
+      + `<div class="cliente-testa"><strong>${esc(o.cliente || (o.ruolo === 'rivenditore' ? 'Magazzino del rivenditore' : '—'))}</strong>`
+      + `<span>${o.tipo === 'preventivo' ? '<em class="pf-etichetta">Preventivo</em> ' : ''}n. ${esc(o.numero)} · ${esc(dataIt(o.creato_il))}</span></div>`
+      + `<p class="cliente-dati">${esc(vend.nome || '')} (${esc(RUOLI[o.ruolo] || o.ruolo)}) · ${esc(pezzi(o))}`
+      + `${o.annuale ? ' · fornitura annuale' : ''} · ${num(o.t, 1)} t`
+      + (o.totale_cliente !== null && o.totale_cliente !== undefined ? ` · al cliente ${euro(o.totale_cliente)}` : '') + (soldi ? ' · ' + soldi : '') + '</p>';
+    const cd = o.cliente_dati || {};
+    const fatt = [cd.piva && 'P.IVA ' + cd.piva, cd.pec && 'PEC ' + cd.pec, cd.sdi && 'SDI ' + cd.sdi, cd.telefono, cd.indirizzo, cd.comune, cd.provincia].filter(Boolean);
+    if (fatt.length) h += `<p class="cliente-dati">${esc(fatt.join(' · '))}</p>`;
+    if (o.note) h += `<p class="cliente-note">Nota del venditore: ${esc(o.note)}</p>`;
+    // i documenti di Fatture in Cloud e la consegna
+    const doc = [];
+    if (o.fic_preventivo_numero) doc.push(o.fic_preventivo_url
+      ? `<a href="${esc(o.fic_preventivo_url)}" target="_blank" rel="noopener">Preventivo FiC n. ${esc(o.fic_preventivo_numero)}</a>`
+      : `Preventivo FiC n. ${esc(o.fic_preventivo_numero)}`);
+    if (o.fic_fattura_numero) doc.push(`Fattura n. ${esc(o.fic_fattura_numero)} del ${esc(dataIt(o.fic_fattura_data))}`);
+    if (o.consegna_prevista) doc.push(`Consegna ${esc(dataIt(o.consegna_prevista))}${o.trasportatore ? ' con ' + esc(o.trasportatore) : ''}`);
+    if (o.pagamento) doc.push(esc(o.pagamento));
+    if (doc.length) h += `<p class="cliente-dati pf-documenti">${doc.join(' · ')}</p>`;
+
+    // il passo dopo, secondo la fase
+    h += '<p class="errore" hidden></p><div class="azioni pf-azioni">';
+    const puoPreventivo = !o.fic_preventivo_id && o.ruolo !== 'rivenditore' && o.stato !== 'annullato';
+    if (f === 'approvare') {
+      if (puoPreventivo) h += '<button type="button" class="bottone" data-preventivo>Approva e crea preventivo</button>';
+      h += `<button type="button" class="bottone${puoPreventivo ? ' bottone-fantasma' : ''}" data-passa="confermato">Approva${puoPreventivo ? ' senza preventivo' : ''}</button>`;
+    } else if (f === 'preparare') {
+      h += `<label class="pf-inline">Consegna il<input type="date" name="consegna" value="${esc(v(o.consegna_prevista))}"></label>`
+        + `<label class="pf-inline">Trasportatore<input type="text" name="trasportatore" list="pf-trasportatori" value="${esc(v(o.trasportatore))}"></label>`
+        + '<button type="button" class="bottone" data-consegna>In consegna</button>';
+      if (puoPreventivo) h += '<button type="button" class="bottone bottone-fantasma" data-preventivo>Crea preventivo</button>';
+    } else if (f === 'consegna') {
+      h += '<button type="button" class="bottone" data-passa="consegnato">Consegnato</button>';
+    } else if (f === 'fatturare') {
+      h += o.fic_preventivo_numero
+        ? `<span class="aiuto">In FiC trasforma il preventivo n. ${esc(o.fic_preventivo_numero)} in fattura: Riposa la collega stanotte.</span>`
+          + '<button type="button" class="bottone bottone-fantasma" data-collega>Controlla adesso</button>'
+        : '<span class="aiuto">Senza preventivo FiC: quando hai fatto la fattura, segna «Pagato» all’incasso.</span>'
+          + '<button type="button" class="bottone bottone-fantasma" data-passa="pagato">Pagato</button>';
+    } else if (f === 'incassare') {
+      h += '<button type="button" class="bottone" data-passa="pagato">Pagato</button>';
+    }
+    h += '</div>';
+    if (schedaAperta === o.id) h += '<div class="pf-scheda-fic" id="pf-scheda-fic"><p class="aiuto">Leggo i dati da Fatture in Cloud…</p></div>';
+
+    // tutto il resto, come prima: stato a mano, provvigione, note interne, e-mail
+    h += `<details class="pf-altro"><summary>Altro</summary><form class="pf-ordine" data-id="${esc(o.id)}" novalidate><div class="pf-campi">`
+      + '<label>Stato<select name="stato" class="pf-select">'
+      + STATI.map(s => `<option value="${s}"${o.stato === s ? ' selected' : ''}>${NOME_STATO[s]}</option>`).join('') + '</select></label>'
+      + (o.ruolo === 'agente'
+        ? `<label>Provvigione saldata il<input type="date" name="liquidata" value="${esc(v(o.provvigione_liquidata_il))}"></label>` : '')
+      + `<label class="pf-largo">Note Pro Farmer <small>(il venditore non le vede)</small><textarea name="note_pf" rows="2">${esc(v(o.note_pf))}</textarea></label>`
+      + '</div>'
+      + '<p class="cliente-dati">' + (o.email_inviata_il ? `E-mail partita il ${esc(dataIt(o.email_inviata_il))}.`
+        : `<strong>E-mail non partita</strong>${o.email_errore ? ': ' + esc(o.email_errore) : ''}`) + '</p>'
+      + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva</button>'
+      + (o.email_inviata_il ? '' : '<button type="button" class="bottone bottone-fantasma" data-rimanda>Rimanda l’e-mail</button>')
+      + '</div></form></details>';
+    return h + '</div>';
+  }
+
+  function agganciaOrdini(corpo) {
+    if (!document.getElementById('pf-trasportatori')) {
+      corpo.insertAdjacentHTML('beforeend', '<datalist id="pf-trasportatori"><option value="Cavaglieri"><option value="Ghisoni"></datalist>');
+    }
+    const ordineDi = el => dati.ordini.find(o => o.id === el.closest('[data-id]').dataset.id);
+    corpo.querySelectorAll('[data-passa]').forEach(b => b.addEventListener('click', () => {
+      const o = ordineDi(b);
+      salva(b, () => sb.from('ordini').update({ stato: b.dataset.passa }).eq('id', o.id),
+        `${o.cliente || 'Ordine'}: ${NOME_STATO[b.dataset.passa].toLowerCase()}`);
+    }));
+    corpo.querySelectorAll('[data-consegna]').forEach(b => b.addEventListener('click', () => {
+      const s = b.closest('.pf-ordine-scheda');
+      const data = s.querySelector('[name=consegna]').value;
+      const err = s.querySelector('.errore');
+      if (!data) { err.textContent = 'Scrivi la data di consegna.'; err.hidden = false; return; }
+      salva(b, () => sb.from('ordini').update({ consegna_prevista: data,
+        trasportatore: nulloSeVuoto(s.querySelector('[name=trasportatore]').value.trim()) }).eq('id', ordineDi(b).id), 'In consegna');
+    }));
+    corpo.querySelectorAll('[data-collega]').forEach(b => b.addEventListener('click', () => {
+      const o = ordineDi(b);
+      salva(b, () => sb.functions.invoke('fic', { body: { azione: 'collega', ordine: o.id } }).then(r => {
+        if (r.error || !r.data || !r.data.ok) throw new Error((r.data && r.data.motivo) || 'Fatture in Cloud non risponde');
+        if (!r.data.fattura) throw new Error(`il preventivo n. ${o.fic_preventivo_numero} in FiC non è ancora diventato fattura`);
+      }), 'Fattura collegata');
+    }));
+    corpo.querySelectorAll('[data-preventivo]').forEach(b => b.addEventListener('click', () => {
+      schedaAperta = ordineDi(b).id; mostra();
+    }));
+    const box = document.getElementById('pf-scheda-fic');
+    if (box) apriSchedaFic(box, dati.ordini.find(o => o.id === schedaAperta));
     corpo.querySelectorAll('.pf-ordine').forEach(f => {
       f.addEventListener('submit', ev => {
         ev.preventDefault();
@@ -258,6 +362,65 @@ const ProFarmer = (() => {
           if (x.error) throw new Error('e-mail non partita, riprova più tardi');
         })));
     });
+  }
+
+  /* La scheda del preventivo FiC: prezzi €/t, trasporto, pagamento, consegna,
+     già riempita con quello che c'è: i prezzi dell'ordine (conto), se no
+     quelli dell'ultima fattura del cliente, se no il listino. */
+  function apriSchedaFic(box, o) {
+    sb.functions.invoke('fic', { body: { azione: 'scheda', ordine: o.id } }).then(r => {
+      if (r.error || !r.data || !r.data.ok) throw new Error((r.data && r.data.motivo) || 'Fatture in Cloud non risponde');
+      const s = r.data, st = (s.cliente && s.cliente.storico) || {}, ult = st.ultimo || {};
+      const cg = dati.condizioni || {};
+      const listino = { bigbag: cg.listino_bigbag, sacchi: cg.listino_sacchi, ballette: cg.listino_ballette };
+      const dalConto = {};
+      ((o.conto || {}).righe || []).forEach(x => { if (x.clienteT) dalConto[x.voce] = x.clienteT; });
+      const prezzo = voce => dalConto[voce] || (ult.prezzi || {})[voce] || listino[voce] || '';
+      const pagamentoAbituale = (s.cliente && s.cliente.pagamento) || ult.pagamento || '';
+      let h = '<form class="pf-preventivo" novalidate><h4>Preventivo in Fatture in Cloud</h4>';
+      if (ult.data) {
+        h += `<p class="aiuto">Ultima fattura del cliente: ${esc(dataIt(ult.data))}, n. ${esc(ult.fattura)}`
+          + `${ult.trasporto ? `, trasporto ${euro(ult.trasporto)}${ult.trasportatore ? ' (' + esc(ult.trasportatore) + ')' : ''}` : ''}`
+          + `${ult.pagamento ? ', ' + esc(ult.pagamento) : ''}.</p>`;
+      }
+      h += '<div class="pf-campi">';
+      ['bigbag', 'sacchi', 'ballette'].filter(x => o[x]).forEach(x => {
+        h += `<label>${esc(VOCI_FIC[x])} €/t<input type="number" step="0.01" min="0" name="p_${x}" value="${esc(prezzo(x))}" required></label>`;
+      });
+      h += `<label>Trasporto €<input type="number" step="1" min="0" name="trasporto" value="${esc(v(o.trasporto != null ? o.trasporto : ult.trasporto))}"></label>`
+        + `<label>Trasportatore<select name="trasportatore" class="pf-select"><option value="">Generico</option>`
+        + s.trasportatori.map(t => `<option${t === (o.trasportatore || ult.trasportatore) ? ' selected' : ''}>${esc(t)}</option>`).join('') + '</select></label>'
+        + '<label>Pagamento<select name="pagamento" class="pf-select">'
+        + s.metodi.map(m => `<option value="${m.id}"${m.nome === pagamentoAbituale ? ' selected' : ''}>${esc(m.nome)}</option>`).join('') + '</select></label>'
+        + `<label>Consegna prevista<input type="date" name="consegna" value="${esc(v(o.consegna_prevista))}"></label>`
+        + '<label class="pf-largo">Note in fondo al preventivo <small>(facoltativo: le quantità spiegate le scrive Riposa)</small><textarea name="note" rows="2"></textarea></label>'
+        + '</div><p class="errore" hidden></p><div class="azioni pf-azioni">'
+        + '<button type="submit" class="bottone">Crea il preventivo in FiC</button>'
+        + '<button type="button" class="bottone bottone-fantasma" data-chiudi>Annulla</button></div>'
+        + '<p class="aiuto">Il cliente in FiC si cerca per P.IVA: se manca si crea, se c’è si aggiornano contatti e dati SDI. '
+        + 'L’ordine passa a «confermato». La fattura la fai in FiC come sempre.</p></form>';
+      box.innerHTML = h;
+      const f = box.querySelector('form');
+      f.querySelector('[data-chiudi]').addEventListener('click', () => { schedaAperta = null; mostra(); });
+      f.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const d = new FormData(f);
+        const prezzi = {};
+        ['bigbag', 'sacchi', 'ballette'].forEach(x => { if (d.has('p_' + x)) prezzi[x] = Number(d.get('p_' + x)); });
+        const err = f.querySelector('.errore');
+        if (Object.values(prezzi).some(x => !(x > 0))) { err.textContent = 'Scrivi tutti i prezzi a tonnellata.'; err.hidden = false; return; }
+        const sel = f.querySelector('[name=pagamento]');
+        const corpo = { azione: 'preventivo', ordine: o.id, prezzi, trasporto: Number(d.get('trasporto')) || 0,
+          trasportatore: d.get('trasportatore') || '', pagamento: d.get('pagamento'),
+          pagamentoNome: sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : null,
+          consegna: d.get('consegna') || null, note: d.get('note') || '' };
+        let numero = null;
+        salva(f.querySelector('button[type=submit]'), () => sb.functions.invoke('fic', { body: corpo }).then(r => {
+          if (r.error || !r.data || !r.data.ok) throw new Error((r.data && r.data.motivo) || 'Fatture in Cloud non risponde');
+          numero = r.data.numero; schedaAperta = null;
+        }), 'Preventivo creato in Fatture in Cloud').then(() => { if (numero) avvisa(`Preventivo n. ${numero} creato in Fatture in Cloud`); });
+      });
+    }).catch(e => { box.innerHTML = `<p class="errore">Non riesco a leggere Fatture in Cloud: ${esc(e.message)}</p>`; });
   }
 
   /* ------------------------------------------------------------------- lead */
@@ -612,15 +775,26 @@ const ProFarmer = (() => {
     });
     const attesi = [], unaVolta = [];
     let conRiordino = 0;
+    /* Dal 26/10/2026 contano anche le fatture di Fatture in Cloud (clienti.storico):
+       ogni fattura è un «ordine» con la sua data. Gli ordini Riposa più nuovi
+       dell'ultima fattura si aggiungono; quelli già fatturati non si contano due volte
+       (si guarda solo cosa c'è dopo la data dell'ultima fattura). */
+    dati.clienti.filter(c => c.storico && c.storico.ultimo && !perCliente.has(c.id)).forEach(c => perCliente.set(c.id, []));
     perCliente.forEach((l, id) => {
       l.sort((a, b) => String(a.creato_il).localeCompare(String(b.creato_il)));
-      const ultimo = l[l.length - 1];
-      const c = dati.clienti.find(x => x.id === id) || { ragione: ultimo.cliente, venditore_id: ultimo.venditore_id };
-      if (l.length >= 2) {
+      const c0 = dati.clienti.find(x => x.id === id);
+      const st = c0 && c0.storico && c0.storico.ultimo ? c0.storico : null;
+      const dopo = st ? l.filter(o => String(o.creato_il).slice(0, 10) > st.ultimo.data) : l;
+      const n = (st ? st.ordini : 0) + dopo.length;
+      const primo = st ? new Date(st.prima) : new Date(l[0].creato_il);
+      const ultimo = dopo.length ? dopo[dopo.length - 1]
+        : { creato_il: st.ultimo.data, venditore_id: c0.venditore_id, cliente: c0.ragione, testo: pezziStorico(st.ultimo.voci) + ' (FiC)' };
+      const c = c0 || { ragione: ultimo.cliente, venditore_id: ultimo.venditore_id };
+      if (n >= 2) {
         conRiordino++;
-        const giorni = (new Date(ultimo.creato_il) - new Date(l[0].creato_il)) / giorno / (l.length - 1);
+        const giorni = (new Date(ultimo.creato_il) - primo) / giorno / (n - 1);
         const atteso = new Date(new Date(ultimo.creato_il).getTime() + giorni * giorno);
-        if (atteso.getTime() <= oggiT + 14 * giorno) attesi.push({ c, ultimo, ogni: Math.round(giorni), atteso, n: l.length });
+        if (atteso.getTime() <= oggiT + 14 * giorno) attesi.push({ c, ultimo, ogni: Math.round(giorni), atteso, n });
       } else if (oggiT - new Date(ultimo.creato_il).getTime() > 60 * giorno) {
         unaVolta.push({ c, ultimo });
       }
@@ -629,14 +803,14 @@ const ProFarmer = (() => {
     const totClienti = perCliente.size;
     let h = '<div class="blocco"><h3>Riordini</h3>'
       + `<p class="aiuto">${totClienti ? `${conRiordino} clienti su ${totClienti} hanno riordinato almeno una volta (${Math.round(conRiordino / totClienti * 100)}%).` : 'I riordini compaiono dal secondo ordine di un cliente.'} `
-      + 'Il prossimo ordine atteso è calcolato da ogni quanto il cliente ha ordinato finora.</p>';
+      + 'Il prossimo ordine atteso è calcolato da ogni quanto il cliente ha ordinato finora, contando anche le fatture di Fatture in Cloud.</p>';
     if (attesi.length) {
       h += '<h4>Da riordinare a breve</h4><ul class="lista-clienti">';
       attesi.forEach(x => {
         const tardi = x.atteso.getTime() < oggiT;
         h += `<li><div class="cliente-testa"><strong>${esc(x.c.ragione || '—')}</strong>`
           + `<span class="pf-proprietario${tardi ? ' cr-tardi' : ''}">${tardi ? 'in ritardo' : 'atteso'} il ${esc(dataIt(x.atteso.toISOString()))}</span></div>`
-          + `<p class="cliente-dati">${esc(nomeVenditore(x.c.venditore_id))} · ${x.n} ordini, ogni ~${x.ogni} giorni · ultimo il ${esc(dataIt(x.ultimo.creato_il))}: ${esc(pezzi(x.ultimo))}</p></li>`;
+          + `<p class="cliente-dati">${esc(nomeVenditore(x.c.venditore_id))} · ${x.n} ordini, ogni ~${x.ogni} giorni · ultimo il ${esc(dataIt(x.ultimo.creato_il))}: ${esc(x.ultimo.testo || pezzi(x.ultimo))}</p></li>`;
       });
       h += '</ul>';
     }
@@ -644,7 +818,7 @@ const ProFarmer = (() => {
       h += `<h4>Un ordine solo, poi più niente</h4><p class="aiuto">Hanno ordinato una volta più di 60 giorni fa: vale una telefonata.</p><ul class="lista-clienti">`;
       unaVolta.sort((a, b) => String(a.ultimo.creato_il).localeCompare(String(b.ultimo.creato_il))).slice(0, 15).forEach(x => {
         h += `<li><div class="cliente-testa"><strong>${esc(x.c.ragione || '—')}</strong><span>${esc(dataIt(x.ultimo.creato_il))}</span></div>`
-          + `<p class="cliente-dati">${esc(nomeVenditore(x.c.venditore_id))} · ${esc(pezzi(x.ultimo))}</p></li>`;
+          + `<p class="cliente-dati">${esc(nomeVenditore(x.c.venditore_id))} · ${esc(x.ultimo.testo || pezzi(x.ultimo))}</p></li>`;
       });
       h += '</ul>';
     }
@@ -728,6 +902,21 @@ const ProFarmer = (() => {
      Una P.IVA è di un solo venditore; da qui Pro Farmer sposta un cliente
      (per esempio da un agente ai diretti). Gli ordini già fatti restano a
      chi li ha mandati: si sposta solo il cliente, per i prossimi. */
+  /* Lo storico del cliente in Fatture in Cloud (26/10/2026): lo scrive la
+     funzione `fic` ogni notte, dalle fatture piùLact da dicembre 2025. */
+  function pezziStorico(voci) {
+    const n = { bigbag: 'big bag', sacchi: 'bancali sacchi', ballette: 'ballette' };
+    return Object.entries(voci || {}).map(([k, x]) => `${num(x, 1)} ${n[k] || k}`).join(' · ');
+  }
+  function storicoFic(c) {
+    const st = c.storico, u = st && st.ultimo;
+    if (!u) return '';
+    return `<p class="cliente-dati">FiC: ${st.ordini} ${st.ordini === 1 ? 'fattura' : 'fatture'} piùLact`
+      + `${st.t_anno ? `, ${num(st.t_anno, 1)} t nel ${esc(String(u.data).slice(0, 4))}` : ''}`
+      + `${st.ogni_giorni ? `, ogni ~${st.ogni_giorni} giorni` : ''} · ultima il ${esc(dataIt(u.data))}: ${esc(pezziStorico(u.voci))}`
+      + `${c.pagamento ? ' · ' + esc(c.pagamento) : ''}</p>`;
+  }
+
   function clienti(corpo) {
     const diretti = new Set(dati.venditori.filter(x => x.ruolo === 'interno').map(x => x.id));
     const lista = dati.clienti.filter(c => diChi(c.venditore_id));
@@ -749,7 +938,9 @@ const ProFarmer = (() => {
         + `<div class="cliente-testa"><strong>${esc(c.ragione)}</strong><span class="pf-proprietario${diretto ? ' diretto' : ''}">${esc(diretto ? 'Diretto Pro Farmer' : nomeVenditore(c.venditore_id))}</span></div>`
         + `<p class="cliente-indirizzo">${esc([c.indirizzo, luogo.replace(' · ', ' ')].filter(Boolean).join(', ') || 'Indirizzo da completare')}</p>`
         + `<p class="cliente-dati">${esc(['P.IVA ' + c.piva, c.telefono, c.referente].filter(Boolean).join(' · '))}</p>`
-        + `<p class="cliente-dati">${ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'}, l’ultimo il ${esc(dataIt(ord[0].creato_il))}` : 'Nessun ordine'}</p>`
+        + `<p class="cliente-dati">${ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'} in Riposa, l’ultimo il ${esc(dataIt(ord[0].creato_il))}` : 'Nessun ordine in Riposa'}</p>`
+        + storicoFic(c)
+        + (c.da_completare ? `<p class="cliente-dati pf-da-completare">Da completare per fatturare: ${esc(c.da_completare.replace(/\.$/, '').toLowerCase())}.</p>` : '')
         + '<div class="pf-campi"><label>Assegnato a' + selectVenditore('venditore_id', c.venditore_id, false) + '</label></div>'
         + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone" disabled>Sposta</button></div>'
         + '</form></li>';

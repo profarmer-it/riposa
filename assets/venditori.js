@@ -1115,6 +1115,24 @@ const Venditori = (() => {
 
   /* ---------------------------------------------------------------- clienti */
 
+  /* Le date dello storico FiC arrivano come 2026-10-13. */
+  function dataIt(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+  }
+  /* I pezzi dell'ultima fattura: big bag, bancali, ballette (arrotondati). */
+  function pezziFic(voci) {
+    return VOCI.filter(v => voci && voci[v.id]).map(v => `${num(voci[v.id], Number.isInteger(voci[v.id]) ? 0 : 1)} ${v.unita}`).join(' · ');
+  }
+  /* «Riordina come l'ultima fattura»: le quantità dello storico FiC, a pezzi interi. */
+  function comeUltimaFattura(id) {
+    const c = area.clienti.find(x => x.id === id);
+    const voci = (c && c.storico && c.storico.ultimo && c.storico.ultimo.voci) || {};
+    stato = statoVuoto();
+    VOCI.forEach(v => { stato[v.id] = voci[v.id] ? String(Math.round(voci[v.id])) : ''; });
+    ordineDiretto(id);
+  }
+
   function ordiniDelCliente(id) {
     return area.ordini.filter(o => o.clienteId === id && o.stato !== 'annullato');
   }
@@ -1163,11 +1181,19 @@ const Venditori = (() => {
       if (c.capi) h += `${esc(c.capi)} capi · `;
       h += ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'}, l’ultimo il ${esc(ord[0].data)}` : 'nessun ordine';
       h += '</p>';
+      // lo storico in Fatture in Cloud (26/10/2026): ultima fattura e ogni quanto riordina
+      const u = c.storico && c.storico.ultimo;
+      if (u) {
+        h += `<p class="cliente-dati cliente-storico">In fattura: ${c.storico.ordini} ${c.storico.ordini === 1 ? 'fornitura' : 'forniture'} dal ${esc(dataIt(c.storico.prima))}, `
+          + `l’ultima il ${esc(dataIt(u.data))}: ${esc(pezziFic(u.voci))}${c.storico.ogni_giorni ? ` · riordina ogni ~${c.storico.ogni_giorni} giorni` : ''}</p>`;
+      }
       if (c.note) h += `<p class="cliente-note">${esc(c.note)}</p>`;
       if (validaCliente(c)) h += '<p class="sotto-minimo">Dati per la fattura da completare: tocca Modifica.</p>';
+      const comeFattura = !ord.length && u && Object.keys(u.voci || {}).length;
       h += '<div class="azioni">'
         + (ord.length ? `<button type="button" class="bottone" data-riordina="${esc(ord[0].id)}">Riordina come il ${esc(ord[0].data)}</button>` : '')
-        + `<button type="button" class="bottone${ord.length ? ' bottone-fantasma' : ''}" data-ordina="${esc(c.id)}">Nuovo ordine</button>`
+        + (comeFattura ? `<button type="button" class="bottone" data-come-fattura="${esc(c.id)}">Riordina come il ${esc(dataIt(u.data))}</button>` : '')
+        + `<button type="button" class="bottone${ord.length || comeFattura ? ' bottone-fantasma' : ''}" data-ordina="${esc(c.id)}">Nuovo ordine</button>`
         + `<button type="button" class="bottone bottone-fantasma" data-modifica="${esc(c.id)}">Modifica</button></div>`;
       h += '</li>';
     });
@@ -1181,6 +1207,8 @@ const Venditori = (() => {
       b.addEventListener('click', () => moduloCliente(area.clienti.find(c => c.id === b.dataset.modifica))));
     pannello().querySelectorAll('[data-ordina]').forEach(b =>
       b.addEventListener('click', () => ordineDiretto(b.dataset.ordina)));
+    pannello().querySelectorAll('[data-come-fattura]').forEach(b =>
+      b.addEventListener('click', () => comeUltimaFattura(b.dataset.comeFattura)));
   }
 
   /* I compleanni dei clienti (25/10/2026): giorno e mese di nascita del
@@ -1359,19 +1387,23 @@ const Venditori = (() => {
     if (!area.ordini.length) {
       return h + '<p class="aiuto">Non hai ancora mandato ordini. Li trovi qui dal primo che invii.</p></div>';
     }
-    h += '<p class="aiuto">Lo stato lo aggiorna Pro Farmer: inviato, confermato, consegnato, pagato.</p>';
+    h += '<p class="aiuto">Lo stato lo aggiorna Pro Farmer: inviato, confermato, consegnato, pagato. '
+      + 'I preventivi da approvare diventano ordini quando Pro Farmer li conferma.</p>';
     const etSoldi = cond.ruolo === 'agente' ? 'provvigione' : cond.ruolo === 'rivenditore' ? 'margine' : '';
     if (area.ordini.length > 5) h += casellaCerca('v-ordini', 'Cerca cliente o numero');
     h += '<ul class="lista-ordini" data-lista-di="v-ordini">';
     area.ordini.forEach(o => {
       h += `<li class="ordine${o.stato === 'annullato' ? ' annullato' : ''}" data-cerca="${esc([o.cliente, o.numero, STATI[o.stato]].join(' '))}">`
         + `<div class="ordine-testa"><strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
-        + `<span class="stato stato-${esc(o.stato)}">${esc(STATI[o.stato] || o.stato)}</span></div>`
+        + `<span class="stato stato-${esc(o.stato)}">${esc(o.tipo === 'preventivo' && o.stato === 'inviato' ? 'Preventivo da approvare' : (STATI[o.stato] || o.stato))}</span></div>`
         + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t${o.annuale ? ' · fornitura annuale' : ''}</p>`
         + `<p class="ordine-dati">${esc(o.data)} · n. ${esc(o.numero)} · ${cond.ruolo === 'rivenditore' ? 'paghi' : 'importo'} `
         + `<b>${euro(importoOrdine(o))}</b>`
         + (etSoldi ? ` · ${etSoldi} <b>${euro(soldiOrdine(o))}</b>` : '')
         + (o.liquidata ? ` · saldata il ${esc(o.liquidata)}` : '') + '</p>'
+        + (o.consegna || o.preventivoFic || o.fatturaFic
+          ? `<p class="ordine-dati">${[o.consegna && 'consegna il ' + esc(o.consegna), o.preventivoFic && 'preventivo n. ' + esc(o.preventivoFic),
+              o.fatturaFic && 'fattura n. ' + esc(o.fatturaFic)].filter(Boolean).join(' · ')}</p>` : '')
         + `<button type="button" class="riordina-qui" data-riordina="${esc(o.id)}">Riordina</button></li>`;
     });
     h += '</ul></div>';
@@ -1671,8 +1703,12 @@ const Venditori = (() => {
       + `<textarea id="o-note" name="note" rows="3">${esc(stato.note || '')}</textarea></div>`;
 
     h += '<p id="ordine-errore" class="errore" hidden></p>';
-    h += '<div class="azioni"><button type="submit" class="bottone">Manda l’ordine a Pro Farmer</button></div>';
-    h += '<p class="aiuto aiuto-centro">L’ordine arriva a Pro Farmer per e-mail, che te lo conferma.</p>';
+    h += '<div class="azioni"><button type="submit" class="bottone" value="ordine">Manda l’ordine a Pro Farmer</button>'
+      + (cond.ruolo === 'interno' ? '' : '<button type="submit" class="bottone bottone-fantasma" value="preventivo">Manda come preventivo da approvare</button>')
+      + '<button type="button" class="bottone bottone-fantasma" id="o-anteprima">Anteprima per il cliente</button></div>';
+    h += '<p class="aiuto aiuto-centro">L’ordine arriva a Pro Farmer per e-mail, che te lo conferma. '
+      + (cond.ruolo === 'interno' ? '' : 'Se il cliente deve ancora decidere, mandalo come preventivo: Pro Farmer lo approva e gli fa il preventivo. ')
+      + 'L’anteprima si mostra o si stampa subito, a prezzi di listino.</p>';
     h += '</form></div>';
 
     boxRis.insertAdjacentHTML('beforeend', h);
@@ -1684,7 +1720,8 @@ const Venditori = (() => {
       document.getElementById('o-nuovo').hidden = !!stato.clienteId;
       disegnaConto();
     });
-    f.addEventListener('submit', ev => { ev.preventDefault(); invia(f); });
+    f.addEventListener('submit', ev => { ev.preventDefault(); invia(f, ev.submitter && ev.submitter.value === 'preventivo' ? 'preventivo' : 'ordine'); });
+    document.getElementById('o-anteprima').addEventListener('click', () => { leggiStato(f); anteprimaPreventivo(); });
     // − e +: cambiano la quantità di uno, mai sotto zero, e rifanno il conto
     f.querySelectorAll('[data-passo]').forEach(b => b.addEventListener('click', () => {
       const campo = f.elements[b.dataset.voce];
@@ -1753,8 +1790,50 @@ const Venditori = (() => {
     box.innerHTML = h;
   }
 
-  function invia(f) {
+  /* L'anteprima del preventivo per il cliente (26/10/2026, decisione di Giulio):
+     l'agente la mostra o la stampa subito, a prezzi di listino; il preventivo
+     vero lo fa Pro Farmer in Fatture in Cloud dopo l'approvazione. Niente
+     provvigioni né margini: è un foglio da far vedere al cliente. */
+  function anteprimaPreventivo() {
+    const conto = contoOrdine(Object.assign({}, cond, { ruolo: 'interno' }), righeOrdine(), stato);
+    if (!conto.righe.length) { alert('Indica almeno una quantità.'); return; }
+    const c = (stato.clienteId && area.clienti.find(x => x.id === stato.clienteId)) || stato;
+    const oggi = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Rome' });
+    const nomi = { bigbag: 'piùLact, big bag da 600 kg', sacchi: 'piùLact, sacchi da 25 kg su bancale da 1,2 t', ballette: 'piùLact Pronto, ballette da circa 850 kg' };
+    const imponibile = conto.totale.cliente;
+    let h = '<div class="anteprima-foglio" role="document">'
+      + `<div class="anteprima-testa"><img src="${esc((document.querySelector('img.logo-profarmer') || {}).src || '')}" alt="Pro Farmer" class="anteprima-logo">`
+      + `<div><strong>Proposta di fornitura</strong><span>${esc(oggi)}</span></div></div>`
+      + `<p class="anteprima-cliente"><strong>${esc(c.ragione || 'Cliente')}</strong>`
+      + `${[c.piva && 'P.IVA ' + c.piva, [c.comune, c.provincia].filter(Boolean).join(' ')].filter(Boolean).map(x => '<br>' + esc(x)).join('')}</p>`
+      + '<table class="tabella anteprima-righe"><thead><tr><th>Prodotto</th><th>Quantità</th><th>€/t</th><th>Importo</th></tr></thead><tbody>'
+      + conto.righe.map(r => `<tr><td>${esc(nomi[r.voce])}</td><td>${r.pezzi} ${esc(VOCI.find(v => v.id === r.voce).unita)}<small>${num(r.t, 1)} t</small></td>`
+        + `<td>${euro(r.clienteT)}</td><td>${euro(r.cliente)}</td></tr>`).join('')
+      + `</tbody><tfoot><tr><th colspan="3">Imponibile</th><td>${euro(imponibile)}</td></tr>`
+      + `<tr><th colspan="3">IVA 22%</th><td>${euro(imponibile * 0.22)}</td></tr>`
+      + `<tr class="totale"><th colspan="3">Totale</th><td>${euro(imponibile * 1.22)}</td></tr></tfoot></table>`
+      + '<ul class="note-conto"><li>Prezzi di listino franco partenza, trasporto escluso, IVA esclusa.</li>'
+      + (conto.righe.some(r => r.voce === 'ballette') ? '<li>Ballette: importo stimato su 850 kg a balletta; si fattura il peso reale al carico.</li>' : '')
+      + '<li>Proposta indicativa: il preventivo definitivo, con trasporto e pagamento, lo manda Pro Farmer.</li></ul>'
+      + `<p class="anteprima-firma">${esc(cond.nome)}${cond.ruolo === 'interno' ? '' : ' · ' + esc(RUOLI[cond.ruolo]) + ' Pro Farmer'}<br>Pro Farmer · piùLact · riposa.profarmer.it</p>`
+      + '</div>';
+    const box = document.createElement('div');
+    box.className = 'anteprima-preventivo';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Anteprima del preventivo');
+    box.innerHTML = '<div class="anteprima-barra"><button type="button" class="bottone" data-stampa>Stampa o salva PDF</button>'
+      + '<button type="button" class="bottone bottone-fantasma" data-chiudi>Chiudi</button></div>' + h;
+    document.body.appendChild(box);
+    document.body.classList.add('con-anteprima');
+    const chiudi = () => { box.remove(); document.body.classList.remove('con-anteprima'); };
+    box.querySelector('[data-chiudi]').addEventListener('click', chiudi);
+    box.querySelector('[data-stampa]').addEventListener('click', () => window.print());
+    box.querySelector('[data-chiudi]').focus();
+  }
+
+  function invia(f, tipo) {
     leggiStato(f);
+    const prev = tipo === 'preventivo';
     const err = document.getElementById('ordine-errore');
     const conto = contoOrdine(cond, righeOrdine(), stato);
     const errore = t => { err.textContent = t; err.hidden = false; };
@@ -1780,19 +1859,22 @@ const Venditori = (() => {
     else if (!perMagazzino) CAMPI_ORDINE.forEach(k => { if (stato[k]) p[k] = stato[k]; });
     if (stato.note) p.note = stato.note;
     if (stato.annuale) p.annuale = true;
+    if (prev) p.tipo = 'preventivo';
     const chi = scelto ? scelto.ragione : (stato.ragione || cond.nome);
     if (ultimoCalcolo) p.calcolo = testoRiepilogo({ azienda: chi }, ultimoCalcolo);
 
-    const bottone = f.querySelector('button[type=submit]');
+    const bottone = f.querySelector(`button[type=submit][value=${prev ? 'preventivo' : 'ordine'}]`);
+    const testoBottone = bottone.textContent;
     bottone.disabled = true;
     bottone.textContent = 'Invio in corso…';
     rpc('invia_ordine', { p }).then(r => {
       const box = document.getElementById('blocco-ordine');
       box.innerHTML = '<div class="trovato ordine-partito"><span class="trovato-spunta" aria-hidden="true">'
         + '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>'
-        + `<h2>Ordine inviato a Pro Farmer</h2><p>Numero <strong>${esc(r.numero)}</strong>. `
+        + `<h2>${prev ? 'Preventivo inviato a Pro Farmer' : 'Ordine inviato a Pro Farmer'}</h2><p>Numero <strong>${esc(r.numero)}</strong>. `
         + (r.copia ? 'Te ne arriva una copia per e-mail. ' : '')
-        + 'Pro Farmer ti ricontatta per la conferma e la consegna. Lo trovi in <strong>Ordini</strong>.</p>'
+        + (prev ? 'Pro Farmer lo approva e prepara il preventivo per il cliente. '
+          : 'Pro Farmer ti ricontatta per la conferma e la consegna. ') + 'Lo trovi in <strong>Ordini</strong>.</p>'
         + '<div class="azioni"><button type="button" class="bottone bottone-fantasma" id="v-nuovo">Nuovo calcolo</button>'
         + '<button type="button" class="bottone bottone-fantasma" id="v-vedi">Vedi i miei ordini</button></div></div>';
       stato = statoVuoto();
@@ -1808,7 +1890,7 @@ const Venditori = (() => {
       });
     }).catch(e => {
       bottone.disabled = false;
-      bottone.textContent = 'Manda l’ordine a Pro Farmer';
+      bottone.textContent = testoBottone;
       errore(e.delDatabase ? e.message
         : navigator.onLine === false
           ? 'Sei senza rete: l’ordine non è partito. I dati restano qui: premi di nuovo quando torna il segnale.'
