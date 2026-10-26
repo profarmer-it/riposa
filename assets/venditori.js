@@ -44,6 +44,10 @@ const Venditori = (() => {
   // ridisegni del risultato (per esempio quando sceglie l'alternativa)
   let stato = statoVuoto();
   let suggeriti = null;     // le quantità proposte dal calcolo, per capire se le ha cambiate
+  /* Il modulo serve per un ordine o per un preventivo (tessera «Nuovo preventivo»,
+     26/10/2026). Pro Farmer crea subito il preventivo in Fatture in Cloud; agenti e
+     rivenditori mostrano l'anteprima al cliente e lo mandano da approvare. */
+  let modo = 'ordine';
 
   const RUOLI = { agente: 'agente', rivenditore: 'rivenditore', interno: 'Pro Farmer' };
   const VOCI = [
@@ -513,7 +517,7 @@ const Venditori = (() => {
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       // le scorciatoie dell'app (tieni premuta l'icona) e i link delle notifiche
-      const vai = { '#nuovo-ordine': 'diretto', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti', '#contatti': 'contatti',
+      const vai = { '#nuovo-ordine': 'diretto', '#nuovo-preventivo': 'preventivo', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti', '#contatti': 'contatti',
                     '#gestione': cond.ruolo === 'interno' ? 'gestione' : null }[location.hash];
       if (vai) { history.replaceState(null, '', location.pathname); apri(vai); return; }
       apri(scheda);
@@ -554,6 +558,7 @@ const Venditori = (() => {
   const ICONE = {
     calcolo: '<path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h2M12 18h4"/>',
     diretto: '<path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
+    preventivo: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
     clienti: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 14.5c1.8.8 3 2.6 3 4.5"/>',
     diamanti: '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 6 3-6M12 9v12"/>',
     mappa: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
@@ -631,6 +636,8 @@ const Venditori = (() => {
         d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, buoni e classifica', false, true]);
     }
     if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Cruscotto e gestione', 'Cosa succede oggi: ordini, lead, allevatori, venditori', false, true]);
+    tessere.splice(1, 0, ['preventivo', 'Nuovo preventivo', cond.ruolo === 'interno'
+      ? 'Subito in Fatture in Cloud' : 'Anteprima per il cliente, poi lo approva Pro Farmer', false]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
@@ -660,6 +667,8 @@ const Venditori = (() => {
 
   function apri(id) {
     if (id === 'diretto') return ordineDiretto();
+    if (id === 'preventivo') return ordineDiretto(undefined, 'preventivo');
+    if (id === 'calcolo') modo = 'ordine';
     scheda = id;
     disegnaBarra();
     const calc = id === 'calcolo';
@@ -742,11 +751,12 @@ const Venditori = (() => {
     ordineDiretto(ancora ? o.clienteId : '');
   }
 
-  function ordineDiretto(clienteId) {
+  function ordineDiretto(clienteId, m) {
     ultimoCalcolo = null;
     suggeriti = null;
     if (clienteId !== undefined) stato.clienteId = clienteId;
     apri('calcolo');
+    modo = m || 'ordine';   // dopo apri('calcolo'), che lo rimette a «ordine»
     // nell'ordine diretto si vede solo l'ordine: il calcolatore della stalla
     // non c'entra, e scorrendo in su non deve ricomparire
     modulo.hidden = true;
@@ -1395,7 +1405,8 @@ const Venditori = (() => {
     area.ordini.forEach(o => {
       h += `<li class="ordine${o.stato === 'annullato' ? ' annullato' : ''}" data-cerca="${esc([o.cliente, o.numero, STATI[o.stato]].join(' '))}">`
         + `<div class="ordine-testa"><strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
-        + `<span class="stato stato-${esc(o.stato)}">${esc(o.tipo === 'preventivo' && o.stato === 'inviato' ? 'Preventivo da approvare' : (STATI[o.stato] || o.stato))}</span></div>`
+        + `<span class="stato stato-${esc(o.stato)}">${esc(o.tipo === 'preventivo' && o.stato === 'inviato' ? 'Preventivo da approvare'
+          : o.tipo === 'preventivo' && o.stato === 'confermato' ? 'Preventivo al cliente' : (STATI[o.stato] || o.stato))}</span></div>`
         + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t${o.annuale ? ' · fornitura annuale' : ''}</p>`
         + `<p class="ordine-dati">${esc(o.data)} · n. ${esc(o.numero)} · ${cond.ruolo === 'rivenditore' ? 'paghi' : 'importo'} `
         + `<b>${euro(importoOrdine(o))}</b>`
@@ -1663,7 +1674,8 @@ const Venditori = (() => {
 
     const rivend = cond.ruolo === 'rivenditore';
     let h = '<div class="blocco venditori-ordine" id="blocco-ordine">';
-    h += '<h3>L’ordine</h3>';
+    const prev = modo === 'preventivo';
+    h += `<h3>${prev ? 'Il preventivo' : 'L’ordine'}</h3>`;
     h += '<form id="form-ordine" novalidate>';
 
     /* Una riga per prodotto (24/10/2026): a sinistra cosa e in che formato,
@@ -1703,12 +1715,16 @@ const Venditori = (() => {
       + `<textarea id="o-note" name="note" rows="3">${esc(stato.note || '')}</textarea></div>`;
 
     h += '<p id="ordine-errore" class="errore" hidden></p>';
-    h += '<div class="azioni"><button type="submit" class="bottone" value="ordine">Manda l’ordine a Pro Farmer</button>'
-      + (cond.ruolo === 'interno' ? '' : '<button type="submit" class="bottone bottone-fantasma" value="preventivo">Manda come preventivo da approvare</button>')
+    const interno = cond.ruolo === 'interno';
+    h += '<div class="azioni">' + (prev
+      ? `<button type="submit" class="bottone" value="preventivo">${interno ? 'Crea il preventivo in Fatture in Cloud' : 'Manda a Pro Farmer da approvare'}</button>`
+      : '<button type="submit" class="bottone" value="ordine">Manda l’ordine a Pro Farmer</button>')
       + '<button type="button" class="bottone bottone-fantasma" id="o-anteprima">Anteprima per il cliente</button></div>';
-    h += '<p class="aiuto aiuto-centro">L’ordine arriva a Pro Farmer per e-mail, che te lo conferma. '
-      + (cond.ruolo === 'interno' ? '' : 'Se il cliente deve ancora decidere, mandalo come preventivo: Pro Farmer lo approva e gli fa il preventivo. ')
-      + 'L’anteprima si mostra o si stampa subito, a prezzi di listino.</p>';
+    h += '<p class="aiuto aiuto-centro">' + (prev
+      ? (interno ? 'Poi scegli prezzi, trasporto e pagamento: il preventivo si scrive in Fatture in Cloud. '
+                 : 'Mostra l’anteprima al cliente, a prezzi di listino; Pro Farmer approva e manda il preventivo vero. ')
+        + 'Quando il cliente accetta, diventa un ordine.'
+      : 'L’ordine arriva a Pro Farmer per e-mail, che te lo conferma. L’anteprima si mostra o si stampa subito, a prezzi di listino.') + '</p>';
     h += '</form></div>';
 
     boxRis.insertAdjacentHTML('beforeend', h);
@@ -1720,7 +1736,7 @@ const Venditori = (() => {
       document.getElementById('o-nuovo').hidden = !!stato.clienteId;
       disegnaConto();
     });
-    f.addEventListener('submit', ev => { ev.preventDefault(); invia(f, ev.submitter && ev.submitter.value === 'preventivo' ? 'preventivo' : 'ordine'); });
+    f.addEventListener('submit', ev => { ev.preventDefault(); invia(f, modo); });
     document.getElementById('o-anteprima').addEventListener('click', () => { leggiStato(f); anteprimaPreventivo(); });
     // − e +: cambiano la quantità di uno, mai sotto zero, e rifanno il conto
     f.querySelectorAll('[data-passo]').forEach(b => b.addEventListener('click', () => {
@@ -1868,6 +1884,12 @@ const Venditori = (() => {
     bottone.disabled = true;
     bottone.textContent = 'Invio in corso…';
     rpc('invia_ordine', { p }).then(r => {
+      // Pro Farmer: il preventivo si scrive subito in Fatture in Cloud, dalla Gestione
+      if (prev && cond.ruolo === 'interno' && r.id && typeof ProFarmer !== 'undefined') {
+        stato = statoVuoto(); suggeriti = null; modo = 'ordine';
+        ProFarmer.apriPreventivo(r.id);
+        return ricarica().then(() => apri('gestione'));
+      }
       const box = document.getElementById('blocco-ordine');
       box.innerHTML = '<div class="trovato ordine-partito"><span class="trovato-spunta" aria-hidden="true">'
         + '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>'

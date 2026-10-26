@@ -198,6 +198,7 @@ const ProFarmer = (() => {
      Elsa). Gli stati del database restano cinque; le fasi si ricavano da
      stato + data di consegna + documenti di Fatture in Cloud:
        Da approvare  inviato (gli ordini degli agenti aspettano Pro Farmer)
+       In attesa del cliente  un preventivo già fatto in FiC: il cliente deve dire sì
        Da preparare  confermato, senza data di consegna
        In consegna   confermato, con la data di consegna
        Da fatturare  consegnato, senza fattura FiC
@@ -205,13 +206,14 @@ const ProFarmer = (() => {
        Chiusi        pagato o annullato
      «Approva e crea preventivo» apre la scheda del preventivo: la funzione
      `fic` lo scrive in Fatture in Cloud (integrazioni/fatture-in-cloud/). */
-  const FASI = { approvare: 'Da approvare', preparare: 'Da preparare', consegna: 'In consegna',
+  const FASI = { approvare: 'Da approvare', attesa: 'In attesa del cliente', preparare: 'Da preparare', consegna: 'In consegna',
                  fatturare: 'Da fatturare', incassare: 'Da incassare', chiusi: 'Chiusi' };
-  const APERTE = ['approvare', 'preparare', 'consegna', 'fatturare', 'incassare'];
+  const APERTE = ['approvare', 'attesa', 'preparare', 'consegna', 'fatturare', 'incassare'];
   const VOCI_FIC = { bigbag: 'piùLact big bag', sacchi: 'piùLact sacchi', ballette: 'Ballette piùLact Pronto' };
   let schedaAperta = null;      // l'ordine con la scheda del preventivo aperta
   function fase(o) {
     if (o.stato === 'pagato' || o.stato === 'annullato') return 'chiusi';
+    if (o.tipo === 'preventivo' && o.fic_preventivo_id && ['inviato', 'confermato'].includes(o.stato)) return 'attesa';
     if (o.stato === 'inviato') return 'approvare';
     if (o.stato === 'confermato') return o.consegna_prevista ? 'consegna' : 'preparare';
     return o.fic_fattura_numero ? 'incassare' : 'fatturare';
@@ -281,8 +283,12 @@ const ProFarmer = (() => {
     h += '<p class="errore" hidden></p><div class="azioni pf-azioni">';
     const puoPreventivo = !o.fic_preventivo_id && o.ruolo !== 'rivenditore' && o.stato !== 'annullato';
     if (f === 'approvare') {
-      if (puoPreventivo) h += '<button type="button" class="bottone" data-preventivo>Approva e crea preventivo</button>';
-      h += `<button type="button" class="bottone${puoPreventivo ? ' bottone-fantasma' : ''}" data-passa="confermato">Approva${puoPreventivo ? ' senza preventivo' : ''}</button>`;
+      if (puoPreventivo) h += `<button type="button" class="bottone" data-preventivo>${o.tipo === 'preventivo' && o.ruolo === 'interno' ? 'Crea il preventivo in FiC' : 'Approva e crea preventivo'}</button>`;
+      if (o.tipo !== 'preventivo') h += `<button type="button" class="bottone${puoPreventivo ? ' bottone-fantasma' : ''}" data-passa="confermato">Approva${puoPreventivo ? ' senza preventivo' : ''}</button>`;
+      else h += '<button type="button" class="bottone bottone-fantasma" data-passa="annullato">Non serve più</button>';
+    } else if (f === 'attesa') {
+      h += '<button type="button" class="bottone" data-accettato>Il cliente ha accettato</button>'
+        + '<button type="button" class="bottone bottone-fantasma" data-passa="annullato">Non accettato</button>';
     } else if (f === 'preparare') {
       h += `<label class="pf-inline">Consegna il<input type="date" name="consegna" value="${esc(v(o.consegna_prevista))}"></label>`
         + `<label class="pf-inline">Trasportatore<input type="text" name="trasportatore" list="pf-trasportatori" value="${esc(v(o.trasportatore))}"></label>`
@@ -328,6 +334,11 @@ const ProFarmer = (() => {
       salva(b, () => sb.from('ordini').update({ stato: b.dataset.passa }).eq('id', o.id),
         `${o.cliente || 'Ordine'}: ${NOME_STATO[b.dataset.passa].toLowerCase()}`);
     }));
+    // il preventivo accettato diventa un ordine: da qui segue le fasi di sempre
+    corpo.querySelectorAll('[data-accettato]').forEach(b => b.addEventListener('click', () => {
+      const o = ordineDi(b);
+      salva(b, () => sb.from('ordini').update({ tipo: 'ordine', stato: 'confermato' }).eq('id', o.id), `${o.cliente || 'Preventivo'}: ora è un ordine`);
+    }));
     corpo.querySelectorAll('[data-consegna]').forEach(b => b.addEventListener('click', () => {
       const s = b.closest('.pf-ordine-scheda');
       const data = s.querySelector('[name=consegna]').value;
@@ -347,7 +358,11 @@ const ProFarmer = (() => {
       schedaAperta = ordineDi(b).id; mostra();
     }));
     const box = document.getElementById('pf-scheda-fic');
-    if (box) apriSchedaFic(box, dati.ordini.find(o => o.id === schedaAperta));
+    if (box) {
+      const o = dati.ordini.find(x => x.id === schedaAperta);
+      if (o) { apriSchedaFic(box, o); box.closest('li').scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      else schedaAperta = null;
+    }
     corpo.querySelectorAll('.pf-ordine').forEach(f => {
       f.addEventListener('submit', ev => {
         ev.preventDefault();
@@ -1419,5 +1434,9 @@ const ProFarmer = (() => {
     }
   }
 
-  return { disegna };
+  /* «Nuovo preventivo» di Pro Farmer (venditori.js): la Gestione si apre su
+     Da eseguire con la scheda del preventivo FiC di quell'ordine. */
+  function apriPreventivo(id) { sezione = 'ordini'; filtroStato = 'aperti'; schedaAperta = id; }
+
+  return { disegna, apriPreventivo };
 })();
