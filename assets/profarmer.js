@@ -66,14 +66,16 @@ const ProFarmer = (() => {
       sb.from('traguardi').select('*').order('posizione'),
       sb.rpc('chiamate_da_fare'),
       sb.rpc('chiamate_fatte'),
-      sb.rpc('compleanni_prossimi')
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co]) => {
+      sb.rpc('compleanni_prossimi'),
+      sb.rpc('passaggi_gestione', { p_giorni: 30 })
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa]) => {
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
                allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [],
                diamanti: di.data || { agenti: [], cessati: [], movimenti: [], richieste: [] }, traguardi: tr.data || [],
-               chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [] };
+               chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [],
+               passaggi: (!pa.error && pa.data) || null };
     });
   }
 
@@ -398,6 +400,34 @@ const ProFarmer = (() => {
      lettura: per lavorare su un ordine o un lead si tocca la riga e si va
      nella sua scheda. I numeri vengono dai dati già caricati, niente di nuovo
      dal database. */
+  /* Il percorso dell'allevatore (26/10/2026): il contatore anonimo dei
+     passaggi (25-contatore-passaggi.sql). Quanti arrivano a ogni passaggio
+     negli ultimi 30 giorni e quanti passano al successivo. */
+  function percorso() {
+    const P = dati.passaggi;
+    if (!P) return '';
+    const T = P.totali || {};
+    const visite = (T.visita || 0) + (T.visita_app || 0);
+    if (!visite) return '<h4 class="percorso-titolo">Il percorso dell’allevatore</h4><p class="cliente-dati">Il contatore parte con la prima visita: i numeri compaiono qui.</p>';
+    const passi = [['Visite', visite, T.visita_app ? `${T.visita_app} dall’app installata` : ''],
+      ['Scelgono la zona', T.zona || 0, ''], ['Fanno il calcolo', T.calcolo || 0, ''],
+      ['Vedono il modulo dei contatti', T.contatti || 0, ''], ['Ricevono il risultato', T.inviato || 0, '']];
+    let h = `<h4 class="percorso-titolo">Il percorso dell’allevatore <small>ultimi 30 giorni${P.primo ? ' · contatore attivo dal ' + esc(P.primo) : ''}</small></h4><ol class="percorso">`;
+    passi.forEach(([nome, n, nota], i) => {
+      const prima = i ? passi[i - 1][1] : 0;
+      const quota = i && prima ? Math.round(n / prima * 100) + '% del passo prima' : '';
+      h += `<li><span class="percorso-nome">${esc(nome)}${nota ? `<small>${esc(nota)}</small>` : ''}</span>`
+        + `<span class="percorso-barra"><i style="width:${Math.max(2, Math.round(n / visite * 100))}%"></i></span>`
+        + `<span class="percorso-n"><strong>${n}</strong><small>${quota}</small></span></li>`;
+    });
+    h += '</ol>';
+    const note = [];
+    if (T.senza_consenso) note.push(`<strong>${T.senza_consenso}</strong> si sono fermati alla casella «Sì, ricontattatemi»`);
+    if (T.altro_calcolo) note.push(`<strong>${T.altro_calcolo}</strong> hanno fatto un altro calcolo`);
+    if (note.length) h += '<p class="cliente-dati">' + note.join(' · ') + '.</p>';
+    return h + '<p class="aiuto">Contatore anonimo: solo quante volte si arriva a ogni passaggio, nessun dato della persona.</p>';
+  }
+
   function cruscotto(corpo) {
     const t = n => num(Number(n) || 0, 1).replace(/,0$/, '');
     const oggiD = new Date();
@@ -493,7 +523,7 @@ const ProFarmer = (() => {
       + '</dl>';
     const prov = Object.entries(perProvincia).sort((a, b) => b[1] - a[1]).slice(0, 8);
     if (prov.length) h += '<p class="cliente-dati">Da dove, negli ultimi 30 giorni: ' + prov.map(([p, n]) => `${esc(p)} <strong>${n}</strong>`).join(' · ') + '</p>';
-    h += '</div>';
+    h += percorso() + '</div>';
 
     h += statistiche(validi, t) + riordini(validi);
 

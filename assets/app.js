@@ -60,11 +60,29 @@ function esc(s) {
   })[c]);
 }
 
+/* ------------------------------------------------------- il contatore */
+/* Dal 26/10/2026: conta quante volte si arriva a ogni passaggio del percorso,
+   una volta per pagina aperta. Solo sul sito vero e solo per l'allevatore
+   (non in Riposa Pro, non nelle prove in locale). Nessun dato della persona. */
+const passiContati = new Set();
+function contaPasso(passo) {
+  if (window.RIPOSA_PRO || location.pathname.indexOf('/pro') === 0 || location.hostname !== 'riposa.profarmer.it' || passiContati.has(passo)) return;
+  passiContati.add(passo);
+  const c = CONFIG.contatore;
+  try {
+    fetch(c.url, { method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json', apikey: c.chiave, Authorization: 'Bearer ' + c.chiave },
+      body: JSON.stringify({ p_passo: passo }) }).catch(() => {});
+  } catch (e) {}
+}
+contaPasso((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true ? 'visita_app' : 'visita');
+
 /* ------------------------------------------------- mostra/nascondi il carro */
 
 modulo.addEventListener('change', e => {
   // le domande che compaiono solo dove hanno senso
   if (e.target.name === 'zona') {
+    contaPasso('zona');
     const z = e.target.value;
     const suSuperficie = z === 'lettiera' || z === 'compost';
     boxRiemp.hidden = z !== 'buca';
@@ -480,6 +498,7 @@ function bovinaChePensa() {
 }
 
 function mostraRagionamento(r) {
+  contaPasso('calcolo');
   const n = PASSI_RAGIONAMENTO.length, passo = 950;          // 4 passi × 0,95 s, poi «fatto»
   let h = '<div class="ragiona">';
   h += bovinaChePensa();
@@ -509,6 +528,7 @@ function mostraRagionamento(r) {
 /* --- 2. dove te lo mandiamo ------------------------------------------- */
 
 function mostraContatti(r) {
+  contaPasso('contatti');
   let h = '<div class="trovato trovato-contatti">';
   h += '<span class="trovato-spunta">✓</span>';
   h += '<h2>Il calcolatore ha trovato la soluzione ideale per la tua realtà</h2>';
@@ -543,7 +563,7 @@ function mostraContatti(r) {
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
     if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
-    if (!dati.consenso) return errore(err, 'Per ricevere il risultato spunta «Sì, ricontattatemi».');
+    if (!dati.consenso) { contaPasso('senza_consenso'); return errore(err, 'Per ricevere il risultato spunta «Sì, ricontattatemi».'); }
     err.hidden = true;
 
     datiContatto = dati;
@@ -552,6 +572,7 @@ function mostraContatti(r) {
     b.textContent = 'Invio in corso…';
     inviaLead(dati, r).then(esito => {
       consegnato = true;
+      contaPasso('inviato');
       mostraConferma(esito);
     }).catch(e => {
       b.disabled = false;
@@ -653,6 +674,7 @@ function mostraConferma(esito) {
   const ts = document.getElementById('tua-stalla');
   if (ts) rimandaATuaStalla();
   document.getElementById('btn-ricomincia').addEventListener('click', () => {
+    contaPasso('altro_calcolo');
     boxRis.hidden = true;
     boxRis.innerHTML = '';
     modulo.scrollIntoView({ behavior: 'smooth', block: 'start' });

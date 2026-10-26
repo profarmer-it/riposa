@@ -20,6 +20,13 @@ const CONFIG = {
   // ActiveCampaign. Le chiavi stanno sul server, qui c'è solo l'indirizzo.
   // Il codice sta in integrazioni/supabase/functions/lead.
   // Prima era lo script Google del foglio "Riposa — lead calcolatore".
+  /* Il contatore anonimo dei passaggi (26/10/2026, 25-contatore-passaggi.sql):
+     solo quante volte al giorno si arriva a ogni passaggio, nessun dato della
+     persona. La chiave è quella pubblica (anon), la stessa di Riposa Pro. */
+  contatore: {
+    url: 'https://gmhmxybqmkcmnbjdnslz.supabase.co/rest/v1/rpc/conta_passo',
+    chiave: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaG14eWJxbWtjbW5iamRuc2x6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NjM4OTgsImV4cCI6MjEwODIzOTg5OH0.af0OZrnCjJ6Wznmv0vmimnUSOPeLcrRSU5AhyvIRNBc'
+  },
   raccoltaLead: {
     url: 'https://gmhmxybqmkcmnbjdnslz.supabase.co/functions/v1/lead'
   },
