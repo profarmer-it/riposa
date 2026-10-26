@@ -28,7 +28,7 @@ const ProFarmer = (() => {
   let filtroStato = 'aperti';   // la fase della lista «Da eseguire» (aperti = tutte quelle da fare)
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
-  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Da eseguire', chiamate: 'Chiamate', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', provvigioni: 'Provvigioni',
+  const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Da eseguire', chiamate: 'Chiamate', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', foto: 'Foto', provvigioni: 'Provvigioni',
                     venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
   /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
   const cerca = {};
@@ -67,15 +67,18 @@ const ProFarmer = (() => {
       sb.rpc('chiamate_da_fare'),
       sb.rpc('chiamate_fatte'),
       sb.rpc('compleanni_prossimi'),
-      sb.rpc('passaggi_gestione', { p_giorni: 30 })
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa]) => {
+      sb.rpc('passaggi_gestione', { p_giorni: 30 }),
+      sb.rpc('foto_gestione')
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo]) => {
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
                allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [],
                diamanti: di.data || { agenti: [], cessati: [], movimenti: [], richieste: [] }, traguardi: tr.data || [],
                chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [],
-               passaggi: (!pa.error && pa.data) || null };
+               passaggi: (!pa.error && pa.data) || null,
+               // le foto per i social (29-foto-social.sql): se la funzione non c'è ancora, la scheda lo dice
+               foto: (!fo.error && fo.data) || null };
     });
   }
 
@@ -104,7 +107,7 @@ const ProFarmer = (() => {
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
     setTimeout(() => agganciaCerca(corpo), 0);
-    ({ cruscotto: cruscotto, ordini: ordini, chiamate: chiamate, clienti: clienti, lead: lead, allevatori: allevatori, premi: premi, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    ({ cruscotto: cruscotto, ordini: ordini, chiamate: chiamate, clienti: clienti, lead: lead, allevatori: allevatori, premi: premi, foto: foto, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
   }
 
   /* La casella di ricerca di una lista: filtra le righe mentre si scrive,
@@ -278,6 +281,14 @@ const ProFarmer = (() => {
     if (o.consegna_prevista) doc.push(`Consegna ${esc(dataIt(o.consegna_prevista))}${o.trasportatore ? ' con ' + esc(o.trasportatore) : ''}`);
     if (o.pagamento) doc.push(esc(o.pagamento));
     if (doc.length) h += `<p class="cliente-dati pf-documenti">${doc.join(' · ')}</p>`;
+    // gli sconti foto da usare (29-foto-social.sql): nel preventivo FiC, o a mano per i rivenditori
+    if (['approvare', 'attesa', 'preparare'].includes(f)) {
+      scontiOrdine(o).forEach(s => {
+        h += `<p class="cliente-sconto">Sconto foto da usare: ${euro(s.euro)} · ${esc(s.motivo)}`
+          + (o.ruolo === 'rivenditore' ? ` · mettilo in FiC sull’ordine del rivenditore, poi <button type="button" class="pf-link" data-usa-sconto-ordine="${esc(s.id)}">segna usato</button>`
+            : o.fic_preventivo_id ? ' · il preventivo c’è già: aggiungilo in FiC a mano' : ' · si applica nel preventivo FiC') + '</p>';
+      });
+    }
 
     // il passo dopo, secondo la fase
     h += '<p class="errore" hidden></p><div class="azioni pf-azioni">';
@@ -324,7 +335,16 @@ const ProFarmer = (() => {
     return h + '</div>';
   }
 
+  function scontiOrdine(o) {
+    return ((dati.foto && dati.foto.sconti) || []).filter(s => (o.cliente_id && s.clienteId === o.cliente_id)
+      || (o.ruolo === 'rivenditore' && s.venditoreId === o.venditore_id));
+  }
+
   function agganciaOrdini(corpo) {
+    corpo.querySelectorAll('[data-usa-sconto-ordine]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Lo sconto è già nel documento FiC del rivenditore? Lo segno come usato con questo ordine.')) return;
+      salva(b, () => sb.rpc('usa_sconto', { p_sconto: b.dataset.usaScontoOrdine, p_ordine: b.closest('[data-id]').dataset.id }), 'Sconto segnato come usato');
+    }));
     if (!document.getElementById('pf-trasportatori')) {
       corpo.insertAdjacentHTML('beforeend', '<datalist id="pf-trasportatori"><option value="Cavaglieri"><option value="Ghisoni"></datalist>');
     }
@@ -408,6 +428,8 @@ const ProFarmer = (() => {
         + '<label>Pagamento<select name="pagamento" class="pf-select">'
         + s.metodi.map(m => `<option value="${m.id}"${m.nome === pagamentoAbituale ? ' selected' : ''}>${esc(m.nome)}</option>`).join('') + '</select></label>'
         + `<label>Consegna prevista<input type="date" name="consegna" value="${esc(v(o.consegna_prevista))}"></label>`
+        + (s.sconti || []).map(x => `<label class="pf-spunta pf-largo"><input type="checkbox" name="sconto" value="${esc(x.id)}" checked> `
+          + `Sconto foto nel preventivo: −${euro(x.euro)} <small>(${esc(x.motivo)})</small></label>`).join('')
         + '<label class="pf-largo">Note in fondo al preventivo <small>(facoltativo: le quantità spiegate le scrive Riposa)</small><textarea name="note" rows="2"></textarea></label>'
         + '</div><p class="errore" hidden></p><div class="azioni pf-azioni">'
         + '<button type="submit" class="bottone">Crea il preventivo in FiC</button>'
@@ -428,7 +450,7 @@ const ProFarmer = (() => {
         const corpo = { azione: 'preventivo', ordine: o.id, prezzi, trasporto: Number(d.get('trasporto')) || 0,
           trasportatore: d.get('trasportatore') || '', pagamento: d.get('pagamento'),
           pagamentoNome: sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : null,
-          consegna: d.get('consegna') || null, note: d.get('note') || '' };
+          consegna: d.get('consegna') || null, note: d.get('note') || '', sconti: d.getAll('sconto') };
         let numero = null;
         salva(f.querySelector('button[type=submit]'), () => sb.functions.invoke('fic', { body: corpo }).then(r => {
           if (r.error || !r.data || !r.data.ok) throw new Error((r.data && r.data.motivo) || 'Fatture in Cloud non risponde');
@@ -630,7 +652,8 @@ const ProFarmer = (() => {
       ['lead', leadNuovi.length, 'lead da richiamare', 'allevatori che hanno fatto il calcolo'],
       ['allevatori', caldi.length, 'allevatori a fine scorta', 'nei prossimi 14 giorni: chiamarli'],
       ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini'],
-      ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'buoni da approvare', 'richieste degli agenti con i diamanti']
+      ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'buoni da approvare', 'richieste degli agenti con i diamanti'],
+      ['foto', (dati.foto && dati.foto.invii || []).filter(i => i.stato === 'da_vedere').length, 'foto da vedere', 'per i social, da agenti e rivenditori']
     ];
     subito.forEach(([dove, n, cosa, sotto]) => {
       h += `<button type="button" class="cr-casella${n ? ' cr-attenzione' : ''}" data-vai="${dove}">`
@@ -975,6 +998,170 @@ const ProFarmer = (() => {
       if (!confirm(`Sposto ${ragione} a ${nomeVenditore(nuovo)}? Il venditore di prima non lo vedrà più; gli ordini già fatti restano suoi.`)) return;
       salva(f.querySelector('button[type=submit]'), () => sb.from('clienti').update({ venditore_id: nuovo }).eq('id', f.dataset.id), `${ragione} spostato`);
     }));
+  }
+
+  /* ------------------------------------------------------------------- foto
+     Dal 27/10/2026 (29-foto-social.sql): le foto per i social mandate da
+     agenti e rivenditori. Si tolgono quelle che non vanno e si salva la
+     decisione: i 💎 (o lo sconto al rivenditore) e lo sconto all'allevatore
+     si danno da soli, rispettando i tetti del mese. Le foto stanno nello
+     spazio privato «foto-social»: si vedono con indirizzi firmati di un'ora. */
+  const AUTORE = { io: 'chi le manda', allevatore: 'l’allevatore', altro: 'un’altra persona' };
+  function miniature(corpo) {
+    const img = [...corpo.querySelectorAll('img[data-percorso]')];
+    if (!img.length) return;
+    sb.storage.from('foto-social').createSignedUrls(img.map(i => i.dataset.percorso), 3600).then(({ data }) => {
+      (data || []).forEach((x, n) => {
+        if (!x || !x.signedUrl || !img[n]) return;
+        img[n].src = x.signedUrl;
+        const a = img[n].closest('a'); if (a) a.href = x.signedUrl;
+      });
+    }).catch(() => {});
+  }
+  function righeLiberatorie(lib) {
+    if (!lib || !lib.length) return '<span class="pf-manca">nessuna liberatoria</span>';
+    return lib.map(l => `<button type="button" class="pf-link" data-liberatoria="${esc(l.id)}">${esc(l.nome)}</button>`
+      + ` (${l.ruolo === 'titolare' ? 'titolare' : 'persona'}${l.volto ? ', volto' : ''}${l.nome_azienda ? ', nome azienda' : ''}${l.autore ? ', foto sue' : ''}, ${esc(l.data)})`).join(' · ');
+  }
+
+  function foto(corpo) {
+    const F = dati.foto;
+    if (!F) { corpo.innerHTML = '<div class="blocco"><p class="aiuto">Le foto per i social non sono ancora attive sul database.</p></div>'; return; }
+    const daVedere = F.invii.filter(i => i.stato === 'da_vedere');
+    let h = '<div class="blocco"><h3>Foto da vedere</h3>'
+      + `<p class="aiuto">Togli la spunta alle foto che non vanno (sfocate, doppioni, senza prodotto, volti senza liberatoria) e salva. `
+      + `I 💎 e gli sconti si danno da soli: al massimo ${F.regole.tetto_foto_mese} 💎 al mese dalle foto e ${F.regole.storie_mese} storie al mese per venditore, una storia per allevamento all’anno.</p>`;
+    if (!daVedere.length) h += '<p class="aiuto">Nessuna foto da vedere.</p>';
+    h += '<ul class="lista-clienti">';
+    daVedere.forEach(i => {
+      h += `<li><form class="pf-foto" data-id="${esc(i.id)}" novalidate>`
+        + `<div class="cliente-testa"><strong>${esc(i.cliente)}</strong><span class="pf-proprietario${i.tipo === 'storia' ? ' diretto' : ''}">${i.tipo === 'storia' ? 'Storia' : 'Foto'}</span></div>`
+        + `<p class="cliente-dati">${esc(i.venditore)} (${esc(RUOLI[i.ruolo] || i.ruolo)}) · ${esc(dataIt(i.creato_il))} · ${esc([i.comune, i.provincia].filter(Boolean).join(' '))}</p>`
+        + `<p class="cliente-dati">Scattate da ${esc(AUTORE[i.autore] || i.autore)} · volti: ${i.volti ? '<strong>sì</strong>' : 'no'} · nome dell’azienda: ${i.nome_azienda ? 'sì' : '<strong>no</strong>'}</p>`
+        + `<p class="cliente-dati">Liberatorie: ${righeLiberatorie(i.liberatorie)}</p>`
+        + (i.testo ? `<p class="cliente-note">«${esc(i.testo)}»</p>` : '')
+        + '<div class="foto-griglia pf-foto-griglia">' + (i.foto || []).map(f =>
+          `<label><a target="_blank" rel="noopener"><img data-percorso="${esc(f.percorso)}" alt="" loading="lazy"></a>`
+          + `<span class="spunta"><input type="checkbox" name="usabile" value="${esc(f.id)}" checked> Usabile</span></label>`).join('') + '</div>'
+        + '<div class="pf-campi"><label class="pf-largo">Motivo per quelle tolte <small>(lo legge il venditore)</small>'
+        + '<input name="motivo" maxlength="200" placeholder="es. sfocata, doppione, senza prodotto"></label></div>'
+        + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva la decisione</button></div></form></li>';
+    });
+    h += '</ul></div>';
+
+    // le usabili: da scaricare e da segnare quando escono sui social
+    const usabili = [];
+    F.invii.filter(i => i.stato === 'deciso').forEach(i => (i.foto || []).forEach(f => { if (f.stato === 'usabile' && !f.cancellata) usabili.push({ f, i }); }));
+    h += '<div class="blocco"><h3>Foto usabili</h3><p class="aiuto">Tocca una foto per aprirla a piena grandezza e scaricarla. '
+      + 'Usa solo quelle con la liberatoria giusta: niente volti senza la firma di quella persona, niente nome dell’azienda senza quella del titolare.</p>';
+    if (!usabili.length) h += '<p class="aiuto">Per ora nessuna.</p>';
+    h += '<ul class="lista-clienti pf-usabili">' + usabili.map(({ f, i }) =>
+      `<li><div class="pf-usabile"><a target="_blank" rel="noopener"><img data-percorso="${esc(f.percorso)}" alt="" loading="lazy"></a><div>`
+      + `<p class="cliente-dati"><strong>${esc(i.cliente)}</strong> · ${esc(i.venditore)} · ${esc(dataIt(i.creato_il))}${i.tipo === 'storia' ? ' · storia' : ''}</p>`
+      + `<p class="cliente-dati">Volti: ${i.volti ? 'sì' : 'no'} · nome dell’azienda: ${i.nome_azienda ? 'sì' : 'no'} · ${righeLiberatorie(i.liberatorie)}</p>`
+      + (i.testo ? `<p class="cliente-note">«${esc(i.testo)}»</p>` : '')
+      + (f.pubblicata_il
+        ? `<p class="cliente-dati">Pubblicata il ${esc(dataIt(f.pubblicata_il))}${f.link_post ? ` · <a href="${esc(f.link_post)}" target="_blank" rel="noopener">il post</a>` : ''}</p>`
+        : `<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-pubblicata="${esc(f.id)}">Pubblicata</button></div>`)
+      + '</div></div></li>').join('') + '</ul></div>';
+
+    // gli sconti da usare
+    h += '<div class="blocco"><h3>Sconti da usare</h3><p class="aiuto">Quelli degli allevatori dei clienti diretti e degli agenti '
+      + 'si applicano da soli nel preventivo FiC («Approva e crea preventivo»). Quelli dei rivenditori, e dei loro allevatori, '
+      + 'vanno sull’ordine del rivenditore: mettili in FiC e segnali qui.</p>';
+    if (!F.sconti.length) h += '<p class="aiuto">Nessuno sconto in attesa.</p>';
+    h += '<ul class="lista-clienti">' + F.sconti.map(s =>
+      `<li><div class="cliente-testa"><strong>${euro(s.euro)} · ${esc(s.per)}</strong><span class="pf-proprietario">entro il ${esc(s.scade)}</span></div>`
+      + `<p class="cliente-dati">${esc(s.motivo)}${s.tramite ? ` · tramite ${esc(s.tramite)}: sull’ordine del rivenditore` : ''}${s.perRivenditore ? ' · sul suo prossimo ordine' : ''}</p>`
+      + `<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-usa-sconto="${esc(s.id)}">Segna usato</button></div></li>`).join('')
+      + '</ul></div>';
+
+    // conservazione: le foto non usate più vecchie di 12 mesi si cancellano
+    if (F.da_cancellare.length) {
+      h += `<div class="blocco"><h3>Da cancellare</h3><p class="aiuto">${F.da_cancellare.length} foto non usate da più di ${F.regole.mesi_conservazione} mesi. `
+        + 'Come dice il Regolamento foto, si cancellano.</p><p class="errore" hidden></p><div class="azioni pf-azioni">'
+        + '<button type="button" class="bottone" id="pf-foto-cancella">Cancellale</button></div></div>';
+    }
+
+    // le regole
+    const R = F.regole;
+    h += '<div class="blocco"><h3>Regole</h3><p class="aiuto">I diamanti di una foto e di una storia si cambiano in Premi → Traguardi. Ai rivenditori vanno come sconto, a 4 € a diamante.</p>'
+      + '<form id="pf-regole-foto" novalidate><div class="pf-campi">'
+      + `<label>Tetto 💎 al mese dalle foto<input name="tetto_foto_mese" type="number" min="0" max="200" step="1" value="${R.tetto_foto_mese}"></label>`
+      + `<label>Storie al mese<input name="storie_mese" type="number" min="0" max="20" step="1" value="${R.storie_mese}"></label>`
+      + `<label>Sconto all’allevatore €<input name="sconto_allevatore" type="number" min="0" max="1000" step="1" value="${R.sconto_allevatore}"></label>`
+      + `<label>Validità dello sconto (mesi)<input name="mesi_validita" type="number" min="1" max="36" step="1" value="${R.mesi_validita}"></label>`
+      + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva</button></div></form></div>';
+
+    // le ultime viste
+    const viste = F.invii.filter(i => i.stato === 'deciso').slice(0, 20);
+    if (viste.length) {
+      h += '<div class="blocco"><h3>Ultime decisioni</h3><ul class="cr-eventi">' + viste.map(i =>
+        `<li><button type="button" tabindex="-1"><span class="cr-tipo cr-cliente"></span><span class="cr-testo">${esc(i.venditore)}: ${esc(i.cliente)}<small>${esc(i.esito || '')}</small></span><time>${esc(quandoBreve(i.creato_il))}</time></button></li>`).join('')
+        + '</ul></div>';
+    }
+    corpo.innerHTML = h;
+    miniature(corpo);
+
+    corpo.querySelectorAll('.pf-foto').forEach(f => f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const d = new FormData(f), usa = d.getAll('usabile'), tot = f.querySelectorAll('[name=usabile]').length;
+      const motivo = String(d.get('motivo') || '').trim();
+      const err = f.querySelector('.errore');
+      if (usa.length < tot && !motivo) { err.textContent = 'Scrivi il motivo per le foto tolte: lo legge il venditore.'; err.hidden = false; return; }
+      if (!confirm(usa.length ? `${usa.length} ${usa.length === 1 ? 'foto usabile' : 'foto usabili'} su ${tot}. Salvo? I premi partono subito.` : 'Nessuna foto usabile. Salvo?')) return;
+      salva(f.querySelector('button[type=submit]'), () => sb.rpc('decidi_foto', { p_invio: f.dataset.id, p_usabili: usa, p_motivo: motivo || null }), 'Decisione salvata');
+    }));
+    corpo.querySelectorAll('[data-pubblicata]').forEach(b => b.addEventListener('click', () => {
+      const link = prompt('Il link del post (facoltativo):', 'https://');
+      if (link === null) return;
+      salva(b, () => sb.rpc('pubblica_foto', { p_foto: b.dataset.pubblicata, p_link: /^https:\/\/.+\..+/.test(link.trim()) ? link.trim() : null }), 'Segnata come pubblicata');
+    }));
+    corpo.querySelectorAll('[data-usa-sconto]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Lo sconto è già nel documento FiC? Lo segno come usato.')) return;
+      salva(b, () => sb.rpc('usa_sconto', { p_sconto: b.dataset.usaSconto, p_ordine: null }), 'Sconto segnato come usato');
+    }));
+    corpo.querySelectorAll('[data-liberatoria]').forEach(b => b.addEventListener('click', () => mostraLiberatoria(b.dataset.liberatoria)));
+    const canc = document.getElementById('pf-foto-cancella');
+    if (canc) canc.addEventListener('click', () => {
+      if (!confirm(`Cancello ${F.da_cancellare.length} foto? Non si recuperano.`)) return;
+      salva(canc, () => sb.storage.from('foto-social').remove(F.da_cancellare.map(x => x.percorso)).then(({ error }) => {
+        if (error) throw error;
+        return sb.rpc('segna_foto_cancellate', { p_foto: F.da_cancellare.map(x => x.id) });
+      }), 'Foto cancellate');
+    });
+    const fr = document.getElementById('pf-regole-foto');
+    fr.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const d = new FormData(fr), riga = {};
+      ['tetto_foto_mese', 'storie_mese', 'sconto_allevatore', 'mesi_validita'].forEach(k => { riga[k] = Math.max(0, Number(d.get(k)) || 0); });
+      salva(fr.querySelector('button[type=submit]'), () => sb.from('regole_foto').update(riga).eq('id', 1), 'Regole delle foto salvate');
+    });
+  }
+
+  /* La liberatoria firmata: il testo com'era quel giorno e la firma. */
+  function mostraLiberatoria(id) {
+    sb.from('liberatorie').select('nome, ruolo, testo, versione, firma, firmata_il, revocata_il').eq('id', id).maybeSingle().then(({ data: l, error }) => {
+      if (error || !l) { avvisa('Liberatoria non trovata'); return; }
+      const el = document.createElement('div');
+      el.className = 'anteprima-preventivo';
+      el.innerHTML = '<div class="anteprima-barra"><button type="button" class="bottone" data-stampa>Stampa</button>'
+        + '<button type="button" class="bottone bottone-fantasma" data-chiudi>Chiudi</button></div>'
+        + `<div class="anteprima-foglio"><h3>Liberatoria foto · ${esc(l.nome)}</h3>`
+        + `<p class="aiuto">Firmata il ${esc(dataIt(l.firmata_il))} · versione ${esc(l.versione)}${l.revocata_il ? ` · <strong>revocata il ${esc(dataIt(l.revocata_il))}</strong>` : ''}</p>`
+        + `<p class="liberatoria-testo">${esc(l.testo)}</p><img class="pf-firma" src="${esc(l.firma)}" alt="Firma di ${esc(l.nome)}">`
+        + (l.revocata_il ? '' : `<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-revoca>L’allevatore la ritira</button></div>`)
+        + '</div>';
+      document.body.appendChild(el); document.body.classList.add('con-anteprima');
+      const chiudi = () => { el.remove(); document.body.classList.remove('con-anteprima'); };
+      el.querySelector('[data-chiudi]').addEventListener('click', chiudi);
+      el.querySelector('[data-stampa]').addEventListener('click', () => window.print());
+      const rv = el.querySelector('[data-revoca]');
+      if (rv) rv.addEventListener('click', () => {
+        if (!confirm('Segno la liberatoria come ritirata? Da oggi le sue foto non si usano più: togli anche i post già pubblicati.')) return;
+        salva(rv, () => sb.rpc('revoca_liberatoria', { p_id: id }), 'Liberatoria ritirata').then(chiudi);
+      });
+    });
   }
 
   /* ------------------------------------------------------------------ premi

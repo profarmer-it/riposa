@@ -514,10 +514,11 @@ const Venditori = (() => {
       sincronizzaNotifiche();
       caricaDiamanti();
       caricaContatti();
+      caricaFotoSocial();
       document.body.classList.remove('accesso-venditori');
       document.body.classList.add('in-area-venditori');
       // le scorciatoie dell'app (tieni premuta l'icona) e i link delle notifiche
-      const vai = { '#nuovo-ordine': 'diretto', '#nuovo-preventivo': 'preventivo', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti', '#contatti': 'contatti',
+      const vai = { '#nuovo-ordine': 'diretto', '#nuovo-preventivo': 'preventivo', '#clienti': 'clienti', '#ordini': 'ordini', '#calcolo': 'calcolo', '#mappa': 'mappa', '#diamanti': 'diamanti', '#contatti': 'contatti', '#foto': 'foto',
                     '#gestione': cond.ruolo === 'interno' ? 'gestione' : null }[location.hash];
       if (vai) { history.replaceState(null, '', location.pathname); apri(vai); return; }
       apri(scheda);
@@ -543,7 +544,7 @@ const Venditori = (() => {
 
   /* Ricarica clienti e ordini dopo un salvataggio, senza cambiare scheda. */
   function ricarica() {
-    return rpc('area').then(r => { if (r && r.ok) ricevi(r); }).then(caricaDiamanti);
+    return rpc('area').then(r => { if (r && r.ok) ricevi(r); }).then(caricaDiamanti).then(caricaFotoSocial);
   }
 
   function nomeSoldi() {
@@ -565,6 +566,7 @@ const Venditori = (() => {
     ordini: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
     soldi: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.5c-.7-.9-1.8-1.5-3-1.5-2.2 0-4 2.2-4 5s1.8 5 4 5c1.2 0 2.3-.6 3-1.5M6.5 11h6M6.5 13.5h6"/>',
     materiali: '<path d="M4 6.5 12 3l8 3.5-8 3.5z"/><path d="M4 11.5 12 15l8-3.5M4 16.5 12 20l8-3.5"/>',
+    foto: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/>',
     profilo: '<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.6 3.9-6 7.5-6s6.7 2.4 7.5 6"/>',
     gestione: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="7" cy="18" r="1.8"/>'
   };
@@ -621,6 +623,7 @@ const Venditori = (() => {
       ['mappa', 'Mappa clienti', nC ? 'Dove sono, e il navigatore per arrivarci' : 'I clienti compaiono qui', false],
       ['ordini', 'Ordini', nO ? `${nO} ${nO === 1 ? 'ordine' : 'ordini'} · l’ultimo il ${ultimo.data}` : 'Ancora nessun ordine', false],
       ['soldi', nomeSoldi(), soldi, false],
+      ['foto', 'Foto per i social', sottoFoto(), false],
       ['materiali', 'Materiali', nM ? `${nM} ${nM === 1 ? 'documento' : 'documenti'} da mandare ai clienti` : 'Per ora nessuno', false],
       ['profilo', 'Profilo', 'Le tue condizioni e i contatti Pro Farmer', false]
     ];
@@ -697,7 +700,7 @@ const Venditori = (() => {
     }
     const disegna = { home: disegnaHome, clienti: disegnaClienti, ordini: disegnaOrdini, soldi: disegnaSoldi,
                       materiali: disegnaMateriali, profilo: disegnaProfilo, mappa: disegnaMappa, diamanti: disegnaDiamanti,
-                      contatti: disegnaContatti }[id];
+                      contatti: disegnaContatti, foto: disegnaFotoSocial }[id];
     p.innerHTML = disegna();
     if (id !== 'home') entra(p);
     if (id === 'home') {
@@ -711,6 +714,7 @@ const Venditori = (() => {
     if (id === 'mappa') avviaMappa();
     if (id === 'diamanti') agganciaDiamanti();
     if (id === 'contatti') agganciaContatti();
+    if (id === 'foto') agganciaFotoSocial();
     if (id === 'materiali') agganciaMateriali();
     if (id === 'profilo') { agganciaNotifiche(); agganciaFoto(); }
   }
@@ -778,6 +782,7 @@ const Venditori = (() => {
     ultimoCalcolo = null;
     suggeriti = null;
     stato = statoVuoto();
+    fotoScelte = []; fotoFirma = null; fotoModulo = { cliente: '', tipo: 'foto', autore: '', volti: '', nome: '', testo: '' };
     togliCodiceVecchio();
     document.body.classList.remove('in-area-venditori', 'accesso-venditori');
     boxRis.hidden = true;
@@ -868,6 +873,12 @@ const Venditori = (() => {
         out.push({ t, valore: Math.min(tm, t.soglia), max: Number(t.soglia), testo: tm >= t.soglia
           ? `${num(tm, 1)} t consegnate questo mese: traguardo raggiunto!`
           : `${num(tm, 1)} t su ${num(t.soglia, 1)} t consegnate questo mese` });
+      } else if ((t.codice === 'foto' || t.codice === 'storia') && area.foto) {
+        const r = area.foto.regole || {}, m = area.foto.mese || {};
+        const [fatti, max] = t.codice === 'foto' ? [m.foto || 0, r.tetto_foto_mese || 10] : [m.storie || 0, r.storie_mese || 2];
+        out.push({ t, valore: Math.min(fatti, max), max, testo: t.codice === 'foto'
+          ? `${fatti} di ${max} 💎 questo mese dalle foto. Le mandi da «Foto per i social».`
+          : `${fatti} di ${max} storie questo mese. Una per allevamento all’anno.` });
       } else if (t.codice === 'presentato' && d.presentati) {
         out.push({ t, testo: `${t.descrizione} Venditori che hai portato: ${d.presentati}.` });
       } else {
@@ -975,6 +986,7 @@ const Venditori = (() => {
       + '<li>La <strong>costanza</strong> vuole almeno un ordine consegnato in ogni mese, senza salti: un mese vuoto fa ripartire la serie.</li>'
       + '<li>Il <strong>nuovo venditore</strong> lo approva Pro Farmer. Vale quando consegna il primo ordine a un cliente nuovo; poi per il suo primo anno ricevi 1 diamante ogni volta che vince.</li>'
       + '<li>Il <strong>feedback</strong>: Pro Farmer chiama il tuo cliente dopo il suo 1° ordine consegnato, dopo il 3° e poi ogni due ordini (5°, 7°…). Se il giudizio è positivo vinci i diamanti, a ogni chiamata.</li>'
+      + '<li>Le <strong>foto per i social</strong> valgono quando Pro Farmer le approva. Le regole sono nel Regolamento foto, in «Foto per i social».</li>'
       + '<li>Pro Farmer può dare <strong>bonus</strong> a mano, sempre con il motivo, e cambiare i valori dei traguardi: le modifiche valgono da quel momento, le vincite già fatte restano.</li></ul>';
     h += '<h4>La scadenza</h4><ul>'
       + '<li>La stagione va da <strong>gennaio a dicembre</strong>. I diamanti vinti in un anno si riscattano entro il <strong>31 marzo</strong> dell’anno dopo: quelli rimasti scadono.</li>'
@@ -1198,13 +1210,20 @@ const Venditori = (() => {
           + `l’ultima il ${esc(dataIt(u.data))}: ${esc(pezziFic(u.voci))}${c.storico.ogni_giorni ? ` · riordina ogni ~${c.storico.ogni_giorni} giorni` : ''}</p>`;
       }
       if (c.note) h += `<p class="cliente-note">${esc(c.note)}</p>`;
+      // le foto per i social (29-foto-social.sql): liberatorie firmate e sconto da usare
+      const lib = area.foto && (area.foto.liberatorie || {})[c.id];
+      if (lib && lib.length) h += `<p class="cliente-dati">Liberatoria foto: ${esc(lib.map(l => l.nome + (l.ruolo === 'titolare' ? ' (titolare)' : '')).join(', '))}</p>`;
+      (area.foto && area.foto.sconti || []).filter(x => x.clienteId === c.id).forEach(x => {
+        h += `<p class="cliente-sconto">Sconto foto: ${num(x.euro, 0)} € sul prossimo ordine, entro il ${esc(x.scade)}</p>`;
+      });
       if (validaCliente(c)) h += '<p class="sotto-minimo">Dati per la fattura da completare: tocca Modifica.</p>';
       const comeFattura = !ord.length && u && Object.keys(u.voci || {}).length;
       h += '<div class="azioni">'
         + (ord.length ? `<button type="button" class="bottone" data-riordina="${esc(ord[0].id)}">Riordina come il ${esc(ord[0].data)}</button>` : '')
         + (comeFattura ? `<button type="button" class="bottone" data-come-fattura="${esc(c.id)}">Riordina come il ${esc(dataIt(u.data))}</button>` : '')
         + `<button type="button" class="bottone${ord.length || comeFattura ? ' bottone-fantasma' : ''}" data-ordina="${esc(c.id)}">Nuovo ordine</button>`
-        + `<button type="button" class="bottone bottone-fantasma" data-modifica="${esc(c.id)}">Modifica</button></div>`;
+        + `<button type="button" class="bottone bottone-fantasma" data-modifica="${esc(c.id)}">Modifica</button>`
+        + `<button type="button" class="bottone bottone-fantasma" data-manda-foto="${esc(c.id)}">Manda foto</button></div>`;
       h += '</li>';
     });
     h += '</ul></div>';
@@ -1219,6 +1238,8 @@ const Venditori = (() => {
       b.addEventListener('click', () => ordineDiretto(b.dataset.ordina)));
     pannello().querySelectorAll('[data-come-fattura]').forEach(b =>
       b.addEventListener('click', () => comeUltimaFattura(b.dataset.comeFattura)));
+    pannello().querySelectorAll('[data-manda-foto]').forEach(b =>
+      b.addEventListener('click', () => { fotoFirma = null; fotoModulo = { ...fotoModulo, cliente: b.dataset.mandaFoto }; apri('foto'); }));
   }
 
   /* I compleanni dei clienti (25/10/2026): giorno e mese di nascita del
@@ -1586,6 +1607,400 @@ const Venditori = (() => {
         .then(() => rpc('salva_foto', { indirizzo: null }))
         .then(() => { area.profilo.foto = null; dopo('Foto tolta.'); })
         .catch(() => { stato.textContent = 'Non sono riuscito a toglierla: riprova tra poco.'; });
+    });
+  }
+
+  /* --------------------------------------------------- le foto per i social
+     Dal 27/10/2026 (29-foto-social.sql, regole di Giulio del 26/10/2026).
+     Agenti e rivenditori mandano foto di piùLact in uso, scattate da loro o
+     dagli allevatori. Valgono quando Pro Farmer le approva: 2 💎 a foto, 10 a
+     storia; ai rivenditori lo stesso valore come sconto sul prossimo ordine.
+     Il telefono porta il lato lungo a 2048 px e ricodifica in JPEG, così
+     spariscono i dati nascosti dello scatto, GPS compreso. Le foto vanno nello
+     spazio PRIVATO «foto-social», nella cartella di chi le manda. La
+     liberatoria dell'allevatore si firma col dito, qui sul telefono. */
+  const FOTO_SOCIAL_LATO = 2048, FOTO_SOCIAL_MIN = 1000, FOTO_SOCIAL_MAX = 10;
+  const VERSIONE_LIBERATORIA = '2026-11-v1';
+  let fotoScelte = [];       // le foto preparate e non ancora mandate: { blob, url }
+  let fotoModulo = { cliente: '', tipo: 'foto', autore: '', volti: '', nome: '', testo: '' };
+  let fotoFirma = null;      // il cliente di cui si sta firmando la liberatoria
+
+  function sottoFoto() {
+    const d = area.foto;
+    if (!d) return 'Le foto di piùLact in stalla';
+    const attesa = (d.invii || []).filter(x => x.stato === 'da_vedere').length;
+    if (attesa) return `${attesa} ${attesa === 1 ? 'invio' : 'invii'} in attesa di Pro Farmer`;
+    const v = d.valori || {};
+    return d.ruolo === 'agente' ? `${v.foto || 2} 💎 a foto, ${v.storia || 10} a storia`
+      : d.ruolo === 'rivenditore' ? 'Uno sconto sul tuo prossimo ordine' : 'Le foto dei clienti diretti';
+  }
+
+  function caricaFotoSocial() {
+    if (!cond) return Promise.resolve();
+    return rpc('foto_mie').then(d => {
+      area.foto = d;
+      if (scheda === 'home') apri('home');
+      // il modulo a metà non si ridisegna: le foto scelte resterebbero, i campi no
+      if (scheda === 'foto' && !fotoScelte.length && !fotoFirma) apri('foto');
+      if (scheda === 'diamanti') apri('diamanti');
+    }).catch(() => {});
+  }
+
+  /* Le miniature dallo spazio privato: indirizzi firmati, validi un'ora. */
+  function mostraMiniature(p) {
+    const img = [...p.querySelectorAll('img[data-percorso]')];
+    if (!img.length) return;
+    collegamento().storage.from('foto-social').createSignedUrls(img.map(i => i.dataset.percorso), 3600).then(({ data }) => {
+      (data || []).forEach((x, n) => { if (x && x.signedUrl && img[n]) img[n].src = x.signedUrl; });
+    }).catch(() => {});
+  }
+
+  function premioFoto(d) {
+    const v = d.valori || {}, r = d.regole || {}, m = d.mese || {}, eur = Number(d.euro) || 4;
+    if (d.ruolo === 'agente') {
+      return `<p class="aiuto">Ogni foto usabile vale <strong>${v.foto || 2} 💎</strong>, una storia <strong>${v.storia || 10} 💎</strong>, `
+        + 'quando Pro Farmer l’approva. '
+        + `Questo mese: ${m.foto || 0} di ${r.tetto_foto_mese || 10} 💎 dalle foto, ${m.storie || 0} di ${r.storie_mese || 2} storie.</p>`;
+    }
+    if (d.ruolo === 'rivenditore') {
+      return `<p class="aiuto">Ogni foto usabile vale <strong>${(v.foto || 2) * eur} €</strong> di sconto sul tuo prossimo ordine, `
+        + `una storia <strong>${(v.storia || 10) * eur} €</strong>, quando Pro Farmer l’approva. `
+        + `Questo mese: ${(m.foto || 0) * eur} di ${(r.tetto_foto_mese || 10) * eur} € dalle foto, ${m.storie || 0} di ${r.storie_mese || 2} storie.</p>`;
+    }
+    return '<p class="aiuto">Per i clienti diretti. Una storia approvata dà lo sconto all’allevatore.</p>';
+  }
+
+  /* Il Regolamento foto: si accetta una volta, prima del primo invio. È la
+     licenza d'uso a Pro Farmer delle foto che si mandano. */
+  function testoRegolamentoFoto(d) {
+    const v = d.valori || {}, r = d.regole || {}, eur = Number(d.euro) || 4;
+    const premio = d.ruolo === 'rivenditore'
+      ? `${(v.foto || 2) * eur} € di sconto sul tuo prossimo ordine per ogni foto usabile e ${(v.storia || 10) * eur} € per una storia`
+      : `${v.foto || 2} 💎 per ogni foto usabile e ${v.storia || 10} 💎 per una storia`;
+    return '<ul class="regolamento-foto">'
+      + '<li><strong>Cosa mandare:</strong> foto vere di piùLact in uso: cuccette, lettiere, il prodotto, le bovine sulla zona di riposo. A fuoco, con buona luce, scattate da meno di 3 mesi.</li>'
+      + `<li><strong>Il premio:</strong> ${premio}, quando Pro Farmer le approva. Al massimo ${r.tetto_foto_mese || 10} 💎 al mese dalle foto singole e ${r.storie_mese || 2} storie al mese, una per allevamento all’anno. Più foto quasi uguali contano come una.</li>`
+      + '<li><strong>Una storia</strong> è fatta di almeno 3 foto dello stesso allevamento e delle parole dell’allevatore su cosa è cambiato. Serve la sua liberatoria. All’allevatore va uno sconto di ' + (r.sconto_allevatore || 50) + ' € sul prossimo ordine.</li>'
+      + '<li><strong>Le persone:</strong> niente volti riconoscibili senza la liberatoria firmata da quella persona. Mai minori.</li>'
+      + '<li><strong>Di chi sono le foto:</strong> mandi solo foto scattate da te, o dall’allevatore con il suo permesso. Mai foto prese da internet o da altri.</li>'
+      + '<li><strong>L’uso:</strong> concedi a Pro Farmer Srls, gratis e senza scadenza, il diritto non esclusivo di usare le foto che mandi, anche tagliate o ritoccate, su social, sito, stampati e fiere. Il premio è il compenso. Pro Farmer non è obbligata a pubblicarle.</li>'
+      + '<li><strong>Privacy:</strong> il telefono toglie dalle foto la posizione GPS prima di mandarle. Le foto non usate si cancellano dopo 12 mesi.</li></ul>';
+  }
+
+  function disegnaFotoSocial() {
+    const d = area.foto;
+    if (!d) return '<div class="blocco"><p class="aiuto">Carico le tue foto…</p></div>';
+    if (fotoFirma) return moduloLiberatoria(fotoFirma);
+    if (!d.regolamento) {
+      return '<div class="blocco"><h3>Foto per i social</h3>'
+        + '<p>Le storie vere di piùLact in stalla sono quelle che funzionano di più sui social. Manda le tue foto: Pro Farmer le guarda e premia quelle che può usare.</p>'
+        + premioFoto(d) + '</div>'
+        + '<div class="blocco"><h3>Il Regolamento foto</h3>' + testoRegolamentoFoto(d)
+        + '<p class="errore" id="fs-errore" hidden></p><div class="azioni"><button type="button" class="bottone" id="fs-accetto">Accetto il regolamento</button></div></div>';
+    }
+    const m = fotoModulo;
+    const clienti = area.clienti.slice().sort((a, b) => a.ragione.localeCompare(b.ragione, 'it'));
+    let h = '<div class="blocco"><h3>Manda foto</h3>' + premioFoto(d);
+    if (!clienti.length) return h + '<p class="aiuto">Prima aggiungi il cliente in <strong>Clienti</strong>: ogni foto è di un allevamento.</p></div>';
+    h += '<form id="fs-modulo" class="contatti cliente-modulo foto-modulo" novalidate>'
+      + '<div class="campo pieno"><label for="fs-cliente">Di quale allevamento?</label><select id="fs-cliente" name="cliente">'
+      + '<option value="">Scegli il cliente</option>'
+      + clienti.map(c => `<option value="${esc(c.id)}"${c.id === m.cliente ? ' selected' : ''}>${esc(c.ragione)}</option>`).join('') + '</select></div>';
+    // le liberatorie già firmate per questo cliente
+    if (m.cliente) {
+      const lib = (d.liberatorie || {})[m.cliente] || [];
+      h += '<div class="campo pieno foto-liberatorie"><p class="cliente-dati"><strong>Liberatorie</strong></p>'
+        + (lib.length ? '<ul>' + lib.map(l => `<li>✓ ${esc(l.nome)}, ${l.ruolo === 'titolare' ? 'titolare' : 'persona nelle foto'}`
+            + `${[l.volto && 'volto', l.nome_azienda && 'nome dell’azienda', l.autore && 'foto sue'].filter(Boolean).length ? ' (' + [l.volto && 'volto', l.nome_azienda && 'nome dell’azienda', l.autore && 'foto sue'].filter(Boolean).join(', ') + ')' : ''} · ${esc(l.data)}</li>`).join('') + '</ul>'
+          : '<p class="aiuto">Nessuna ancora. Serve per una storia, per i volti e per dire il nome dell’azienda.</p>')
+        + '<button type="button" class="bottone bottone-fantasma" id="fs-firma">Fai firmare la liberatoria</button></div>';
+    }
+    h += '<fieldset class="campo pieno"><legend>Cosa mandi?</legend><div class="foto-tipo">'
+      + [['foto', 'Foto', `Una o più foto di piùLact in uso${d.ruolo === 'agente' ? ': ' + ((d.valori || {}).foto || 2) + ' 💎 a foto' : ''}.`],
+         ['storia', 'Storia', 'Almeno 3 foto dello stesso allevamento e le parole dell’allevatore. Serve la sua liberatoria.']]
+        .map(([v, t, s]) => `<label class="scelta scelta-piccola"><input type="radio" name="tipo" value="${v}"${m.tipo === v ? ' checked' : ''}>`
+          + `<span class="scelta-corpo"><strong>${t}</strong><small>${s}</small></span></label>`).join('')
+      + '</div></fieldset>';
+    h += `<div class="campo pieno"><p class="cliente-dati"><strong>Le foto</strong> <span class="opzionale">${fotoScelte.length} di ${FOTO_SOCIAL_MAX}</span></p>`
+      + '<div class="foto-griglia">' + fotoScelte.map((f, i) => `<figure><img src="${f.url}" alt="Foto ${i + 1}"><button type="button" data-togli-foto="${i}" aria-label="Togli la foto ${i + 1}">×</button></figure>`).join('') + '</div>'
+      + (fotoScelte.length < FOTO_SOCIAL_MAX
+        ? '<div class="foto-azioni foto-azioni-social">'
+          + '<label class="bottone foto-bottone"><input type="file" accept="image/*" capture="environment" id="fs-scatta" hidden>Scatta una foto</label>'
+          + '<label class="bottone bottone-fantasma foto-bottone"><input type="file" accept="image/*" multiple id="fs-galleria" hidden>Scegli dalla galleria</label></div>'
+        : '')
+      + '<p class="aiuto" id="fs-stato">Le foto si rimpiccioliscono e perdono la posizione GPS prima di partire.</p></div>';
+    const domanda = (nome, testo, scelte) => `<fieldset class="campo pieno"><legend>${testo}</legend><div class="esiti">`
+      + scelte.map(([v, t]) => `<label class="esito-scelta"><input type="radio" name="${nome}" value="${v}"${m[nome] === v ? ' checked' : ''}><span>${t}</span></label>`).join('')
+      + '</div></fieldset>';
+    h += domanda('autore', 'Chi ha scattato le foto?', [['io', 'Io'], ['allevatore', 'L’allevatore'], ['altro', 'Un’altra persona']])
+      + domanda('volti', 'Si riconosce qualcuno in viso?', [['no', 'No'], ['si', 'Sì']])
+      + domanda('nome', 'Si può dire il nome dell’azienda?', [['si', 'Sì'], ['no', 'No']]);
+    if (m.tipo === 'storia') {
+      h += '<div class="campo pieno"><label for="fs-testo">Le parole dell’allevatore</label>'
+        + `<textarea id="fs-testo" name="testo" rows="3" maxlength="1000" placeholder="Cosa è cambiato da quando usa piùLact? Con parole sue.">${esc(m.testo)}</textarea>`
+        + '<p class="aiuto">Solo quello che vede lui. Niente promesse sulla salute delle bovine.</p></div>';
+    }
+    h += '<p class="errore pieno" id="fs-errore" hidden></p><div class="azioni pieno"><button type="submit" class="bottone">Manda a Pro Farmer</button></div></form></div>';
+
+    // gli sconti in attesa: del rivenditore e degli allevatori
+    if ((d.sconti || []).length) {
+      h += '<div class="blocco"><h3>Sconti da usare</h3><ul class="lista-clienti">' + d.sconti.map(s =>
+        `<li><div class="cliente-testa"><strong>${num(s.euro, 0)} €${s.clienteId ? ' per ' + esc(s.cliente) : ' sul tuo prossimo ordine'}</strong><span class="pf-proprietario">entro il ${esc(s.scade)}</span></div>`
+        + `<p class="cliente-dati">${esc(s.motivo)}${s.clienteId ? (cond.ruolo === 'rivenditore' ? ' · lo trovi sul tuo prossimo ordine: giralo all’allevatore' : ' · si applica al suo prossimo ordine, nel preventivo') : ''}</p></li>`).join('')
+        + '</ul></div>';
+    }
+
+    // quelle già mandate
+    const STATO_FOTO = { da_vedere: 'Da vedere', usabile: 'Usabile', non_usabile: 'Non usabile' };
+    if ((d.invii || []).length) {
+      h += '<div class="blocco"><h3>Le tue foto</h3><ul class="lista-clienti">';
+      d.invii.forEach(x => {
+        const premio = x.diamanti ? (d.ruolo === 'rivenditore' ? ` · +${x.diamanti * (Number(d.euro) || 4)} €` : ` · +${x.diamanti} 💎`) : '';
+        h += `<li><div class="cliente-testa"><strong>${esc(x.cliente)}</strong><span class="stato stato-${x.stato === 'da_vedere' ? 'inviato' : x.diamanti ? 'pagato' : 'confermato'}">`
+          + `${x.stato === 'da_vedere' ? 'Da vedere' : 'Vista'}</span></div>`
+          + `<p class="cliente-dati">${x.tipo === 'storia' ? 'Storia' : 'Foto'} del ${esc(x.data)} · ${(x.foto || []).length} foto${premio}</p>`
+          + (x.esito ? `<p class="cliente-dati">${esc(x.esito)}</p>` : '')
+          + '<div class="foto-griglia foto-griglia-piccola">' + (x.foto || []).filter(f => !f.cancellata).map(f =>
+            `<figure class="foto-${f.stato}"><img data-percorso="${esc(f.percorso)}" alt="" loading="lazy"><figcaption>${esc(f.pubblicata ? 'Sui social' : STATO_FOTO[f.stato] || f.stato)}</figcaption></figure>`).join('') + '</div></li>';
+      });
+      h += '</ul></div>';
+    }
+    h += '<details class="blocco legenda"><summary><h3>Il Regolamento foto</h3><span>Quello che hai accettato</span></summary><div class="legenda-corpo">'
+      + testoRegolamentoFoto(d) + '</div></details>';
+    return h;
+  }
+
+  // la foto dal file: lato lungo fino a 2048 px, JPEG (via i dati nascosti dello scatto)
+  function preparaFotoSocial(file) {
+    const dalFile = window.createImageBitmap
+      ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file))
+      : Promise.reject(new Error('vecchio'));
+    const conImmagine = () => new Promise((ok, ko) => {
+      const img = new Image(); const u = URL.createObjectURL(file);
+      img.onload = () => { URL.revokeObjectURL(u); ok(img); };
+      img.onerror = () => { URL.revokeObjectURL(u); ko(new Error('formato')); };
+      img.src = u;
+    });
+    return dalFile.catch(conImmagine).then(img => {
+      const w = img.width, h = img.height, lungo = Math.max(w, h);
+      if (lungo < FOTO_SOCIAL_MIN) throw new Error('piccola');
+      const k = Math.min(1, FOTO_SOCIAL_LATO / lungo);
+      const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      const g = c.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(img, 0, 0, c.width, c.height);
+      return new Promise((ok, ko) => c.toBlob(b => b ? ok(b) : ko(new Error('formato')), 'image/jpeg', 0.86));
+    });
+  }
+
+  function idInvio() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const x = [...b].map(n => n.toString(16).padStart(2, '0')).join('');
+    return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20)}`;
+  }
+
+  function agganciaFotoSocial() {
+    const p = pannello();
+    mostraMiniature(p);
+    const acc = document.getElementById('fs-accetto');
+    if (acc) acc.addEventListener('click', () => {
+      acc.disabled = true;
+      rpc('accetta_regolamento_foto').then(caricaFotoSocial).catch(() => {
+        acc.disabled = false; const e = document.getElementById('fs-errore'); e.textContent = 'Non salvato: riprova tra poco.'; e.hidden = false;
+      });
+    });
+    if (fotoFirma) return agganciaLiberatoria();
+    const f = document.getElementById('fs-modulo');
+    if (!f) return;
+    const leggi = () => {
+      const d = new FormData(f);
+      fotoModulo = { cliente: d.get('cliente') || '', tipo: d.get('tipo') || 'foto', autore: d.get('autore') || '',
+        volti: d.get('volti') || '', nome: d.get('nome') || '', testo: d.has('testo') ? String(d.get('testo')) : fotoModulo.testo };
+    };
+    // cambiare cliente o tipo ridisegna (liberatorie, parole dell'allevatore)
+    f.addEventListener('change', ev => {
+      leggi();
+      if (ev.target.name === 'cliente' || ev.target.name === 'tipo') { apri('foto'); }
+    });
+    f.addEventListener('input', leggi);
+    const firma = document.getElementById('fs-firma');
+    if (firma) firma.addEventListener('click', () => { leggi(); fotoFirma = fotoModulo.cliente; apri('foto'); });
+    p.querySelectorAll('[data-togli-foto]').forEach(b => b.addEventListener('click', () => {
+      leggi();
+      const [via] = fotoScelte.splice(Number(b.dataset.togliFoto), 1);
+      if (via) URL.revokeObjectURL(via.url);
+      apri('foto');
+    }));
+    const stato = document.getElementById('fs-stato');
+    const aggiungi = files => {
+      leggi();
+      const lista = [...(files || [])].slice(0, FOTO_SOCIAL_MAX - fotoScelte.length);
+      if (!lista.length) return;
+      let scartate = 0, n = 0;
+      // una alla volta: con 10 foto da 12 megapixel il telefono soffre
+      lista.reduce((pr, file) => pr.then(() => {
+        stato.textContent = `Preparo la foto ${++n} di ${lista.length}…`;
+        return preparaFotoSocial(file).then(blob => { fotoScelte.push({ blob, url: URL.createObjectURL(blob) }); })
+          .catch(() => { scartate++; });
+      }), Promise.resolve()).then(() => {
+        apri('foto');
+        if (scartate) {
+          const s = document.getElementById('fs-stato');
+          if (s) s.textContent = scartate === 1 ? 'Una foto non va: troppo piccola o in un formato che non si apre.' : `${scartate} foto non vanno: troppo piccole o in un formato che non si apre.`;
+        }
+      });
+    };
+    ['fs-scatta', 'fs-galleria'].forEach(id => {
+      const i = document.getElementById(id);
+      if (i) i.addEventListener('change', () => { aggiungi(i.files); i.value = ''; });
+    });
+    f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      leggi();
+      const m = fotoModulo, err = document.getElementById('fs-errore'), b = f.querySelector('button[type=submit]');
+      const lib = (area.foto.liberatorie || {})[m.cliente] || [];
+      const problema = !m.cliente ? 'Scegli il cliente.'
+        : !fotoScelte.length ? 'Aggiungi almeno una foto.'
+        : m.tipo === 'storia' && fotoScelte.length < 3 ? 'Una storia ha almeno 3 foto dello stesso allevamento.'
+        : !m.autore ? 'Rispondi: chi ha scattato le foto?'
+        : !m.volti ? 'Rispondi: si riconosce qualcuno in viso?'
+        : !m.nome ? 'Rispondi: si può dire il nome dell’azienda?'
+        : m.tipo === 'storia' && m.testo.trim().length < 20 ? 'Scrivi le parole dell’allevatore: cosa è cambiato con piùLact.'
+        : m.tipo === 'storia' && !lib.some(l => l.ruolo === 'titolare') ? 'Per una storia serve la liberatoria del titolare: tocca «Fai firmare la liberatoria».'
+        : m.volti === 'si' && !lib.some(l => l.volto) ? 'Si riconosce qualcuno: prima fai firmare la liberatoria a ogni persona riconoscibile.'
+        : m.nome === 'si' && !lib.some(l => l.ruolo === 'titolare' && l.nome_azienda) ? 'Per dire il nome dell’azienda serve la liberatoria del titolare.'
+        : '';
+      if (problema) { err.textContent = problema; err.hidden = false; return; }
+      if (navigator.onLine === false) { err.textContent = 'Sei senza rete: le foto restano qui, mandale quando torna il segnale.'; err.hidden = false; return; }
+      err.hidden = true; b.disabled = true;
+      const st = collegamento().storage.from('foto-social'), invio = idInvio();
+      let percorsi = [];
+      rpc('mio_id').then(mio => {
+        percorsi = fotoScelte.map((_, i) => `${mio}/${invio}/${i + 1}.jpg`);
+        return fotoScelte.reduce((pr, x, i) => pr.then(() => {
+          b.textContent = `Carico la foto ${i + 1} di ${fotoScelte.length}…`;
+          return st.upload(percorsi[i], x.blob, { contentType: 'image/jpeg', upsert: false, cacheControl: '3600' })
+            .then(({ error }) => { if (error) throw error; });
+        }), Promise.resolve());
+      }).then(() => rpc('manda_foto', { p_invio: invio, p_cliente: m.cliente, p_tipo: m.tipo, p_autore: m.autore,
+        p_volti: m.volti === 'si', p_nome_azienda: m.nome === 'si', p_testo: m.tipo === 'storia' ? m.testo : null, p_file: percorsi }))
+        .then(() => {
+          fotoScelte.forEach(x => URL.revokeObjectURL(x.url));
+          fotoScelte = []; fotoModulo = { cliente: '', tipo: 'foto', autore: '', volti: '', nome: '', testo: '' };
+          return caricaFotoSocial();
+        }).then(() => {
+          window.scrollTo(0, 0);
+          const s = document.getElementById('fs-stato');
+          if (s) { s.textContent = '✓ Mandate a Pro Farmer. Ti arriva una notifica quando le ha viste.'; s.classList.add('foto-ok'); }
+        })
+        .catch(e => {
+          if (percorsi.length) st.remove(percorsi).catch(() => {});
+          b.disabled = false; b.textContent = 'Manda a Pro Farmer';
+          err.textContent = e.delDatabase ? e.message : 'Le foto non sono partite: riprova tra poco.'; err.hidden = false;
+        });
+    });
+  }
+
+  /* La liberatoria (versione 2026-11-v1). Il testo che si firma è quello
+     che si vede, con le scelte fatte: si salva così com'è, con la firma.
+     Da far rileggere a un legale (vedi foto-social/PROPOSTA.md). */
+  function testoLiberatoria(c, l) {
+    const chi = cond.ruolo === 'interno' ? 'Pro Farmer' : `${area.profilo.nome || cond.nome}, ${cond.ruolo === 'agente' ? 'agente' : 'rivenditore'} piùLact di Pro Farmer`;
+    const cosa = [];
+    if (l.ruolo === 'titolare') {
+      cosa.push(`le foto della mia azienda ${c.ragione} (stalle, animali, attrezzature e prodotto piùLact) raccolte da ${chi}`);
+      if (l.autore) cosa.push('anche le foto scattate da me: ne concedo l’uso non esclusivo, gratuito e senza scadenza');
+      if (l.nome_azienda) cosa.push('il nome della mia azienda e il comune, insieme alle foto e alle mie parole');
+    } else {
+      cosa.push(`le foto scattate nell’azienda ${c.ragione} in cui compaio, raccolte da ${chi}`);
+    }
+    if (l.volto) cosa.push('la mia immagine e il mio volto');
+    return `Io, ${l.nome || '…'}, ${l.ruolo === 'titolare' ? 'titolare o legale rappresentante di ' + c.ragione : 'persona ritratta nelle foto'}, maggiorenne, `
+      + 'autorizzo Pro Farmer Srls a pubblicare e usare, gratuitamente e senza limiti di tempo, '
+      + cosa.join('; ') + '. '
+      + 'L’uso è per far conoscere piùLact: social network (Instagram, Facebook), sito, materiali stampati e fiere. Le foto possono essere tagliate o ritoccate, mai in modo da offendere la mia dignità o reputazione. '
+      + (l.volto ? '' : 'Non autorizzo l’uso del mio volto: se compaio, va tagliato o reso irriconoscibile. ')
+      + 'Informativa privacy: il titolare del trattamento è Pro Farmer Srls (info@profarmer.it). I dati (immagini, nome, firma) si usano solo per queste finalità, sulla base di questo consenso. '
+      + 'Posso ritirarlo in ogni momento scrivendo a info@profarmer.it: Pro Farmer toglierà i contenuti dai suoi canali e non userà più le foto, ma non può cancellare le copie già condivise da altri. '
+      + 'Questa liberatoria si conserva finché le foto si usano e poi per 5 anni. Ho i diritti degli articoli 15-22 del GDPR. '
+      + `Informativa completa: ${(typeof CONFIG !== 'undefined' && CONFIG.urlPrivacy) || 'https://www.iubenda.com/privacy-policy/12376136'}`;
+  }
+
+  let liberatoria = { nome: '', ruolo: 'titolare', volto: false, nome_azienda: true, autore: false };
+  function moduloLiberatoria(id) {
+    const c = area.clienti.find(x => x.id === id) || { ragione: '' };
+    const l = liberatoria;
+    const spunta = (nome, testo) => `<label class="spunta"><input type="checkbox" name="${nome}"${l[nome] ? ' checked' : ''}> ${testo}</label>`;
+    return '<div class="blocco"><h3>Liberatoria</h3>'
+      + `<p class="aiuto">Per ${esc(c.ragione)}. Fai leggere il testo a chi firma, poi la firma col dito qui sotto.</p>`
+      + '<form id="fs-liberatoria" class="contatti cliente-modulo" novalidate>'
+      + '<fieldset class="campo pieno"><legend>Chi firma?</legend><div class="esiti">'
+      + [['titolare', 'Il titolare'], ['persona', 'Una persona nelle foto']].map(([v, t]) =>
+        `<label class="esito-scelta"><input type="radio" name="ruolo" value="${v}"${l.ruolo === v ? ' checked' : ''}><span>${t}</span></label>`).join('')
+      + '</div></fieldset>'
+      + `<div class="campo pieno"><label for="fs-nome">Nome e cognome</label><input id="fs-nome" name="nome" autocomplete="name" value="${esc(l.nome)}"></div>`
+      + '<fieldset class="campo pieno"><legend>Cosa permette</legend><div class="spunte">'
+      + spunta('volto', 'Il suo volto')
+      + (l.ruolo === 'titolare' ? spunta('nome_azienda', 'Il nome dell’azienda') + spunta('autore', 'Le foto scattate da lui') : '')
+      + '</div></fieldset>'
+      + `<div class="campo pieno liberatoria-testo" id="fs-testo-lib">${esc(testoLiberatoria(c, l))}</div>`
+      + '<div class="campo pieno"><p class="cliente-dati"><strong>Firma</strong></p><canvas class="firma" id="fs-canvas" aria-label="Spazio per la firma col dito"></canvas>'
+      + '<button type="button" class="foto-togli" id="fs-cancella">Cancella la firma</button></div>'
+      + '<p class="errore pieno" id="fs-errore-lib" hidden></p><div class="azioni pieno"><button type="submit" class="bottone">Firma e salva</button>'
+      + '<button type="button" class="bottone bottone-fantasma" id="fs-indietro">Annulla</button></div></form></div>';
+  }
+
+  function agganciaLiberatoria() {
+    const f = document.getElementById('fs-liberatoria');
+    const c = area.clienti.find(x => x.id === fotoFirma) || { ragione: '' };
+    const leggi = () => {
+      const d = new FormData(f);
+      liberatoria = { nome: String(d.get('nome') || '').trim(), ruolo: d.get('ruolo') || 'titolare', volto: d.has('volto'),
+        nome_azienda: d.has('nome_azienda'), autore: d.has('autore') };
+      document.getElementById('fs-testo-lib').textContent = testoLiberatoria(c, liberatoria);
+    };
+    f.addEventListener('input', leggi);
+    f.addEventListener('change', ev => { if (ev.target.name === 'ruolo') { leggi(); apri('foto'); } else leggi(); });
+    document.getElementById('fs-indietro').addEventListener('click', () => { fotoFirma = null; apri('foto'); });
+    // la firma: tratti col dito, su fondo bianco
+    const cv = document.getElementById('fs-canvas'), g = cv.getContext('2d');
+    const k = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * k); cv.height = Math.round(r.height * k);
+    const pulisci = () => { g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); };
+    pulisci();
+    g.lineWidth = 2.4 * k; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#14243C';
+    let giu = false, inchiostro = 0, ultimo = null;   // inchiostro: quanta strada ha fatto il dito, in px
+    const punto = ev => { const b = cv.getBoundingClientRect(); return [(ev.clientX - b.left) * k, (ev.clientY - b.top) * k]; };
+    cv.addEventListener('pointerdown', ev => { giu = true; ultimo = punto(ev); cv.setPointerCapture(ev.pointerId); ev.preventDefault(); });
+    cv.addEventListener('pointermove', ev => {
+      if (!giu) return;
+      const q = punto(ev);
+      g.beginPath(); g.moveTo(ultimo[0], ultimo[1]); g.lineTo(q[0], q[1]); g.stroke();
+      inchiostro += Math.hypot(q[0] - ultimo[0], q[1] - ultimo[1]) / k;
+      ultimo = q;
+    });
+    const su = () => { giu = false; };
+    cv.addEventListener('pointerup', su); cv.addEventListener('pointercancel', su);
+    document.getElementById('fs-cancella').addEventListener('click', () => { pulisci(); inchiostro = 0; });
+    f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      leggi();
+      const err = document.getElementById('fs-errore-lib'), b = f.querySelector('button[type=submit]');
+      const problema = liberatoria.nome.length < 3 ? 'Scrivi nome e cognome di chi firma.' : inchiostro < 120 ? 'Manca la firma.' : '';
+      if (problema) { err.textContent = problema; err.hidden = false; return; }
+      b.disabled = true; b.textContent = 'Salvo…';
+      rpc('firma_liberatoria', { p_cliente: fotoFirma, p_nome: liberatoria.nome, p_ruolo: liberatoria.ruolo, p_volto: liberatoria.volto,
+        p_nome_azienda: liberatoria.nome_azienda, p_autore: liberatoria.autore, p_testo: testoLiberatoria(c, liberatoria),
+        p_versione: VERSIONE_LIBERATORIA, p_firma: cv.toDataURL('image/png') })
+        .then(() => {
+          fotoFirma = null; liberatoria = { nome: '', ruolo: 'titolare', volto: false, nome_azienda: true, autore: false };
+          return rpc('foto_mie').then(d => { area.foto = d; });
+        })
+        .then(() => apri('foto'))
+        .catch(e => { b.disabled = false; b.textContent = 'Firma e salva'; err.textContent = e.delDatabase ? e.message : 'Non salvata: riprova tra poco.'; err.hidden = false; });
     });
   }
 

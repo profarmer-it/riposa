@@ -1355,3 +1355,43 @@ body.con-anteprima{overflow:hidden}
   body.con-anteprima .anteprima-barra{display:none}
   body.con-anteprima .anteprima-foglio{box-shadow:none;border-radius:0;padding:0;max-width:none}
 }
+
+/* le foto per i social (27/10/2026): modulo, miniature, liberatoria con la firma */
+.foto-modulo .esiti,#fs-liberatoria .esiti{margin-top:0}
+.foto-modulo .esiti input:checked + span,#fs-liberatoria .esiti input:checked + span{background:#F2F8FE;border-color:var(--blu);color:var(--navy)}
+.foto-tipo{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+@media (max-width:480px){ .foto-tipo{grid-template-columns:1fr} }
+.foto-liberatorie ul{margin:4px 0 10px;padding:0;list-style:none;font-size:14.5px;color:#14612F}
+.foto-liberatorie li{margin:2px 0}
+.foto-liberatorie .bottone{width:auto}
+.foto-azioni-social{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+@media (max-width:360px){ .foto-azioni-social{grid-template-columns:1fr} }
+.foto-griglia{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:8px}
+.foto-griglia:empty{display:none}
+.foto-griglia figure{position:relative;margin:0;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--crema-2)}
+.foto-griglia img{display:block;width:100%;height:100%;object-fit:cover}
+.foto-griglia figure button{position:absolute;top:4px;right:4px;width:32px;height:32px;border:0;border-radius:50%;
+  background:rgba(14,35,64,.75);color:#fff;font-size:20px;line-height:1;cursor:pointer}
+.foto-griglia-piccola{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}
+.foto-griglia figcaption{position:absolute;left:0;right:0;bottom:0;padding:3px 4px;font-size:11.5px;font-weight:600;text-align:center;
+  background:rgba(255,255,255,.88);color:var(--testo)}
+.foto-griglia .foto-usabile figcaption{background:#E2F3E6;color:#14612F}
+.foto-griglia .foto-non_usabile img{opacity:.45}
+.regolamento-foto{margin:0;padding-left:20px}
+.regolamento-foto li{margin:0 0 8px;font-size:15px;line-height:1.5}
+.liberatoria-testo{padding:14px;border-radius:10px;background:var(--bianco);border:1px solid var(--crema-2);font-size:14.5px;line-height:1.55;color:var(--testo)}
+canvas.firma{display:block;width:100%;height:170px;margin-top:6px;border:1.5px dashed var(--testo-2);border-radius:10px;background:#fff;touch-action:none}
+.cliente-sconto{margin:8px 0 0;padding:8px 12px;border-radius:10px;background:#FFF6E5;color:#6E4710;font-size:14.5px;font-weight:600}
+/* Gestione → Foto */
+.pf-link{padding:0;font:inherit;font-weight:600;color:var(--link, #1F5FA8);background:none;border:0;text-decoration:underline;cursor:pointer}
+.pf-manca{color:#9A5B00;font-weight:600}
+.pf-foto-griglia{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.pf-foto-griglia label{display:flex;flex-direction:column;gap:6px}
+.pf-foto-griglia a{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--crema-2)}
+.pf-foto-griglia img{width:100%;height:100%;object-fit:cover}
+.pf-foto-griglia .spunta{padding:8px 10px;font-size:14px}
+.pf-usabile{display:flex;gap:14px;align-items:flex-start}
+.pf-usabile > a{flex:0 0 110px;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--crema-2)}
+.pf-usabile img{display:block;width:100%;height:100%;object-fit:cover}
+.pf-usabile > div{flex:1;min-width:0}
+img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px solid var(--crema-2);border-radius:8px}
