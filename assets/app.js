@@ -735,8 +735,10 @@ function consiglioTrasporto(r) {
         + `circa ${ton(T.balletteMinimo * T.ballettaKg)} t, e ti copre circa ${num(mesi, 1)} mesi. ${staff}`;
     }
     const ballette = Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale;
+    // il camion (Giulio, 26/10/2026): una motrice ne porta 18, un bilico 36
+    const carico = `. Una motrice ne porta ${T.ballettePerMotrice}, un bilico ${T.ballettePerBilico}`;
     return `${camion} Al mese servono ${num(ballette)} ballette, su ${num(ballette / T.ballettePerBancale)} bancali, `
-      + `circa ${ton(ballette * T.ballettaKg)} t. ${staff}`;
+      + `circa ${ton(ballette * T.ballettaKg)} t${carico}. ${staff}`;
   }
 
   /* Sotto il minimo, come per le ballette, fabbisogno e ordine sono due numeri

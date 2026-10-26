@@ -84,15 +84,16 @@ const TRASPORTO = {
   sogliaBilico: 35,        // da 35 big bag (21 t) si propone il bilico
 
   /* piùLact Pronto in ballette. Dati di Giulio, 18 ottobre 2026: ordine minimo
-     10 ballette, disposte su 5 bancali (2 ballette per bancale). Quante ne sta
-     su una motrice o su un bilico non lo sappiamo ancora: finché manca, il
-     consiglio non nomina il camion. Il fabbisogno si dà sul MESE e non sul
-     trimestre: con 35 kg a cuccetta a settimana una stalla media consuma una
-     ventina di ballette al mese, e tre mesi di ballette sono un fienile.
-     DA CONFERMARE CON GIULIO. */
+     10 ballette, disposte su 5 bancali (2 ballette per bancale). Il 26/10
+     Giulio ha confermato: una motrice ne porta 18, un bilico 36. Il fabbisogno
+     si dà sul MESE e non sul trimestre (confermato il 25/10): con 35 kg a
+     cuccetta a settimana una stalla media consuma una ventina di ballette al
+     mese, e tre mesi di ballette sono un fienile. */
   ballettaKg: 850,
   balletteMinimo: 10,
   ballettePerBancale: 2,
+  ballettePerMotrice: 18,
+  ballettePerBilico: 36,
   mesiOrizzonteBallette: 1
 };
 
@@ -141,10 +142,10 @@ const SCENARI = {
     dosePerCuccettaKg: 35,
     frequenzaGiorni: 7,
     etichettaFrequenza: 'una volta a settimana',
-    distribuzione: 'con il carro unifeed o il lanciapaglia',
+    distribuzione: 'con il lanciapaglia, la pala distributrice, il carro unifeed o un carro tipo spandiletame',
     perche: 'La miscelata arriva già pronta: niente carro da caricare, niente dosi da pesare, niente acqua da aggiungere. Le proporzioni sono sempre quelle giuste, perché la miscelata la facciamo noi.',
     metodologia: [
-      'Apri la balletta e caricala nel carro unifeed o nel lanciapaglia: è già miscelata, non serve aggiungere nulla.',
+      'Apri la balletta e caricala nel lanciapaglia, nella pala distributrice, nel carro unifeed o in un carro tipo spandiletame: è già miscelata, non serve aggiungere nulla.',
       'Distribuisci 35 kg di piùLact Pronto per cuccetta, riempiendo la buca.',
       'Ripeti ogni 7 giorni: la cuccetta resta piena e il pH resta alto per tutto l’intervallo.',
       'Nel quotidiano continua a pulire la cuccetta come fai normalmente, senza aggiungere prodotto.'
@@ -235,10 +236,10 @@ const SCENARI = {
     dosePerCuccettaKg: 5,
     frequenzaGiorni: 3.5,
     etichettaFrequenza: 'due volte a settimana',
-    distribuzione: 'con la pala distributrice, il lanciapaglia o il carro unifeed',
-    perche: 'Di solito sul materassino si entra una volta per la paglia e un’altra per l’igienizzante. Con le ballette porti in cuccetta paglia macinata e piùLact insieme, con un solo ingresso: il lavoro si dimezza. Serve una pala distributrice, un lanciapaglia o il carro.',
+    distribuzione: 'con il lanciapaglia, la pala distributrice, il carro unifeed o un carro tipo spandiletame',
+    perche: 'Di solito sul materassino si entra una volta per la paglia e un’altra per l’igienizzante. Con le ballette porti in cuccetta paglia macinata e piùLact insieme, con un solo ingresso: il lavoro si dimezza. Serve un lanciapaglia, una pala distributrice, il carro unifeed o un carro tipo spandiletame.',
     metodologia: [
-      'Apri la balletta e caricala nella pala distributrice, nel lanciapaglia o nel carro unifeed: è già miscelata, non serve aggiungere nulla.',
+      'Apri la balletta e caricala nel lanciapaglia, nella pala distributrice, nel carro unifeed o in un carro tipo spandiletame: è già miscelata, non serve aggiungere nulla.',
       'Distribuisci 5 kg di piùLact Pronto per cuccetta sul materassino.',
       'Ripeti due volte a settimana: con un solo ingresso metti paglia e igienizzante.'
     ],

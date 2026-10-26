@@ -5,7 +5,7 @@
    il posto delle schede "Venditori", "Ordini", "Materiali" del foglio Google.
      Ordini      stato, data di liquidazione della provvigione, note interne,
                  e-mail partita o no (con "Rimanda")
-     Provvigioni per agente: maturate da liquidare, con "Segna liquidate"
+     Provvigioni per agente: da fatturare e da saldare, con "Saldate oggi"
      Venditori   condizioni personali, e-mail, attivo; "Manda invito"
      Condizioni  quelle uguali per tutti (listini, ballette, minimi)
      Materiali   i documenti che i venditori mandano ai clienti
@@ -229,7 +229,7 @@ const ProFarmer = (() => {
         + '<label>Stato<select name="stato" class="pf-select">'
         + STATI.map(s => `<option value="${s}"${o.stato === s ? ' selected' : ''}>${NOME_STATO[s]}</option>`).join('') + '</select></label>'
         + (o.ruolo === 'agente'
-          ? `<label>Provvigione liquidata il<input type="date" name="liquidata" value="${esc(v(o.provvigione_liquidata_il))}"></label>` : '')
+          ? `<label>Provvigione saldata il<input type="date" name="liquidata" value="${esc(v(o.provvigione_liquidata_il))}"></label>` : '')
         + `<label class="pf-largo">Note Pro Farmer <small>(il venditore non le vede)</small><textarea name="note_pf" rows="2">${esc(v(o.note_pf))}</textarea></label>`
         + '</div>';
       h += '<p class="cliente-dati">' + (o.email_inviata_il ? `E-mail partita il ${esc(dataIt(o.email_inviata_il))}.`
@@ -453,7 +453,7 @@ const ProFarmer = (() => {
       + `<div class="numero-cella"><dt>Ordini</dt><dd>${delMese.length}<small>${esc(variazione(delMese.length, mesePrima.length).replace(/^ · /, '') || 'nel mese')}</small></dd></div>`
       + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(somma(delMese, 't'))}<small>${esc(variazione(somma(delMese, 't'), somma(mesePrima, 't')).replace(/^ · /, '') || 'ordinate nel mese')}</small></dd></div>`
       + `<div class="numero-cella"><dt>Venduto</dt><dd>${euro(somma(delMese, 'totale_cliente'))}<small>al cliente, IVA esclusa</small></dd></div>`
-      + `<div class="numero-cella"><dt>Provvigioni</dt><dd>${euro(somma(delMese, 'provvigione'))}<small>maturate o in corso</small></dd></div>`
+      + `<div class="numero-cella"><dt>Provvigioni</dt><dd>${euro(somma(delMese, 'provvigione'))}<small>calcolate sugli ordini del mese</small></dd></div>`
       + '</dl>';
     const pezzi = { bigbag: ['Big bag', 0], sacchi: ['Bancali di sacchi', 0], ballette: ['Ballette Pronto', 0] };
     delMese.forEach(o => Object.keys(pezzi).forEach(k => { pezzi[k][1] += Number(o[k]) || 0; }));
@@ -956,14 +956,15 @@ const ProFarmer = (() => {
 
   /* ------------------------------------------------------------ provvigioni */
 
-  /* La regola (proposta il 20/10/2026): maturata quando il cliente ha pagato,
-     liquidata quando c'è la data di liquidazione. Gli annullati non contano. */
+  /* La regola di Giulio (26/10/2026): in attesa di pagamento finché il cliente
+     non paga Pro Farmer; da fatturare quando ha pagato; saldata quando Pro
+     Farmer paga l'agente, vista la fattura (la data). Gli annullati non contano. */
   function provvigioni(corpo) {
     const agenti = dati.venditori.filter(x => x.ruolo === 'agente');
     let h = '<div class="blocco"><h3>Provvigioni degli agenti</h3>'
-      + '<p class="aiuto">In corso: ordini non ancora pagati dal cliente. Maturate: il cliente ha pagato, sono da liquidare. '
-      + '«Segna liquidate oggi» mette la data di oggi su tutte le maturate di quell’agente.</p>'
-      + '<div class="ordine-scorri"><table class="tabella ordine-conto"><thead><tr><th>Agente</th><th>In corso</th><th>Maturate</th><th>Liquidate</th><th></th></tr></thead><tbody>';
+      + '<p class="aiuto">In attesa di pagamento: il cliente non ha ancora pagato Pro Farmer. Da fatturare: ha pagato, l’agente ha avuto la notifica e manda la fattura. '
+      + 'Quando la fattura arriva nel cassetto fiscale, «Saldate oggi» mette la data di oggi su tutte quelle da fatturare di quell’agente.</p>'
+      + '<div class="ordine-scorri"><table class="tabella ordine-conto"><thead><tr><th>Agente</th><th>In attesa di pagamento</th><th>Da fatturare</th><th>Saldate</th><th></th></tr></thead><tbody>';
     agenti.forEach(a => {
       const suoi = dati.ordini.filter(o => o.venditore_id === a.id && o.stato !== 'annullato');
       const somma = l => l.reduce((s, o) => s + Number(o.provvigione || 0), 0);
@@ -971,13 +972,13 @@ const ProFarmer = (() => {
       const mat = suoi.filter(o => o.stato === 'pagato' && !o.provvigione_liquidata_il);
       const inc = suoi.filter(o => o.stato !== 'pagato' && !o.provvigione_liquidata_il);
       h += `<tr><th>${esc(a.nome)}</th><td>${euro(somma(inc))}</td><td><strong>${euro(somma(mat))}</strong></td><td>${euro(somma(liq))}</td>`
-        + `<td>${mat.length ? `<button type="button" class="bottone bottone-fantasma pf-piccolo" data-liquida="${esc(a.id)}">Segna liquidate oggi</button>` : ''}</td></tr>`;
+        + `<td>${mat.length ? `<button type="button" class="bottone bottone-fantasma pf-piccolo" data-liquida="${esc(a.id)}">Saldate oggi</button>` : ''}</td></tr>`;
     });
     h += '</tbody></table></div><p class="errore" hidden></p></div>';
     corpo.innerHTML = h;
     corpo.querySelectorAll('[data-liquida]').forEach(b => b.addEventListener('click', () => {
       const ids = dati.ordini.filter(o => o.venditore_id === b.dataset.liquida && o.stato === 'pagato' && !o.provvigione_liquidata_il).map(o => o.id);
-      if (!confirm(`Segno liquidate ${ids.length} ${ids.length === 1 ? 'provvigione' : 'provvigioni'} con la data di oggi?`)) return;
+      if (!confirm(`Fattura ricevuta: segno saldate ${ids.length} ${ids.length === 1 ? 'provvigione' : 'provvigioni'} con la data di oggi?`)) return;
       salva(b, () => sb.from('ordini').update({ provvigione_liquidata_il: oggi() }).in('id', ids));
     }));
   }

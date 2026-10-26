@@ -600,7 +600,7 @@ const Venditori = (() => {
     if (cond.ruolo === 'agente') {
       const mat = validi.filter(o => o.stato === 'pagato' && !o.liquidata).reduce((x, o) => x + (o.provvigione || 0), 0);
       const inc = validi.filter(o => o.stato !== 'pagato' && !o.liquidata).reduce((x, o) => x + (o.provvigione || 0), 0);
-      soldi = nO ? `${euro(mat)} maturate · ${euro(inc)} in corso` : 'Le vedrai dal primo ordine';
+      soldi = nO ? `${euro(mat)} da fatturare · ${euro(inc)} in attesa di pagamento` : 'Le vedrai dal primo ordine';
     } else if (cond.ruolo === 'rivenditore') {
       const m = validi.reduce((x, o) => x + (o.margine || 0), 0);
       soldi = nO ? `${euro(m)} di margine stimato` : 'Lo vedrai dal primo ordine';
@@ -1371,7 +1371,7 @@ const Venditori = (() => {
         + `<p class="ordine-dati">${esc(o.data)} · n. ${esc(o.numero)} · ${cond.ruolo === 'rivenditore' ? 'paghi' : 'importo'} `
         + `<b>${euro(importoOrdine(o))}</b>`
         + (etSoldi ? ` · ${etSoldi} <b>${euro(soldiOrdine(o))}</b>` : '')
-        + (o.liquidata ? ` · liquidata il ${esc(o.liquidata)}` : '') + '</p>'
+        + (o.liquidata ? ` · saldata il ${esc(o.liquidata)}` : '') + '</p>'
         + `<button type="button" class="riordina-qui" data-riordina="${esc(o.id)}">Riordina</button></li>`;
     });
     h += '</ul></div>';
@@ -1380,8 +1380,10 @@ const Venditori = (() => {
 
   /* ------------------------------------------------- provvigioni e margini */
 
-  /* La regola, decisa nello script: maturata quando il cliente ha pagato,
-     liquidata quando Pro Farmer ha scritto la data di liquidazione. */
+  /* La regola di Giulio (26/10/2026): la provvigione si calcola con l'ordine ed
+     è IN ATTESA DI PAGAMENTO finché Pro Farmer non incassa; poi è DA FATTURARE
+     (l'agente manda la fattura); SALDATA quando Pro Farmer la paga, vista
+     fattura, e ne scrive la data. */
   function disegnaSoldi() {
     const validi = area.ordini.filter(o => o.stato !== 'annullato');
     const quanto = o => cond.ruolo === 'interno' ? (importoOrdine(o) || 0) : (soldiOrdine(o) || 0);
@@ -1393,11 +1395,12 @@ const Venditori = (() => {
     let h = `<div class="blocco"><h3>${esc(nomeSoldi())}</h3>`;
     if (cond.ruolo === 'agente') {
       h += '<dl class="numeri soldi">'
-        + cellaSoldi('In corso', somma(inCorso), `${inCorso.length} ${inCorso.length === 1 ? 'ordine' : 'ordini'} non ancora ${inCorso.length === 1 ? 'pagato' : 'pagati'} dal cliente`)
-        + cellaSoldi('Maturate', somma(maturate), 'cliente ha pagato, da liquidare')
-        + cellaSoldi('Liquidate', somma(liquidate), 'già pagate a te')
+        + cellaSoldi('In attesa di pagamento', somma(inCorso), `${inCorso.length} ${inCorso.length === 1 ? 'ordine' : 'ordini'}: Pro Farmer non ha ancora ricevuto il pagamento`)
+        + cellaSoldi('Da fatturare', somma(maturate), 'il cliente ha pagato: manda la fattura a Pro Farmer')
+        + cellaSoldi('Saldate', somma(liquidate), 'pagate a te, vista la fattura')
         + '</dl>';
-      h += `<p class="aiuto">Le provvigioni maturano quando il cliente paga, e diventano liquidate quando Pro Farmer te le paga. `
+      h += `<p class="aiuto">La provvigione si calcola quando mandi l’ordine. Quando Pro Farmer riceve il pagamento del cliente diventa da fatturare: `
+        + 'mandaci la fattura e la saldiamo appena arriva nel cassetto fiscale. '
         + 'Gli ordini annullati non contano.</p>';
     } else if (cond.ruolo === 'rivenditore') {
       h += '<p class="aiuto">Quanto hai acquistato da Pro Farmer e il margine che ti resta rivendendo a listino. '
@@ -1575,7 +1578,7 @@ const Venditori = (() => {
     h += '<div class="blocco"><h3>Come si lavora</h3><ol class="passi">'
       + '<li><strong>Nuovo ordine</strong>: scegli il cliente e le quantità. Per un cliente che riordina, tocca il suo nome sotto <strong>Riordina</strong>: le quantità sono già quelle dell’ultima volta.</li>'
       + '<li>Per un allevamento nuovo, <strong>Calcola una stalla</strong>: prodotto, dose e quantità sono pronti, e sotto c’è già l’ordine da mandare.</li>'
-      + '<li>Pro Farmer conferma e aggiorna lo stato: lo segui in <strong>Ordini</strong>, e in <strong>' + esc(nomeSoldi()) + '</strong> vedi quanto hai maturato.</li>'
+      + '<li>Pro Farmer conferma e aggiorna lo stato: lo segui in <strong>Ordini</strong>, e in <strong>' + esc(nomeSoldi()) + '</strong> vedi le tue provvigioni.</li>'
       + '</ol></div>';
 
     h += bloccoNotifiche();
