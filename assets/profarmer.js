@@ -402,6 +402,7 @@ const ProFarmer = (() => {
   /* La scheda del preventivo FiC: prezzi €/t, trasporto, pagamento, consegna,
      già riempita con quello che c'è: i prezzi dell'ordine (conto), se no
      quelli dell'ultima fattura del cliente, se no il listino. */
+  const SCONTO_VUOTO = 'Facoltativo: se scrivi il prezzo prima dello sconto, nel preventivo compare lo sconto in percentuale.';
   function apriSchedaFic(box, o) {
     sb.functions.invoke('fic', { body: { azione: 'scheda', ordine: o.id } }).then(r => {
       if (r.error || !r.data || !r.data.ok) throw new Error((r.data && r.data.motivo) || 'Fatture in Cloud non risponde');
@@ -420,7 +421,9 @@ const ProFarmer = (() => {
       }
       h += '<div class="pf-campi">';
       ['bigbag', 'sacchi', 'ballette'].filter(x => o[x]).forEach(x => {
-        h += `<label>${esc(VOCI_FIC[x])} €/t<input type="number" step="0.01" min="0" name="p_${x}" value="${esc(prezzo(x))}" required></label>`;
+        h += `<label>${esc(VOCI_FIC[x])} €/t<input type="number" step="0.01" min="0" name="p_${x}" value="${esc(prezzo(x))}" required></label>`
+          + `<label>Prezzo prima dello sconto €/t<input type="number" step="0.01" min="0" name="pp_${x}"></label>`
+          + `<p class="aiuto pf-largo" data-sconto="${x}">${SCONTO_VUOTO}</p>`;
       });
       h += `<label>Trasporto €<input type="number" step="1" min="0" name="trasporto" value="${esc(v(o.trasporto != null ? o.trasporto : ult.trasporto))}"></label>`
         + `<label>Trasportatore<select name="trasportatore" class="pf-select"><option value="">Generico</option>`
@@ -438,16 +441,32 @@ const ProFarmer = (() => {
         + 'L’ordine passa a «confermato». La fattura la fai in FiC come sempre.</p></form>';
       box.innerHTML = h;
       const f = box.querySelector('form');
+      /* Prezzo di partenza (27/10/2026): se è più alto del prezzo al cliente, nel preventivo
+         la riga ha il prezzo prima dello sconto e lo sconto % evidenziato. Qui si vede subito lo sconto. */
+      const mostraSconto = () => f.querySelectorAll('[data-sconto]').forEach(p => {
+        const x = p.dataset.sconto, pr = Number(f.elements['p_' + x].value), pp = Number(f.elements['pp_' + x].value);
+        if (pp > 0 && pr > 0 && pp > pr) {
+          const sc = Math.round((1 - pr / pp) * 10000) / 100;
+          p.textContent = `Nel preventivo: ${euro(pp)}/t con sconto del ${sc.toLocaleString('it-IT')}% evidenziato, quindi ${euro(pr)}/t.`;
+        } else if (pp > 0 && pr > 0) p.textContent = 'Il prezzo prima dello sconto deve essere più alto del prezzo al cliente, se no non c\'è sconto.';
+        else p.textContent = SCONTO_VUOTO;
+      });
+      f.addEventListener('input', mostraSconto);
       f.querySelector('[data-chiudi]').addEventListener('click', () => { schedaAperta = null; mostra(); });
       f.addEventListener('submit', ev => {
         ev.preventDefault();
         const d = new FormData(f);
         const prezzi = {};
-        ['bigbag', 'sacchi', 'ballette'].forEach(x => { if (d.has('p_' + x)) prezzi[x] = Number(d.get('p_' + x)); });
+        const partenza = {};
+        ['bigbag', 'sacchi', 'ballette'].forEach(x => {
+          if (d.has('p_' + x)) prezzi[x] = Number(d.get('p_' + x));
+          const pp = Number(d.get('pp_' + x));
+          if (pp > prezzi[x]) partenza[x] = pp;
+        });
         const err = f.querySelector('.errore');
         if (Object.values(prezzi).some(x => !(x > 0))) { err.textContent = 'Scrivi tutti i prezzi a tonnellata.'; err.hidden = false; return; }
         const sel = f.querySelector('[name=pagamento]');
-        const corpo = { azione: 'preventivo', ordine: o.id, prezzi, trasporto: Number(d.get('trasporto')) || 0,
+        const corpo = { azione: 'preventivo', ordine: o.id, prezzi, partenza, trasporto: Number(d.get('trasporto')) || 0,
           trasportatore: d.get('trasportatore') || '', pagamento: d.get('pagamento'),
           pagamentoNome: sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : null,
           consegna: d.get('consegna') || null, note: d.get('note') || '', sconti: d.getAll('sconto') };
