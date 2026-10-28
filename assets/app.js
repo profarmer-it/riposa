@@ -658,9 +658,13 @@ function mostraConferma(esito) {
   let h = '<div class="trovato">';
   h += '<span class="trovato-spunta">✓</span>';
   h += '<h2>Te l’abbiamo mandato per e-mail</h2>';
-  h += `<p>${esito && esito.email === false
-    ? 'L’abbiamo ricevuto: te l’abbiamo già mandato da poco a ' + esc(datiContatto.email) + ', controlla la casella.'
-    : 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi tra qualche minuto, guarda nella posta indesiderata.'}</p>`;
+  // il motivo vero, se l'e-mail non è partita (audit 28/10/2026)
+  const perche = esito && esito.email === false ? (esito.perche || 'recente') : null;
+  h += `<p>${perche === 'recente'
+    ? 'Questo stesso calcolo te l’abbiamo già mandato pochi minuti fa a ' + esc(datiContatto.email) + ': controlla la casella e la posta indesiderata.'
+    : perche
+      ? 'L’abbiamo ricevuto, ma in questo momento l’e-mail non è partita. Ti ricontattiamo noi, oppure chiamaci al +39 376 129 6162.'
+      : 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi tra qualche minuto, guarda nella posta indesiderata.'}</p>`;
   h += '<div class="azioni">';
   h += '<button type="button" class="bottone bottone-fantasma" id="btn-ricomincia">Fai un altro calcolo</button>';
   h += '</div>';
@@ -981,6 +985,10 @@ function inviaLead(dati, r) {
     fornitura:      (fornituraConsigliata(r) || {}).testo || '',
     fornituraMesi:  (fornituraConsigliata(r) || {}).mesi || '',
     fornituraCopre: (fornituraConsigliata(r) || {}).minimo ? fornituraConsigliata(r).copre : '',
+    // l'alternativa di «Come lo propone Riposa», anche nell'e-mail (audit 28/10/2026)
+    alternativa:    (r.premium || []).map(a => `${a.scenario.alternativaTesti.riepilogo}: ${a.prodotto.nome}, `
+                    + `${kg(a.dosePerCuccetta)} kg per cuccetta${a.miscelata ? ` in ${kg(a.mixPerCuccetta)} kg di mix` : ''}, `
+                    + `${a.etichettaFrequenza} (${migliaia(a.kgMese)} kg al mese)`).join('. '),
     // l'app sul telefono (24/10/2026): il telefono che ha già fatto un calcolo si fa riconoscere
     kgPezzo:        r.confezioneConsigliata ? r.confezioneConsigliata.kg : '',
     app:            typeof Allevatore !== 'undefined' ? Allevatore.credenziali() : null

@@ -68,8 +68,10 @@ const ProFarmer = (() => {
       sb.rpc('chiamate_fatte'),
       sb.rpc('compleanni_prossimi'),
       sb.rpc('passaggi_gestione', { p_giorni: 30 }),
-      sb.rpc('foto_gestione')
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo]) => {
+      sb.rpc('foto_gestione'),
+      // l'ultimo giro notturno con FiC (30-audit-28-10.sql)
+      sb.from('fic_giri').select('il, esito').order('id', { ascending: false }).limit(1)
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi]) => {
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
@@ -78,8 +80,24 @@ const ProFarmer = (() => {
                chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [],
                passaggi: (!pa.error && pa.data) || null,
                // le foto per i social (29-foto-social.sql): se la funzione non c'è ancora, la scheda lo dice
-               foto: (!fo.error && fo.data) || null };
+               foto: (!fo.error && fo.data) || null,
+               giroFic: (!gi.error && gi.data && gi.data[0]) || null };
     });
+  }
+
+  /* Il collegamento notturno con FiC: quando è girato e se è andato bene
+     (audit 28/10/2026). Se non gira da più di un giorno o ha errori, in rosso. */
+  function rigaGiroFic() {
+    const g = dati.giroFic;
+    if (!g) return '<p class="aiuto">Collegamento con Fatture in Cloud: ancora nessun giro registrato.</p>';
+    const e = g.esito || {}, errori = (e.errori || []).length, vecchio = Date.now() - new Date(g.il).getTime() > 26 * 36e5;
+    const quando = new Date(g.il).toLocaleString('it-IT', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const testo = `Ultimo collegamento con Fatture in Cloud: ${quando}. `
+      + (e.errore ? `Non è andato: ${e.errore}`
+        : `${e.fatture_collegate || 0} ${e.fatture_collegate === 1 ? 'fattura collegata' : 'fatture collegate'}, ${e.clienti_aggiornati || 0} ${e.clienti_aggiornati === 1 ? 'cliente aggiornato' : 'clienti aggiornati'}`
+          + (errori ? `, ${errori} ${errori === 1 ? 'errore' : 'errori'}: ${(e.errori || [])[0]}` : ', nessun errore') + '.')
+      + (vecchio ? ' Non gira da più di un giorno: avvisa Claude.' : '');
+    return `<p class="${e.errore || errori || vecchio ? 'errore' : 'aiuto'}">${esc(testo)}</p>`;
   }
 
   function disegna(contenitore, collegamento) {
@@ -349,8 +367,15 @@ const ProFarmer = (() => {
       corpo.insertAdjacentHTML('beforeend', '<datalist id="pf-trasportatori"><option value="Cavaglieri"><option value="Ghisoni"></datalist>');
     }
     const ordineDi = el => dati.ordini.find(o => o.id === el.closest('[data-id]').dataset.id);
+    // i passaggi che avvisano qualcuno o annullano: prima una conferma (audit 28/10/2026)
+    const CONFERMA = {
+      pagato: 'Segno l’ordine come pagato? Se è di un agente, gli arriva subito «Provvigione da fatturare».',
+      consegnato: 'Segno l’ordine come consegnato? Partono i diamanti dell’agente e la chiamata di feedback.',
+      annullato: 'Lo annullo? Se c’è un preventivo in Fatture in Cloud resta lì: cancellalo a mano se serve.'
+    };
     corpo.querySelectorAll('[data-passa]').forEach(b => b.addEventListener('click', () => {
       const o = ordineDi(b);
+      if (CONFERMA[b.dataset.passa] && !confirm(`${o.cliente || 'Ordine'}: ${CONFERMA[b.dataset.passa]}`)) return;
       salva(b, () => sb.from('ordini').update({ stato: b.dataset.passa }).eq('id', o.id),
         `${o.cliente || 'Ordine'}: ${NOME_STATO[b.dataset.passa].toLowerCase()}`);
     }));
@@ -678,7 +703,7 @@ const ProFarmer = (() => {
       h += `<button type="button" class="cr-casella${n ? ' cr-attenzione' : ''}" data-vai="${dove}">`
         + `<b>${n}</b><span>${esc(cosa)}</span><small>${esc(sotto)}</small></button>`;
     });
-    h += '</div></div>';
+    h += '</div>' + rigaGiroFic() + '</div>';
 
     // i compleanni di oggi e della settimana: un messaggio di auguri
     if (dati.compleanni.length) {

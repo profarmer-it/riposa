@@ -106,6 +106,12 @@ const Venditori = (() => {
   }
   const PRO_FARMER = { email: 'info@profarmer.it', telefono: '+39 376 129 6162', tel: '+393761296162' };
 
+  function nuovaChiave() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    const h = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+  }
+
   function statoVuoto() {
     return { bigbag: '', sacchi: '', ballette: '', annuale: false, clienteId: '' };
   }
@@ -538,7 +544,9 @@ const Venditori = (() => {
       clienti: r.clienti || [],
       ordini: r.ordini || [],
       // solo link web sicuri, anche se il database li ha già filtrati
-      materiali: (r.materiali || []).filter(m => /^https:\/\//.test(m.link || ''))
+      materiali: (r.materiali || []).filter(m => /^https:\/\//.test(m.link || '')),
+      // i contatti arrivano a parte (caricaContatti): una ricarica non li deve svuotare (audit 28/10/2026)
+      contatti: (area && area.contatti) || []
     };
   }
 
@@ -599,8 +607,12 @@ const Venditori = (() => {
   }
 
   /* "La mia area": una tessera per sezione, ognuna con il dato che serve a colpo d'occhio. */
+  /* Contano come vendite gli ordini non annullati; i preventivi non ancora
+     accettati dal cliente no (audit 28/10/2026). */
+  const conta = o => o.stato !== 'annullato' && o.tipo !== 'preventivo';
+
   function disegnaHome() {
-    const validi = area.ordini.filter(o => o.stato !== 'annullato');
+    const validi = area.ordini.filter(conta);
     const ultimo = validi[0];
     const nC = area.clienti.length, nO = validi.length, nM = area.materiali.length;
     let soldi = '';
@@ -733,7 +745,7 @@ const Venditori = (() => {
     const visti = new Set(), ultimi = [];
     area.ordini.forEach(o => {
       const chi = o.clienteId || o.cliente;
-      if (o.stato === 'annullato' || !chi || visti.has(chi) || ultimi.length >= 3) return;
+      if (!conta(o) || !chi || visti.has(chi) || ultimi.length >= 3) return;
       visti.add(chi);
       ultimi.push(o);
     });
@@ -1449,7 +1461,7 @@ const Venditori = (() => {
      (l'agente manda la fattura); SALDATA quando Pro Farmer la paga, vista
      fattura, e ne scrive la data. */
   function disegnaSoldi() {
-    const validi = area.ordini.filter(o => o.stato !== 'annullato');
+    const validi = area.ordini.filter(conta);
     const quanto = o => cond.ruolo === 'interno' ? (importoOrdine(o) || 0) : (soldiOrdine(o) || 0);
     const somma = l => l.reduce((s, o) => s + quanto(o), 0);
     const liquidate = validi.filter(o => o.liquidata);
@@ -1465,10 +1477,10 @@ const Venditori = (() => {
         + '</dl>';
       h += `<p class="aiuto">La provvigione si calcola quando mandi l’ordine. Quando Pro Farmer riceve il pagamento del cliente diventa da fatturare: `
         + 'mandaci la fattura e la saldiamo appena arriva nel cassetto fiscale. '
-        + 'Gli ordini annullati non contano.</p>';
+        + 'Gli ordini annullati e i preventivi non ancora accettati non contano.</p>';
     } else if (cond.ruolo === 'rivenditore') {
       h += '<p class="aiuto">Quanto hai acquistato da Pro Farmer e il margine che ti resta rivendendo a listino. '
-        + 'È una stima: il margine vero dipende dal prezzo a cui rivendi. Gli ordini annullati non contano.</p>';
+        + 'È una stima: il margine vero dipende dal prezzo a cui rivendi. Gli ordini annullati e i preventivi non ancora accettati non contano.</p>';
     }
 
     // per mese
@@ -2291,6 +2303,10 @@ const Venditori = (() => {
     if (stato.note) p.note = stato.note;
     if (stato.annuale) p.annuale = true;
     if (prev) p.tipo = 'preventivo';
+    // la chiave dell'invio: se la rete perde la risposta e si preme di nuovo,
+    // il database riconosce lo stesso ordine e non lo salva due volte (audit 28/10/2026)
+    if (!stato.chiave) stato.chiave = nuovaChiave();
+    p.chiave = stato.chiave;
     const chi = scelto ? scelto.ragione : (stato.ragione || cond.nome);
     if (ultimoCalcolo) p.calcolo = testoRiepilogo({ azienda: chi }, ultimoCalcolo);
 
