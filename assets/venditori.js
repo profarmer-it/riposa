@@ -762,7 +762,6 @@ const Venditori = (() => {
     if (!o) return;
     stato = statoVuoto();
     VOCI.forEach(v => { stato[v.id] = o[v.id] ? String(o[v.id]) : ''; });
-    stato.annuale = !!o.annuale;
     const ancora = area.clienti.some(c => c.id === o.clienteId);   // il cliente c'è ancora in lista?
     ordineDiretto(ancora ? o.clienteId : '');
   }
@@ -2031,13 +2030,15 @@ const Venditori = (() => {
       h += `<tr><th>piùLact, big bag</th><td>listino ${euro(L.bigbag)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
       h += `<tr><th>piùLact, sacchi</th><td>listino ${euro(L.sacchi)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
       h += `<tr><th>piùLact Pronto, ballette</th><td>listino ${euro(L.ballette / 10)}/q · provvigione ${perc(cond.ballette.provvigione.standard)}, `
-        + `${perc(cond.ballette.provvigione.annuale)} con fornitura annuale</td></tr>`;
+        + `${perc(cond.ballette.provvigione.annuale)} con fornitura annuale (la attiva Pro Farmer sul cliente)</td></tr>`;
       h += '<tr><th>Su cosa</th><td>Solo sulle tue vendite dirette al cliente finale.</td></tr>';
+      h += '<tr><th>Sconti</th><td>Se Pro Farmer fa uno sconto al tuo cliente (al massimo il 10%), lo dividiamo a metà: '
+        + 'la tua provvigione cala di metà dello sconto. La cifra aggiornata la vedi nell’ordine.</td></tr>';
     } else if (cond.ruolo === 'rivenditore') {
       h += `<tr><th>piùLact, big bag</th><td>paghi ${euro(cond.piulact.bigbag)}/t · listino ${euro(L.bigbag)}/t</td></tr>`;
       h += `<tr><th>piùLact, sacchi</th><td>paghi ${euro(cond.piulact.sacchi)}/t · listino ${euro(L.sacchi)}/t</td></tr>`;
       h += `<tr><th>piùLact Pronto, ballette</th><td>sconto ${perc(cond.ballette.sconto.standard)} sul listino di ${euro(L.ballette / 10)}/q, `
-        + `${perc(cond.ballette.sconto.annuale)} con fornitura annuale</td></tr>`;
+        + `${perc(cond.ballette.sconto.annuale)} con fornitura annuale (la attiva Pro Farmer sul cliente)</td></tr>`;
     } else {
       h += `<tr><th>Listini</th><td>big bag ${euro(L.bigbag)}/t · sacchi ${euro(L.sacchi)}/t · ballette ${euro(L.ballette / 10)}/q</td></tr>`;
     }
@@ -2120,11 +2121,6 @@ const Venditori = (() => {
     });
     h += '</div>';
 
-    if (cond.ruolo !== 'interno') {
-      h += '<label class="spunta-riga"><input type="checkbox" name="annuale"' + (stato.annuale ? ' checked' : '') + '>'
-        + '<span>Fornitura annuale a condizioni bloccate<small>Vale solo per le ballette.</small></span></label>';
-    }
-
     h += '<div id="ordine-conto"></div>';
 
     h += `<h3 style="margin-top:22px">${rivend ? 'Per chi è' : 'Il cliente'}</h3>`;
@@ -2180,7 +2176,17 @@ const Venditori = (() => {
     VOCI.forEach(v => { stato[v.id] = d.get(v.id) || ''; });
     CAMPI_ORDINE.concat(['note', 'clienteId']).forEach(k => { stato[k] = (d.get(k) || '').trim(); });
     stato.sdi = stato.sdi.toUpperCase();
-    stato.annuale = d.get('annuale') === 'on';
+    stato.annuale = !!annualeFino(stato.clienteId);
+  }
+
+  /* La fornitura annuale la mette Pro Farmer sul cliente (Giulio, 28/10/2026):
+     se il contratto è in corso, le ballette hanno le condizioni annuali. */
+  function annualeFino(clienteId) {
+    const c = clienteId && area.clienti.find(x => x.id === clienteId);
+    const m = c && /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(c.annualeFinoAl || '');
+    if (!m) return '';
+    const fine = new Date(+m[3], +m[2] - 1, +m[1], 23, 59);
+    return fine >= new Date() ? c.annualeFinoAl : '';
   }
 
   function righeOrdine() {
@@ -2197,7 +2203,10 @@ const Venditori = (() => {
     }
     const ruolo = cond.ruolo;
     const nomi = { bigbag: 'piùLact big bag', sacchi: 'piùLact sacchi', ballette: 'piùLact Pronto' };
-    let h = '<div class="ordine-scorri"><table class="tabella ordine-conto"><thead><tr><th>Voce</th><th>t</th>';
+    const fino = annualeFino(stato.clienteId);
+    let h = fino && Number(stato.ballette) > 0
+      ? `<p class="aiuto">Fornitura annuale fino al ${esc(fino)}: le ballette di questo cliente hanno le condizioni annuali.</p>` : '';
+    h += '<div class="ordine-scorri"><table class="tabella ordine-conto"><thead><tr><th>Voce</th><th>t</th>';
     if (ruolo === 'rivenditore') h += '<th>Paghi</th><th>Rivendi</th><th>Margine</th>';
     else if (ruolo === 'agente') h += '<th>Il cliente paga</th><th>Provvigione</th>';
     else h += '<th>Il cliente paga</th>';
@@ -2301,7 +2310,6 @@ const Venditori = (() => {
     if (scelto) p.clienteId = scelto.id;
     else if (!perMagazzino) CAMPI_ORDINE.forEach(k => { if (stato[k]) p[k] = stato[k]; });
     if (stato.note) p.note = stato.note;
-    if (stato.annuale) p.annuale = true;
     if (prev) p.tipo = 'preventivo';
     // la chiave dell'invio: se la rete perde la risposta e si preme di nuovo,
     // il database riconosce lo stesso ordine e non lo salva due volte (audit 28/10/2026)

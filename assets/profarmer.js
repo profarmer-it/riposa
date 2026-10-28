@@ -70,8 +70,12 @@ const ProFarmer = (() => {
       sb.rpc('passaggi_gestione', { p_giorni: 30 }),
       sb.rpc('foto_gestione'),
       // l'ultimo giro notturno con FiC (30-audit-28-10.sql)
-      sb.from('fic_giri').select('il, esito').order('id', { ascending: false }).limit(1)
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi]) => {
+      sb.from('fic_giri').select('il, esito').order('id', { ascending: false }).limit(1),
+      // le note interne sui venditori: tabella a parte, il venditore non la legge (31-regole-28-10.sql)
+      sb.from('venditori_note').select('venditore_id, note')
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn]) => {
+      const noteV = new Map(((!vn.error && vn.data) || []).map(x => [x.venditore_id, x.note]));
+      (ve.data || []).forEach(x => { x.note = noteV.get(x.id) || null; });
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
@@ -450,6 +454,8 @@ const ProFarmer = (() => {
           + `<label>Prezzo prima dello sconto €/t<input type="number" step="0.01" min="0" name="pp_${x}"></label>`
           + `<p class="aiuto pf-largo" data-sconto="${x}">${SCONTO_VUOTO}</p>`;
       });
+      // cliente di un agente: sconto al massimo del 10%, diviso a metà con l'agente (Giulio, 28/10/2026)
+      if (o.ruolo === 'agente') h += '<p class="aiuto pf-largo" data-provv></p>';
       h += `<label>Trasporto €<input type="number" step="1" min="0" name="trasporto" value="${esc(v(o.trasporto != null ? o.trasporto : ult.trasporto))}"></label>`
         + `<label>Trasportatore<select name="trasportatore" class="pf-select"><option value="">Generico</option>`
         + s.trasportatori.map(t => `<option${t === (o.trasportatore || ult.trasportatore) ? ' selected' : ''}>${esc(t)}</option>`).join('') + '</select></label>'
@@ -476,7 +482,24 @@ const ProFarmer = (() => {
         } else if (pp > 0 && pr > 0) p.textContent = 'Il prezzo prima dello sconto deve essere più alto del prezzo al cliente, se no non c\'è sconto.';
         else p.textContent = SCONTO_VUOTO;
       });
-      f.addEventListener('input', mostraSconto);
+      const mostraProvv = () => {
+        const p = f.querySelector('[data-provv]');
+        if (!p) return;
+        let sconto = 0, oltre = '';
+        ((o.conto || {}).righe || []).forEach(r => {
+          const L = Number(r.clienteT), x = Number((f.elements['p_' + r.voce] || {}).value);
+          if (!(L > 0) || !(x > 0) || x >= L) return;
+          if (1 - x / L > 0.10 + 1e-6) oltre = `${VOCI_FIC[r.voce]}: sotto ${euro(L * 0.9)}/t lo sconto supera il 10% e il preventivo non parte. `;
+          sconto += (L - x) * Number(r.t || 0);
+        });
+        const base = Number(o.provvigione || 0);
+        p.className = 'aiuto pf-largo' + (oltre ? ' errore' : '');
+        p.textContent = oltre || (sconto > 0
+          ? `Cliente di un agente: sconto di ${euro(sconto)} sul listino, diviso a metà. Provvigione da ${euro(base)} a ${euro(Math.max(0, base - sconto / 2))}.`
+          : `Cliente di un agente: puoi scontare al massimo il 10% sul listino; lo sconto si divide a metà con l’agente. Provvigione ${euro(base)}.`);
+      };
+      mostraProvv();
+      f.addEventListener('input', () => { mostraSconto(); mostraProvv(); });
       f.querySelector('[data-chiudi]').addEventListener('click', () => { schedaAperta = null; mostra(); });
       f.addEventListener('submit', ev => {
         ev.preventDefault();
@@ -1023,8 +1046,12 @@ const ProFarmer = (() => {
         + `<p class="cliente-dati">${ord.length ? `${ord.length} ${ord.length === 1 ? 'ordine' : 'ordini'} in Riposa, l’ultimo il ${esc(dataIt(ord[0].creato_il))}` : 'Nessun ordine in Riposa'}</p>`
         + storicoFic(c)
         + (c.da_completare ? `<p class="cliente-dati pf-da-completare">Da completare per fatturare: ${esc(c.da_completare.replace(/\.$/, '').toLowerCase())}.</p>` : '')
-        + '<div class="pf-campi"><label>Assegnato a' + selectVenditore('venditore_id', c.venditore_id, false) + '</label></div>'
-        + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone" disabled>Sposta</button></div>'
+        + '<div class="pf-campi"><label>Assegnato a' + selectVenditore('venditore_id', c.venditore_id, false) + '</label>'
+        // la fornitura annuale la mette Pro Farmer (Giulio, 28/10/2026): vale per le ballette dei clienti di agenti e rivenditori
+        + (diretto ? '' : `<label>Fornitura annuale fino al <small>(vuoto = nessuna)</small><input type="date" name="annuale_fino_al" value="${esc(v(c.annuale_fino_al))}" data-prima="${esc(v(c.annuale_fino_al))}"></label>`)
+        + '</div>'
+        + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone" disabled>Sposta</button>'
+        + (diretto ? '' : '<button type="button" class="bottone bottone-fantasma" data-annuale disabled>Salva la fornitura annuale</button>') + '</div>'
         + '</form></li>';
     });
     h += '</ul></div>';
@@ -1033,6 +1060,14 @@ const ProFarmer = (() => {
     // «Sposta» si accende solo se l'assegnazione cambia davvero
     corpo.querySelectorAll('.pf-cliente').forEach(f => f.addEventListener('change', () => {
       f.querySelector('button[type=submit]').disabled = new FormData(f).get('venditore_id') === f.dataset.prima;
+      const a = f.querySelector('[name=annuale_fino_al]');
+      if (a) f.querySelector('[data-annuale]').disabled = a.value === a.dataset.prima;
+    }));
+    corpo.querySelectorAll('[data-annuale]').forEach(b => b.addEventListener('click', () => {
+      const f = b.closest('form'), data = f.querySelector('[name=annuale_fino_al]').value || null;
+      const ragione = f.querySelector('strong').textContent;
+      salva(b, () => sb.from('clienti').update({ annuale_fino_al: data }).eq('id', f.dataset.id),
+        data ? `${ragione}: fornitura annuale fino al ${dataIt(data)}` : `${ragione}: fornitura annuale tolta`);
     }));
     corpo.querySelectorAll('.pf-cliente').forEach(f => f.addEventListener('submit', ev => {
       ev.preventDefault();
@@ -1535,7 +1570,6 @@ const ProFarmer = (() => {
             provvigione_perc: nulloSeVuoto(d.get('provvigione_perc')),
             valide_fino: nulloSeVuoto(d.get('valide_fino')),
             attivo: d.get('attivo') === 'on',
-            note: nulloSeVuoto(String(d.get('note') || '').trim()),
             presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null,
             // le zone dell'agente: i lead di queste province gli vengono proposti (22-lead-agli-agenti.sql)
             province: d.get('ruolo') === 'interno' ? [] : leggiZona(d.get('province')).zona
@@ -1547,9 +1581,16 @@ const ProFarmer = (() => {
           if (riga.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(riga.email)) { err.textContent = 'L’e-mail non sembra valida.'; err.hidden = false; return; }
           const id = f.dataset.id;
           if (id) aperti.delete(id);   // salvata, la scheda si chiude
-          salva(f.querySelector('button[type=submit]'), () => id
-            ? sb.from('venditori').update(riga).eq('id', id)
-            : sb.from('venditori').insert(riga), id ? `Scheda di ${riga.nome} salvata` : `${riga.nome} aggiunto ai venditori`);
+          const nota = nulloSeVuoto(String(d.get('note') || '').trim());
+          const conNota = r => {
+            if (r.error) return r;
+            const vid = id || (r.data && r.data.id);
+            return vid ? sb.from('venditori_note').upsert({ venditore_id: vid, note: nota, aggiornato: new Date().toISOString() }) : r;
+          };
+          salva(f.querySelector('button[type=submit]'), () => (id
+            ? sb.from('venditori').update(riga).eq('id', id).then(conNota)
+            : sb.from('venditori').insert(riga).select('id').single().then(conNota)),
+            id ? `Scheda di ${riga.nome} salvata` : `${riga.nome} aggiunto ai venditori`);
         });
         const inv = f.querySelector('[data-invita]');
         if (inv) inv.addEventListener('click', () => { aperti.delete(f.dataset.id); salva(inv, () =>
