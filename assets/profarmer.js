@@ -1109,7 +1109,7 @@ const ProFarmer = (() => {
     const daVedere = F.invii.filter(i => i.stato === 'da_vedere');
     let h = '<div class="blocco"><h3>Foto da vedere</h3>'
       + `<p class="aiuto">Togli la spunta alle foto che non vanno (sfocate, doppioni, senza prodotto, volti senza liberatoria) e salva. `
-      + `I 💎 e gli sconti si danno da soli: al massimo ${F.regole.tetto_foto_mese} 💎 al mese dalle foto e ${F.regole.storie_mese} storie al mese per venditore, una storia per allevamento all’anno.</p>`;
+      + `I 💎 e gli sconti si danno da soli: al massimo ${F.regole.tetto_foto_mese} 💎 al mese dalle foto per venditore.</p>`;
     if (!daVedere.length) h += '<p class="aiuto">Nessuna foto da vedere.</p>';
     h += '<ul class="lista-clienti">';
     daVedere.forEach(i => {
@@ -1164,11 +1164,11 @@ const ProFarmer = (() => {
 
     // le regole
     const R = F.regole;
-    h += '<div class="blocco"><h3>Regole</h3><p class="aiuto">I diamanti di una foto e di una storia si cambiano in Premi → Traguardi. Ai rivenditori vanno come sconto, a 4 € a diamante.</p>'
+    h += '<div class="blocco"><h3>Regole</h3><p class="aiuto">I diamanti di una foto si cambiano in Premi → Traguardi. Ai rivenditori vanno come sconto, a 4 € a diamante.</p>'
       + '<form id="pf-regole-foto" novalidate><div class="pf-campi">'
       + `<label>Tetto 💎 al mese dalle foto<input name="tetto_foto_mese" type="number" min="0" max="200" step="1" value="${R.tetto_foto_mese}"></label>`
-      + `<label>Storie al mese<input name="storie_mese" type="number" min="0" max="20" step="1" value="${R.storie_mese}"></label>`
-      + `<label>Sconto all’allevatore €<input name="sconto_allevatore" type="number" min="0" max="1000" step="1" value="${R.sconto_allevatore}"></label>`
+      // la storia non c'è più (29/10/2026): storie_mese e sconto_allevatore restano a 0
+      + '<input type="hidden" name="storie_mese" value="0"><input type="hidden" name="sconto_allevatore" value="0">'
       + `<label>Validità dello sconto (mesi)<input name="mesi_validita" type="number" min="1" max="36" step="1" value="${R.mesi_validita}"></label>`
       + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva</button></div></form></div>';
 

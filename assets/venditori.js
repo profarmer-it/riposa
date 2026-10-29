@@ -884,12 +884,10 @@ const Venditori = (() => {
         out.push({ t, valore: Math.min(tm, t.soglia), max: Number(t.soglia), testo: tm >= t.soglia
           ? `${num(tm, 1)} t consegnate questo mese: traguardo raggiunto!`
           : `${num(tm, 1)} t su ${num(t.soglia, 1)} t consegnate questo mese` });
-      } else if ((t.codice === 'foto' || t.codice === 'storia') && area.foto) {
+      } else if (t.codice === 'foto' && area.foto) {
         const r = area.foto.regole || {}, m = area.foto.mese || {};
-        const [fatti, max] = t.codice === 'foto' ? [m.foto || 0, r.tetto_foto_mese || 10] : [m.storie || 0, r.storie_mese || 2];
-        out.push({ t, valore: Math.min(fatti, max), max, testo: t.codice === 'foto'
-          ? `${fatti} di ${max} 💎 questo mese dalle foto. Le mandi da «Foto per i social».`
-          : `${fatti} di ${max} storie questo mese. Una per allevamento all’anno.` });
+        const fatti = m.foto || 0, max = r.tetto_foto_mese || 10;
+        out.push({ t, valore: Math.min(fatti, max), max, testo: `${fatti} di ${max} 💎 questo mese dalle foto. Le mandi da «Foto per i social».` });
       } else if (t.codice === 'presentato' && d.presentati) {
         out.push({ t, testo: `${t.descrizione} Venditori che hai portato: ${d.presentati}.` });
       } else {
@@ -993,9 +991,6 @@ const Venditori = (() => {
     }
     h += '<h4>Le regole che tengono il gioco pulito</h4><ul>'
       + '<li>Un riordino vale se arriva almeno <strong>21 giorni</strong> dopo l’ordine precedente dello stesso cliente.</li>'
-      + '<li><strong>Motrice e bilico</strong> si contano sulle tonnellate consegnate nello stesso mese, e si sommano: chi arriva al bilico ha vinto anche la motrice.</li>'
-      + '<li>La <strong>costanza</strong> vuole almeno un ordine consegnato in ogni mese, senza salti: un mese vuoto fa ripartire la serie.</li>'
-      + '<li>Il <strong>nuovo venditore</strong> lo approva Pro Farmer. Vale quando consegna il primo ordine a un cliente nuovo; poi per il suo primo anno ricevi 1 diamante ogni volta che vince.</li>'
       + '<li>Il <strong>feedback</strong>: Pro Farmer chiama il tuo cliente dopo il suo 1° ordine consegnato, dopo il 3° e poi ogni due ordini (5°, 7°…). Se il giudizio è positivo vinci i diamanti, a ogni chiamata.</li>'
       + '<li>Le <strong>foto per i social</strong> valgono quando Pro Farmer le approva. Le regole sono nel Regolamento foto, in «Foto per i social».</li>'
       + '<li>Pro Farmer può dare <strong>bonus</strong> a mano, sempre con il motivo, e cambiare i valori dei traguardi: le modifiche valgono da quel momento, le vincite già fatte restano.</li></ul>';
@@ -1624,8 +1619,9 @@ const Venditori = (() => {
   /* --------------------------------------------------- le foto per i social
      Dal 27/10/2026 (29-foto-social.sql, regole di Giulio del 26/10/2026).
      Agenti e rivenditori mandano foto di piùLact in uso, scattate da loro o
-     dagli allevatori. Valgono quando Pro Farmer le approva: 2 💎 a foto, 10 a
-     storia; ai rivenditori lo stesso valore come sconto sul prossimo ordine.
+     dagli allevatori. Valgono quando Pro Farmer le approva: 1 💎 a foto (dal
+     29/10/2026, la storia non c'è più); ai rivenditori lo stesso valore come
+     sconto sul prossimo ordine.
      Il telefono porta il lato lungo a 2048 px e ricodifica in JPEG, così
      spariscono i dati nascosti dello scatto, GPS compreso. Le foto vanno nello
      spazio PRIVATO «foto-social», nella cartella di chi le manda. La
@@ -1642,7 +1638,7 @@ const Venditori = (() => {
     const attesa = (d.invii || []).filter(x => x.stato === 'da_vedere').length;
     if (attesa) return `${attesa} ${attesa === 1 ? 'invio' : 'invii'} in attesa di Pro Farmer`;
     const v = d.valori || {};
-    return d.ruolo === 'agente' ? `${v.foto || 2} 💎 a foto, ${v.storia || 10} a storia`
+    return d.ruolo === 'agente' ? `${v.foto || 1} 💎 a foto usabile`
       : d.ruolo === 'rivenditore' ? 'Uno sconto sul tuo prossimo ordine' : 'Le foto dei clienti diretti';
   }
 
@@ -1669,16 +1665,14 @@ const Venditori = (() => {
   function premioFoto(d) {
     const v = d.valori || {}, r = d.regole || {}, m = d.mese || {}, eur = Number(d.euro) || 4;
     if (d.ruolo === 'agente') {
-      return `<p class="aiuto">Ogni foto usabile vale <strong>${v.foto || 2} 💎</strong>, una storia <strong>${v.storia || 10} 💎</strong>, `
-        + 'quando Pro Farmer l’approva. '
-        + `Questo mese: ${m.foto || 0} di ${r.tetto_foto_mese || 10} 💎 dalle foto, ${m.storie || 0} di ${r.storie_mese || 2} storie.</p>`;
+      return `<p class="aiuto">Ogni foto usabile vale <strong>${v.foto || 1} 💎</strong>, quando Pro Farmer l’approva. `
+        + `Questo mese: ${m.foto || 0} di ${r.tetto_foto_mese || 10} 💎 dalle foto.</p>`;
     }
     if (d.ruolo === 'rivenditore') {
-      return `<p class="aiuto">Ogni foto usabile vale <strong>${(v.foto || 2) * eur} €</strong> di sconto sul tuo prossimo ordine, `
-        + `una storia <strong>${(v.storia || 10) * eur} €</strong>, quando Pro Farmer l’approva. `
-        + `Questo mese: ${(m.foto || 0) * eur} di ${(r.tetto_foto_mese || 10) * eur} € dalle foto, ${m.storie || 0} di ${r.storie_mese || 2} storie.</p>`;
+      return `<p class="aiuto">Ogni foto usabile vale <strong>${(v.foto || 1) * eur} €</strong> di sconto sul tuo prossimo ordine, quando Pro Farmer l’approva. `
+        + `Questo mese: ${(m.foto || 0) * eur} di ${(r.tetto_foto_mese || 10) * eur} € dalle foto.</p>`;
     }
-    return '<p class="aiuto">Per i clienti diretti. Una storia approvata dà lo sconto all’allevatore.</p>';
+    return '<p class="aiuto">Per i clienti diretti: le foto servono per i social di piùLact.</p>';
   }
 
   /* Il Regolamento foto: si accetta una volta, prima del primo invio. È la
@@ -1686,12 +1680,11 @@ const Venditori = (() => {
   function testoRegolamentoFoto(d) {
     const v = d.valori || {}, r = d.regole || {}, eur = Number(d.euro) || 4;
     const premio = d.ruolo === 'rivenditore'
-      ? `${(v.foto || 2) * eur} € di sconto sul tuo prossimo ordine per ogni foto usabile e ${(v.storia || 10) * eur} € per una storia`
-      : `${v.foto || 2} 💎 per ogni foto usabile e ${v.storia || 10} 💎 per una storia`;
+      ? `${(v.foto || 1) * eur} € di sconto sul tuo prossimo ordine per ogni foto usabile`
+      : `${v.foto || 1} 💎 per ogni foto usabile`;
     return '<ul class="regolamento-foto">'
       + '<li><strong>Cosa mandare:</strong> foto vere di piùLact in uso: cuccette, lettiere, il prodotto, le bovine sulla zona di riposo. A fuoco, con buona luce, scattate da meno di 3 mesi.</li>'
-      + `<li><strong>Il premio:</strong> ${premio}, quando Pro Farmer le approva. Al massimo ${r.tetto_foto_mese || 10} 💎 al mese dalle foto singole e ${r.storie_mese || 2} storie al mese, una per allevamento all’anno. Più foto quasi uguali contano come una.</li>`
-      + '<li><strong>Una storia</strong> è fatta di almeno 3 foto dello stesso allevamento e delle parole dell’allevatore su cosa è cambiato. Serve la sua liberatoria. All’allevatore va uno sconto di ' + (r.sconto_allevatore || 50) + ' € sul prossimo ordine.</li>'
+      + `<li><strong>Il premio:</strong> ${premio}, quando Pro Farmer le approva. Al massimo ${r.tetto_foto_mese || 10} 💎 al mese dalle foto. Più foto quasi uguali contano come una.</li>`
       + '<li><strong>Le persone:</strong> niente volti riconoscibili senza la liberatoria firmata da quella persona. Mai minori.</li>'
       + '<li><strong>Di chi sono le foto:</strong> mandi solo foto scattate da te, o dall’allevatore con il suo permesso. Mai foto prese da internet o da altri.</li>'
       + '<li><strong>L’uso:</strong> concedi a Pro Farmer Srls, gratis e senza scadenza, il diritto non esclusivo di usare le foto che mandi, anche tagliate o ritoccate, su social, sito, stampati e fiere. Il premio è il compenso. Pro Farmer non è obbligata a pubblicarle.</li>'
@@ -1704,7 +1697,7 @@ const Venditori = (() => {
     if (fotoFirma) return moduloLiberatoria(fotoFirma);
     if (!d.regolamento) {
       return '<div class="blocco"><h3>Foto per i social</h3>'
-        + '<p>Le storie vere di piùLact in stalla sono quelle che funzionano di più sui social. Manda le tue foto: Pro Farmer le guarda e premia quelle che può usare.</p>'
+        + '<p>Le foto vere di piùLact in stalla sono quelle che funzionano di più sui social. Manda le tue foto: Pro Farmer le guarda e premia quelle che può usare.</p>'
         + premioFoto(d) + '</div>'
         + '<div class="blocco"><h3>Il Regolamento foto</h3>' + testoRegolamentoFoto(d)
         + '<p class="errore" id="fs-errore" hidden></p><div class="azioni"><button type="button" class="bottone" id="fs-accetto">Accetto il regolamento</button></div></div>';
@@ -1723,15 +1716,10 @@ const Venditori = (() => {
       h += '<div class="campo pieno foto-liberatorie"><p class="cliente-dati"><strong>Liberatorie</strong></p>'
         + (lib.length ? '<ul>' + lib.map(l => `<li>✓ ${esc(l.nome)}, ${l.ruolo === 'titolare' ? 'titolare' : 'persona nelle foto'}`
             + `${[l.volto && 'volto', l.nome_azienda && 'nome dell’azienda', l.autore && 'foto sue'].filter(Boolean).length ? ' (' + [l.volto && 'volto', l.nome_azienda && 'nome dell’azienda', l.autore && 'foto sue'].filter(Boolean).join(', ') + ')' : ''} · ${esc(l.data)}</li>`).join('') + '</ul>'
-          : '<p class="aiuto">Nessuna ancora. Serve per una storia, per i volti e per dire il nome dell’azienda.</p>')
+          : '<p class="aiuto">Nessuna ancora. Serve per i volti e per dire il nome dell’azienda.</p>')
         + '<button type="button" class="bottone bottone-fantasma" id="fs-firma">Fai firmare la liberatoria</button></div>';
     }
-    h += '<fieldset class="campo pieno"><legend>Cosa mandi?</legend><div class="foto-tipo">'
-      + [['foto', 'Foto', `Una o più foto di piùLact in uso${d.ruolo === 'agente' ? ': ' + ((d.valori || {}).foto || 2) + ' 💎 a foto' : ''}.`],
-         ['storia', 'Storia', 'Almeno 3 foto dello stesso allevamento e le parole dell’allevatore. Serve la sua liberatoria.']]
-        .map(([v, t, s]) => `<label class="scelta scelta-piccola"><input type="radio" name="tipo" value="${v}"${m.tipo === v ? ' checked' : ''}>`
-          + `<span class="scelta-corpo"><strong>${t}</strong><small>${s}</small></span></label>`).join('')
-      + '</div></fieldset>';
+    m.tipo = 'foto';   // la storia non c'è più (29/10/2026)
     h += `<div class="campo pieno"><p class="cliente-dati"><strong>Le foto</strong> <span class="opzionale">${fotoScelte.length} di ${FOTO_SOCIAL_MAX}</span></p>`
       + '<div class="foto-griglia">' + fotoScelte.map((f, i) => `<figure><img src="${f.url}" alt="Foto ${i + 1}"><button type="button" data-togli-foto="${i}" aria-label="Togli la foto ${i + 1}">×</button></figure>`).join('') + '</div>'
       + (fotoScelte.length < FOTO_SOCIAL_MAX
