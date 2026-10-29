@@ -1536,12 +1536,36 @@ const Venditori = (() => {
      dati nascosti dello scatto, GPS compreso), poi la carica nella cartella
      del venditore su Supabase Storage. Vedi 14-foto-profilo.sql. */
   const FOTO_LATO = 400;
+  /* Dal 29/10/2026 lo spazio «foto-profilo» è privato: nel profilo resta il percorso
+     (foto-profilo/<id>/profilo.jpg?t=…) e la foto si mostra con un indirizzo firmato,
+     valido un'ora, chiesto una volta e poi riusato. */
+  let fotoFirmata = '', fotoFirmataPer = '', fotoInFirma = '';
 
   function avatar(classe) {
     const f = area && area.profilo && area.profilo.foto;
-    return f
-      ? `<img class="${classe} account-foto" src="${esc(f)}" alt="" width="46" height="46">`
-      : `<span class="${classe}" aria-hidden="true">${esc(iniziali(cond.nome))}</span>`;
+    if (f && fotoFirmata && fotoFirmataPer === f)
+      return `<img class="${classe} account-foto" src="${esc(fotoFirmata)}" alt="" width="46" height="46">`;
+    if (f) firmaFoto(f);
+    return `<span class="${classe}"${f ? ` data-foto-attesa="${esc(classe)}"` : ''} aria-hidden="true">${esc(iniziali(cond.nome))}</span>`;
+  }
+
+  function firmaFoto(f) {
+    if (fotoInFirma === f) return;
+    fotoInFirma = f;
+    rpc('mio_id').then(mio => collegamento().storage.from('foto-profilo').createSignedUrls([`${mio}/profilo.jpg`], 3600))
+      .then(({ data }) => {
+        const u = data && data[0] && data[0].signedUrl;
+        if (!u || !area || !area.profilo || area.profilo.foto !== f) return;
+        fotoFirmata = u; fotoFirmataPer = f;
+        setTimeout(() => { if (fotoFirmataPer === f) { fotoFirmata = ''; fotoFirmataPer = ''; } }, 50 * 60 * 1000);
+        document.querySelectorAll('[data-foto-attesa]').forEach(el => {
+          const img = document.createElement('img');
+          img.className = el.dataset.fotoAttesa + ' account-foto'; img.src = u; img.alt = ''; img.width = img.height = 46;
+          el.replaceWith(img);
+        });
+      })
+      .catch(() => { /* restano le iniziali */ })
+      .then(() => { if (fotoInFirma === f) fotoInFirma = ''; });
   }
 
   function bloccoFoto() {
@@ -1591,7 +1615,7 @@ const Venditori = (() => {
           return collegamento().storage.from('foto-profilo').upload(percorso, blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' })
             .then(({ error }) => {
               if (error) throw error;
-              const url = collegamento().storage.from('foto-profilo').getPublicUrl(percorso).data.publicUrl + '?t=' + Date.now();
+              const url = 'foto-profilo/' + percorso + '?t=' + Date.now();
               return rpc('salva_foto', { indirizzo: url }).then(() => url);
             });
         });
