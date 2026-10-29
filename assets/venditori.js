@@ -491,7 +491,7 @@ const Venditori = (() => {
       sb.auth.verifyOtp({ email: emailAccesso, token: codice, type: 'email' }).then(({ error }) => {
         if (error) {
           return mostraCodice(/expired|invalid/i.test(error.message)
-            ? 'Codice sbagliato o scaduto (vale un’ora). Ricontrolla, o chiedine uno nuovo.'
+            ? 'Codice sbagliato o scaduto (vale 15 minuti). Ricontrolla, o chiedine uno nuovo.'
             : 'Non riesco a controllare il codice: riprova tra poco.');
         }
         togliCodiceVecchio();
