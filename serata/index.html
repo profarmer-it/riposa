@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Serata piùLact · giovedì 19 novembre · Pro Farmer</title>
+<meta name="description" content="Giovedì 19 novembre 2026, ritrovo alle 18:30 a Cingia de’ Botti (CR): la serata Pro Farmer per agenti e rivenditori piùLact. Conferma la tua presenza.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#242320">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/icone/favicon-32.png">
+<meta property="og:title" content="Serata piùLact · giovedì 19 novembre, 18:30">
+<meta property="og:description" content="Per agenti e rivenditori piùLact: la nuova gamma, piùLact Pronto, Riposa Pro. Poi cena insieme. Conferma qui la tua presenza.">
+<meta property="og:image" content="https://riposa.profarmer.it/serata/apertura.jpg">
+<style>
+/* La pagina della serata del 19/11/2026 (29/10/2026, grafica rifatta lo stesso giorno).
+   Le risposte vanno alla funzione Supabase «serata» (integrazioni/supabase/functions/serata).
+   Colori del brand kit Pro Farmer; carattere Inter dai file di Riposa. */
+@font-face{font-family:Inter;src:url(../assets/font/inter-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Inter;src:url(../assets/font/inter-500.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:Inter;src:url(../assets/font/inter-600.woff2) format("woff2");font-weight:600 700;font-display:swap}
+@font-face{font-family:Inter;src:url(../assets/font/inter-800.woff2) format("woff2");font-weight:800;font-display:swap}
+:root{
+  --canvas:#F4ECE4; --carta:#FBF7F2; --grafite:#242320; --blu:#1F78D6; --blu-fondo:#0B3466; --arancio:#F7941D; --arancio-scuro:#E2831A;
+  --tenue:#4E4942; --sera-tenue:#CFC6BB; --errore:#B23A2E; --ok:#2E7D4F;
+  --margine:clamp(16px,3.4vw,48px); --linea:50%;
+  --t-display:clamp(64px,10vw,160px); --t-titolo:clamp(36px,4.6vw,68px); --t-frase:clamp(23px,2.5vw,36px); --t-testo:18px; --t-piccolo:15px;
+  --curva:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--canvas);color:var(--grafite);font:400 var(--t-testo)/1.5 Inter,-apple-system,"Segoe UI",Roboto,sans-serif}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blu);outline-offset:3px}
+.scuro :focus-visible{outline-color:var(--arancio)}
+.nascosto{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Barra in alto: prende l'inchiostro del capitolo che ha sotto */
+.barra{position:fixed;inset:0 0 auto 0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px var(--margine);padding-top:max(12px,env(safe-area-inset-top));color:#fff;background:transparent;transition:color .3s ease,background-color .3s ease}
+.barra .marchio{display:block;width:118px;height:44px;position:relative}
+.barra .marchio img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:left center;transition:opacity .3s ease}
+.barra.chiara{color:var(--grafite)}
+.barra.chiara .marchio img{filter:brightness(0) invert(12%)}
+.barra nav{display:flex;align-items:center;gap:28px;font-size:var(--t-piccolo);font-weight:500}
+.barra nav a:not(.bottone){text-decoration:none;padding:8px 0}
+.barra nav a:not(.bottone):hover{text-decoration:underline;text-underline-offset:5px}
+@media(max-width:720px){.barra nav a:not(.bottone){display:none}.barra .marchio{width:96px;height:36px}.barra .bottone{min-height:44px;padding:10px 16px;font-size:15px}}
+
+.bottone{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 22px;border:0;border-radius:0;
+  background:var(--arancio);color:var(--grafite);font:600 var(--t-piccolo)/1.2 Inter,sans-serif;text-decoration:none;cursor:pointer;
+  transition:background-color .2s ease,transform .15s var(--curva)}
+.bottone:hover{background:var(--arancio-scuro)}
+.bottone:active{transform:scale(.97)}
+.bottone:disabled{opacity:.6;cursor:default}
+
+/* Apertura: la stalla a tutta pagina, velo scuro sotto il testo, data in arancio */
+.apertura{position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;background:var(--grafite);overflow:hidden;padding:120px var(--margine) clamp(40px,7vh,72px)}
+.apertura .foto{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:55% 40%;animation:respira 18s ease-in-out infinite alternate}
+@keyframes respira{from{transform:scale(1.02)}to{transform:scale(1.09) translate(-1%,-1%)}}
+.apertura .velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,19,17,.6) 0%,rgba(20,19,17,0) 20%,rgba(20,19,17,0) 34%,rgba(20,19,17,.8) 62%,rgba(20,19,17,.95) 100%)} /* taste-skill-ignore: velo neutro sotto il testo sulla foto */
+.apertura .dentro-ap{position:relative;max-width:1100px}
+.cartellino{display:inline-block;background:var(--arancio);color:var(--grafite);font-weight:700;font-size:clamp(17px,1.6vw,24px);padding:.45em .8em;margin:0 0 clamp(18px,2.4vw,30px)}
+.titolo{margin:0;font-size:var(--t-display);font-weight:800;line-height:.9;letter-spacing:-.045em}
+.titolo span{display:block}
+.apertura .sotto-testo{margin:clamp(18px,2vw,28px) 0 0;max-width:34ch;font-size:clamp(18px,1.7vw,24px);line-height:1.4;color:#EDE6DD}
+.apertura .azioni{display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px;margin-top:clamp(28px,3.4vw,44px)}
+.apertura .azioni .bottone{min-height:58px;padding:16px 28px;font-size:var(--t-testo)}
+.apertura .azioni span{color:#EDE6DD;font-size:var(--t-piccolo)}
+.apertura .lact{position:absolute;right:var(--margine);top:calc(max(12px,env(safe-area-inset-top)) + 84px);width:clamp(56px,5.6vw,84px);height:auto}
+@media(max-width:720px){
+  :root{--t-display:clamp(64px,19vw,96px)}
+  .apertura{padding-bottom:36px}
+  .apertura .azioni .bottone{width:100%}
+}
+
+section{position:relative}
+.dentro{padding:0 var(--margine)}
+.griglia{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:clamp(16px,2vw,32px)}
+
+/* Programma: titolo largo, tabella spinta a destra, foto a sinistra */
+.programma{padding-top:clamp(96px,14vh,180px);padding-bottom:clamp(110px,16vh,200px)}
+.programma h2{grid-column:1/-1;margin:0;font-size:var(--t-titolo);font-weight:800;line-height:.98;letter-spacing:-.035em;text-indent:3vw}
+.programma figure{grid-column:1/6;align-self:start;margin:80px 0 0}
+.programma figure img{width:100%;aspect-ratio:10/11;object-fit:cover}
+.programma figcaption{font-size:var(--t-piccolo);color:var(--tenue);margin-top:10px}
+.tabella{grid-column:7/-1;align-self:start;margin:80px 0 0;padding:0;list-style:none;font-size:var(--t-testo);line-height:1.4}
+.tabella li{display:grid;grid-template-columns:7.5em 1fr auto;gap:0 16px;padding:13px 0}
+.tabella li.gruppo{margin-top:30px}
+.tabella .quando{color:var(--tenue);font-variant-numeric:tabular-nums}
+.tabella .cosa{font-weight:600}
+.tabella .dove{color:var(--tenue);text-align:right}
+.tabella li.forte .quando{color:var(--grafite);font-weight:700}
+.tabella li.cena{background:var(--grafite);color:var(--canvas);margin-top:30px;padding:20px 18px}
+.tabella li.cena .quando,.tabella li.cena .dove{color:var(--sera-tenue)}
+
+/* Porta il telefono: frase con le immagini dentro le parole */
+.telefono{background:#fff;color:var(--grafite);padding:clamp(110px,20vh,220px) var(--margine)}
+.telefono .blocco{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:clamp(16px,2vw,32px);align-items:center}
+.telefono .parole{grid-column:1/7}
+.telefono h2{margin:0 0 36px;font-size:var(--t-titolo);font-weight:800;line-height:.98;letter-spacing:-.035em}
+.telefono p{margin:0;max-width:30ch;font-size:var(--t-frase);font-weight:500;line-height:1.3;letter-spacing:-.015em}
+.telefono .nella{display:inline-block;width:.92em;height:.92em;vertical-align:-.16em;margin:0 .14em;border-radius:.22em;overflow:hidden;background:var(--blu-fondo)}
+.telefono .nella.foto{width:1.5em;border-radius:.12em}
+.telefono .nella img{width:100%;height:100%;object-fit:cover}
+.telefono .sotto-riga{margin-top:36px;font-size:var(--t-testo);color:var(--grafite);font-weight:400;letter-spacing:0;max-width:34ch}
+.telefono .schermi{grid-column:8/-1;display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,1.6vw,24px);align-items:start}
+.telefono .schermi figure{margin:0}
+.telefono .schermi img{width:100%;aspect-ratio:7/10;object-fit:cover;object-position:top;border-radius:18px;background:var(--canvas)}
+.telefono .schermi figure:nth-child(2){margin-top:64px}
+.telefono .schermi figcaption{margin-top:10px;font-size:var(--t-piccolo);color:var(--tenue)}
+
+/* Dove: il paese come display, nei colori invertiti */
+.dove-sez{background:var(--grafite);color:var(--canvas);min-height:92svh;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(96px,14vh,160px) var(--margine) 36px}
+.dove-sez .apre{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:clamp(16px,2vw,32px);align-items:start}
+.dove-sez .apre p{grid-column:1/7;margin:0;font-size:var(--t-frase);line-height:1.25;font-weight:500;letter-spacing:-.015em}
+.dove-sez .apre figure{grid-column:8/-1;margin:0}
+.dove-sez .apre figure img{width:100%;aspect-ratio:16/10;object-fit:cover}
+.dove-sez .apre figcaption{font-size:var(--t-piccolo);color:var(--sera-tenue);margin-top:10px}
+.dove-sez h2{margin:clamp(56px,10vh,120px) 0 0;font-size:var(--t-display);font-weight:800;line-height:.92;letter-spacing:-.045em}
+.dove-sez h2 a{text-decoration:none;transition:color .25s ease}
+.dove-sez h2 a:hover{color:var(--arancio)}
+.dove-sez h2 .freccia{display:inline-block;font-size:.5em;vertical-align:.45em;margin-left:.15em;transition:transform .25s var(--curva)}
+.dove-sez h2 a:hover .freccia{transform:translate(.08em,-.08em)}
+.dove-sez .piedi{display:flex;justify-content:space-between;gap:24px;margin-top:28px;font-size:var(--t-piccolo);color:var(--sera-tenue)}
+.dove-sez .piedi a{color:var(--canvas)}
+
+/* Risposta */
+.risposta{padding-top:clamp(110px,16vh,200px);padding-bottom:clamp(110px,16vh,200px)}
+.risposta .sinistra{grid-column:1/6}
+.risposta h2{margin:0 0 24px;font-size:var(--t-titolo);font-weight:800;line-height:.98;letter-spacing:-.035em}
+.risposta .sinistra>p{margin:0 0 20px;max-width:32ch}
+.riassunto{margin:36px 0 0;font-size:var(--t-frase);line-height:1.25;font-weight:500;letter-spacing:-.015em;color:var(--grafite);max-width:18ch;min-height:3.75em}
+.risposta .sinistra figure{margin:40px 0 0;width:64%}
+.risposta .sinistra figure img{width:100%;aspect-ratio:1/1;object-fit:cover}
+.pannello{grid-column:6/-1;margin-left:clamp(0px,3vw,48px);align-self:start;background:var(--carta);padding:clamp(22px,3vw,44px)}
+form{display:grid;gap:22px}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:10px;min-width:0}
+legend,label{font-weight:600;font-size:var(--t-piccolo);padding:0}
+legend{margin-bottom:10px}
+label small,legend small{font-size:inherit;font-weight:400;color:var(--tenue)}
+input[type=text],input[type=email],input[type=tel],textarea,select{width:100%;font:inherit;font-size:var(--t-testo);padding:13px 14px;border:0;border-bottom:2px solid #D8CCBE;border-radius:0;background-color:var(--canvas);color:inherit;transition:border-color .2s ease,background-color .2s ease}
+input:hover,textarea:hover,select:hover{background-color:#EFE5DA}
+input:focus,textarea:focus,select:focus{outline:none;border-bottom-color:var(--blu);background-color:#fff}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23242320' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.campo{display:grid;gap:8px}
+.due{display:grid;gap:22px}
+@media(min-width:560px){.due{grid-template-columns:1fr 1fr}}
+.scelte{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.scelte.tre{grid-template-columns:repeat(3,1fr)}
+.scelta{position:relative}
+.scelta input{position:absolute;opacity:0;inset:0;margin:0}
+.scelta span{display:flex;align-items:center;justify-content:center;text-align:center;padding:12px 8px;background:var(--canvas);font-weight:600;cursor:pointer;min-height:50px;transition:background-color .2s ease,color .2s ease,transform .15s var(--curva)}
+.scelta span:hover{background:#EBDFD2}
+.scelta input:active+span{transform:scale(.97)}
+.scelta input:checked+span{background:var(--grafite);color:var(--canvas)}
+.scelta input:focus-visible+span{outline:3px solid var(--blu);outline-offset:2px}
+.solo-se-viene[hidden]{display:none}
+form .bottone{width:100%;min-height:58px;font-size:var(--t-testo)}
+.errore{color:var(--errore);font-weight:600;margin:0}
+.privacy{font-size:var(--t-piccolo);color:var(--tenue);margin:0}
+.privacy a{color:#1560B0}
+.trappola{position:absolute;left:-9999px}
+.grazie .spunta{width:56px;height:56px;border-radius:50%;background:var(--ok);position:relative;margin:0 0 22px}
+.grazie .spunta::after{content:"";position:absolute;left:20px;top:13px;width:12px;height:24px;border:solid #fff;border-width:0 4px 4px 0;transform:rotate(45deg)}
+.grazie h3{font-size:var(--t-frase);line-height:1.2;letter-spacing:-.015em;margin:0 0 12px}
+.grazie p{margin:0}
+
+/* Chiusura: invito sopra, il nome tagliato dal bordo in fondo */
+.chiusura{background:var(--grafite);color:var(--canvas);overflow:hidden;min-height:86svh;display:flex;flex-direction:column;padding:clamp(96px,14vh,160px) var(--margine) 0}
+.chiusura .alto{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:clamp(16px,2vw,32px);align-items:start}
+.chiusura h2{grid-column:1/8;margin:0 0 28px;font-size:var(--t-titolo);font-weight:800;line-height:.98;letter-spacing:-.035em}
+.chiusura .invito{grid-column:1/8}
+.chiusura .invito p{margin:0 0 28px;color:var(--sera-tenue);max-width:34ch}
+.chiusura ul{grid-column:10/-1;grid-row:1/3;list-style:none;margin:0;padding:0;display:grid;gap:12px;font-size:var(--t-testo)}
+.chiusura ul a{text-decoration:none;border-bottom:2px solid transparent;transition:border-color .2s ease}
+.chiusura ul a:hover{border-bottom-color:var(--arancio)}
+.chiusura .legale{margin-top:auto;display:flex;justify-content:space-between;gap:16px;font-size:var(--t-piccolo);color:var(--sera-tenue);padding-top:64px}
+.chiusura .nome{margin:8px calc(var(--margine)*-1) 0;padding-left:var(--margine);font-size:24vw;font-weight:600;line-height:.8;letter-spacing:-.06em;white-space:nowrap;transform:translateY(22%);color:var(--arancio)}
+
+@media(max-width:860px){
+  .programma h2{text-indent:0}
+  .tabella{grid-column:1/-1;margin-top:56px}
+  .tabella li{grid-template-columns:1fr auto;gap:2px 12px}
+  .tabella .quando{grid-column:1;grid-row:1}.tabella .dove{grid-column:2;grid-row:1}.tabella .cosa{grid-column:1/-1}
+  .tabella li:not(.forte):not(.gruppo):not(.cena) .quando{display:none}
+  .tabella li:not(.forte):not(.gruppo):not(.cena) .cosa{grid-row:1;grid-column:1}
+  .programma figure{grid-column:4/-1;grid-row:3;margin-top:56px}
+  .telefono .parole,.telefono .schermi{grid-column:1/-1}
+  .telefono .schermi{margin-top:56px}
+  .dove-sez .apre p{grid-column:1/-1}
+  .dove-sez .apre figure{grid-column:1/-1;margin-top:32px}
+  .dove-sez .piedi{flex-direction:column;gap:10px}
+  .risposta .sinistra,.pannello{grid-column:1/-1}
+  .risposta .sinistra figure{display:none}
+  .riassunto{min-height:0;margin-bottom:36px;max-width:22ch}
+  .chiusura h2,.chiusura .invito,.chiusura ul{grid-column:1/-1;grid-row:auto}
+  .chiusura ul{margin-top:44px;display:flex;flex-wrap:wrap;gap:12px 22px}
+  .chiusura .invito .bottone{width:100%}
+  .chiusura .nome{font-size:34vw}
+  .chiusura .legale{flex-direction:column;gap:6px}
+}
+
+/* Movimento: entra quando arriva, solo con lo script attivo */
+.js [data-entra]{opacity:0;transform:translateY(24px);transition:opacity .7s var(--curva),transform .7s var(--curva);transition-delay:calc(var(--i,0)*80ms)}
+.js [data-entra].visto{opacity:1;transform:none}
+.js .apertura .titolo>span,.js .apertura .sotto-testo{animation:sale .9s var(--curva) both}
+.js .apertura .titolo>span:nth-child(2){animation-delay:.09s}
+.js .apertura .sotto-testo{animation-delay:.25s}
+@keyframes sale{from{opacity:0;transform:translateY(.25em)}to{opacity:1;transform:none}}
+.foto-scorre{overflow:hidden}
+.foto-scorre img{transform:translateY(var(--sp,0)) scale(1.08);will-change:transform}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .js [data-entra]{opacity:1;transform:none;transition:none}
+  .js .apertura .titolo>span,.js .apertura .sotto-testo,.apertura .foto{animation:none}
+  .foto-scorre img{transform:scale(1.08)}
+}
+</style>
+<script>document.documentElement.classList.add('js')</script>
+</head>
+<body>
+
+<header class="barra" id="barra">
+  <a class="marchio" href="#inizio" aria-label="Pro Farmer, torna all’inizio">
+    <img src="logo-pf-bianco.png" alt="" width="1200" height="451">
+  </a>
+  <nav aria-label="Sezioni">
+    <a href="#programma">Programma</a>
+    <a href="#dove">Dove</a>
+    <a class="bottone" href="#rispondi">Conferma la presenza</a>
+  </nav>
+</header>
+
+<main id="inizio">
+  <section class="apertura scuro" data-tema="foto" aria-labelledby="titolo">
+    <img class="foto" src="apertura.jpg" alt="Una stalla di bovine da latte alla mangiatoia" width="1920" height="1440" fetchpriority="high">
+    <div class="velo"></div>
+    <img class="lact" src="logo-lact.png" alt="piùLact" width="240" height="240">
+    <div class="dentro-ap">
+      <p class="cartellino"><span id="mancano">Giovedì 19 novembre · ore 18:30</span></p>
+      <h1 class="titolo" id="titolo"><span>Serata</span><span>piùLact</span></h1>
+      <p class="sotto-testo">Per agenti e rivenditori. Un’ora insieme a Cingia de’ Botti (CR), poi cena offerta da Pro Farmer.</p>
+      <div class="azioni"><a class="bottone" href="#rispondi">Conferma la presenza</a><span>Rispondi il prima possibile: ci aiuti a organizzare sala e cena.</span></div>
+    </div>
+  </section>
+
+  <section class="programma dentro" id="programma" data-tema="chiaro" aria-labelledby="t-programma">
+    <div class="griglia">
+      <h2 id="t-programma" data-entra>Un’ora insieme, poi a cena</h2>
+      <figure class="foto-scorre" data-entra style="--i:1">
+        <img src="cuccette.jpg" alt="Cuccette di una stalla da latte con piùLact sulla paglia" width="1000" height="1100" loading="lazy">
+      </figure>
+      <ul class="tabella">
+        <li class="forte" data-entra style="--i:1"><span class="quando">18:30</span><span class="cosa">Ritrovo e benvenuto</span><span class="dove">sala meeting</span></li>
+        <li class="gruppo" data-entra style="--i:2"><span class="quando">Circa un’ora</span><span class="cosa">piùLact oggi</span><span class="dove"></span></li>
+        <li data-entra style="--i:3"><span class="quando"></span><span class="cosa">Ricerca ed eventi di dicembre</span><span class="dove"></span></li>
+        <li data-entra style="--i:4"><span class="quando"></span><span class="cosa">La nuova gamma</span><span class="dove"></span></li>
+        <li data-entra style="--i:5"><span class="quando"></span><span class="cosa">piùLact Pronto in ballette</span><span class="dove">con le condizioni</span></li>
+        <li data-entra style="--i:6"><span class="quando"></span><span class="cosa">Riposa e Riposa Pro</span><span class="dove">installata insieme</span></li>
+        <li class="cena" data-entra style="--i:7"><span class="quando">Dopo</span><span class="cosa">Cena insieme, offerta da Pro Farmer</span><span class="dove">in un locale qui vicino</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="telefono" data-tema="chiaro" aria-labelledby="t-telefono">
+    <div class="blocco">
+      <div class="parole">
+        <h2 id="t-telefono" data-entra>Porta il telefono</h2>
+        <p data-entra style="--i:1">Installiamo insieme Riposa Pro<span class="nella"><img src="../assets/icone/pro/icona-192.png" alt="l’icona di Riposa Pro" width="192" height="192" loading="lazy"></span>, l’app per ordini<span class="nella foto"><img src="camion.jpg" alt="big bag piùLact caricati sul camion" width="480" height="300" loading="lazy"></span>, clienti e provvigioni, e guardiamo Riposa<span class="nella"><img src="../assets/icone/icona-192.png" alt="l’icona di Riposa" width="192" height="192" loading="lazy"></span>, quella degli allevatori.</p>
+        <p class="sotto-riga" data-entra style="--i:2">Porta anche l’e-mail che usi con Pro Farmer: l’accesso arriva lì.</p>
+      </div>
+      <div class="schermi">
+        <figure data-entra style="--i:2"><img src="schermo-pro.jpg" alt="La home di Riposa Pro, con Nuovo ordine e i riordini" width="700" height="1000" loading="lazy"><figcaption>Riposa Pro, per voi</figcaption></figure>
+        <figure data-entra style="--i:3"><img src="schermo-riposa.jpg" alt="Riposa: il calcolo di piùLact per la stalla" width="700" height="1000" loading="lazy"><figcaption>Riposa, per l’allevatore</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="dove-sez scuro" id="dove" data-tema="scuro" aria-labelledby="t-dove">
+    <div class="apre">
+      <p data-entra>Ci troviamo alla sede operativa Pro Farmer, nella sala meeting di Pieve Ecoenergia.</p>
+      <figure class="foto-scorre" data-entra style="--i:1">
+        <img src="ballette.jpg" alt="Ballette di piùLact Pronto fasciate, sui bancali all’aperto" width="1200" height="750" loading="lazy">
+        <figcaption>piùLact Pronto in ballette, una delle novità della serata.</figcaption>
+      </figure>
+    </div>
+    <div>
+      <h2 id="t-dove" data-entra><a href="https://www.google.com/maps/search/?api=1&amp;query=Strada%20Provinciale%2087%2C%20Cingia%20de%20Botti%20CR" target="_blank" rel="noopener">Cingia de’ Botti<span class="freccia" aria-hidden="true">↗</span><span class="nascosto"> (apre la mappa)</span></a></h2>
+      <div class="piedi" data-entra style="--i:1">
+        <span>Strada Provinciale 87, Cingia de’ Botti (CR)</span>
+        <span>Giovedì 19 novembre, ritrovo alle 18:30</span>
+        <a href="https://www.google.com/maps/search/?api=1&amp;query=Strada%20Provinciale%2087%2C%20Cingia%20de%20Botti%20CR" target="_blank" rel="noopener">Apri la mappa</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="risposta dentro" id="rispondi" data-tema="chiaro" aria-labelledby="t-rispondi">
+    <div class="griglia">
+      <div class="sinistra">
+        <h2 id="t-rispondi" data-entra>Ci sarai?</h2>
+        <p data-entra style="--i:1">Rispondi il prima possibile: ci aiuti a organizzare sala e cena. Ti mandiamo la conferma per e-mail.</p>
+        <p class="riassunto" id="riassunto" aria-live="polite" data-entra style="--i:2">Ti aspettiamo giovedì alle 18:30, e poi a cena.</p>
+        <figure class="foto-scorre" data-entra style="--i:3"><img src="stalla.jpg" alt="Una stalla di bovine da latte alla mangiatoia" width="1400" height="1050" loading="lazy"></figure>
+      </div>
+      <div class="pannello" id="risposta" data-entra style="--i:1">
+        <form id="modulo" novalidate>
+          <fieldset>
+            <legend>La tua risposta</legend>
+            <div class="scelte">
+              <label class="scelta"><input type="radio" name="partecipa" value="si" checked><span>Ci sarò</span></label>
+              <label class="scelta"><input type="radio" name="partecipa" value="no"><span>Non riesco</span></label>
+            </div>
+          </fieldset>
+          <div class="due">
+            <div class="campo"><label for="nome">Nome e cognome</label><input id="nome" name="nome" type="text" autocomplete="name" required maxlength="120"></div>
+            <div class="campo"><label for="azienda">Azienda <small>(facoltativo)</small></label><input id="azienda" name="azienda" type="text" autocomplete="organization" maxlength="200"></div>
+          </div>
+          <fieldset>
+            <legend>Sei</legend>
+            <div class="scelte tre">
+              <label class="scelta"><input type="radio" name="ruolo" value="agente" checked><span>Agente</span></label>
+              <label class="scelta"><input type="radio" name="ruolo" value="rivenditore"><span>Rivenditore</span></label>
+              <label class="scelta"><input type="radio" name="ruolo" value="altro"><span>Altro</span></label>
+            </div>
+          </fieldset>
+          <div class="due">
+            <div class="campo"><label for="telefono">Telefono</label><input id="telefono" name="telefono" type="tel" autocomplete="tel" inputmode="tel" maxlength="40"></div>
+            <div class="campo"><label for="email">E-mail <small>(per la conferma)</small></label><input id="email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="200"></div>
+          </div>
+          <div class="solo-se-viene due">
+            <div class="campo"><label for="persone">Quante persone, te compreso?</label>
+              <select id="persone" name="persone"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+            <fieldset><legend>Resti a cena?</legend>
+              <div class="scelte">
+                <label class="scelta"><input type="radio" name="cena" value="si" checked><span>Sì</span></label>
+                <label class="scelta"><input type="radio" name="cena" value="no"><span>No</span></label>
+              </div>
+            </fieldset>
+          </div>
+          <div class="campo solo-se-viene"><label for="allergie">Allergie o intolleranze <small>(facoltativo)</small></label><input id="allergie" name="allergie" type="text" maxlength="300"></div>
+          <div class="campo"><label for="note">Una nota per noi <small>(facoltativo)</small></label><textarea id="note" name="note" rows="2" maxlength="500"></textarea></div>
+          <div class="trappola" aria-hidden="true"><label for="sito">Lascia vuoto</label><input id="sito" name="sito" type="text" tabindex="-1" autocomplete="off"></div>
+          <p class="privacy">Usiamo questi dati solo per organizzare la serata. <a href="https://www.iubenda.com/privacy-policy/12376136" target="_blank" rel="noopener">Informativa privacy</a></p>
+          <p class="errore" id="errore" role="alert" hidden></p>
+          <button type="submit" class="bottone" id="manda">Manda la risposta</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="chiusura scuro" data-tema="scuro" aria-labelledby="t-chiusura">
+  <div class="alto">
+    <h2 id="t-chiusura" data-entra>Ci vediamo giovedì 19</h2>
+    <div class="invito" data-entra style="--i:1">
+      <p>Per qualsiasi domanda scrivi o chiama Pro Farmer.</p>
+      <a class="bottone" href="#rispondi">Conferma la presenza</a>
+    </div>
+    <ul data-entra style="--i:2">
+      <li><a href="mailto:info@profarmer.it?subject=Serata%2019%20novembre">info@profarmer.it</a></li>
+      <li><a href="tel:+393761296162">+39 376 129 6162</a></li>
+      <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Strada%20Provinciale%2087%2C%20Cingia%20de%20Botti%20CR" target="_blank" rel="noopener">Apri la mappa</a></li>
+      <li><a href="https://www.iubenda.com/privacy-policy/12376136" target="_blank" rel="noopener">Informativa privacy</a></li>
+    </ul>
+  </div>
+  <div class="legale"><span>Pro Farmer · Strada Provinciale 87, Cingia de’ Botti (CR)</span><span>riposa.profarmer.it/serata</span></div>
+  <p class="nome" aria-hidden="true">Pro Farmer</p>
+</footer>
+
+<script>
+(function () {
+  var URL_FUNZIONE = 'https://gmhmxybqmkcmnbjdnslz.supabase.co/functions/v1/serata';
+  var f = document.getElementById('modulo'), err = document.getElementById('errore'), b = document.getElementById('manda');
+  var riass = document.getElementById('riassunto');
+
+  // Il riassunto a sinistra segue quello che si compila
+  function riassunto() {
+    var nome = f.nome.value.trim().split(/\s+/)[0] || '';
+    var n = parseInt(f.persone.value, 10) || 1, cena = f.cena.value === 'si', t;
+    if (f.partecipa.value !== 'si') {
+      t = (nome ? 'Peccato, ' + nome + '. ' : 'Peccato. ') + 'Ti mandiamo i materiali della serata.';
+    } else if (n > 1) {
+      t = (nome ? nome + ', vi' : 'Vi') + ' aspettiamo in ' + n + ' giovedì alle 18:30' + (cena ? ', e poi tutti a cena.' : '.');
+    } else {
+      t = (nome ? nome + ', ti' : 'Ti') + ' aspettiamo giovedì alle 18:30' + (cena ? ', e poi a cena.' : '.');
+    }
+    riass.textContent = t;
+  }
+  function aggiorna() {
+    var viene = f.partecipa.value === 'si';
+    document.querySelectorAll('.solo-se-viene').forEach(function (el) { el.hidden = !viene; });
+    riassunto();
+  }
+  f.addEventListener('change', aggiorna); f.nome.addEventListener('input', riassunto); aggiorna();
+
+  f.addEventListener('submit', function (ev) {
+    ev.preventDefault(); err.hidden = true;
+    var d = { partecipa: f.partecipa.value, nome: f.nome.value.trim(), azienda: f.azienda.value.trim(), ruolo: f.ruolo.value,
+      telefono: f.telefono.value.trim(), email: f.email.value.trim(), persone: f.persone.value, cena: f.cena.value,
+      allergie: f.allergie.value.trim(), note: f.note.value.trim(), sito: f.sito.value };
+    var manca = !d.nome ? 'Scrivi il tuo nome.' : !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email) ? 'Controlla l’e-mail.' : '';
+    if (manca) { err.textContent = manca; err.hidden = false; (d.nome ? f.email : f.nome).focus(); return; }
+    b.disabled = true; b.textContent = 'Invio in corso…';
+    fetch(URL_FUNZIONE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.motivo || 'Non è partita: riprova tra poco.');
+        var box = document.getElementById('risposta');
+        box.classList.add('grazie');
+        box.innerHTML = d.partecipa === 'si'
+          ? '<div class="spunta"></div><h3>Grazie, ci vediamo il 19 novembre!</h3><p>Ti abbiamo mandato il riepilogo per e-mail. Ritrovo alle 18:30 a Cingia de’ Botti.</p>'
+          : '<div class="spunta"></div><h3>Grazie per averci avvisato</h3><p>Ti mandiamo i materiali della serata. Se vuoi, ti facciamo vedere Riposa Pro un altro giorno.</p>';
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function (e) {
+        b.disabled = false; b.textContent = 'Manda la risposta';
+        err.textContent = navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.' : e.message;
+        err.hidden = false;
+      });
+  });
+
+  // Quanti giorni mancano
+  var giorni = Math.ceil((new Date(2026, 10, 19, 18, 30) - new Date()) / 864e5);
+  var m = document.getElementById('mancano');
+  if (giorni === 1) m.textContent = 'Domani, giovedì 19 novembre · ore 18:30';
+  else if (giorni === 0) m.textContent = 'Oggi, giovedì 19 novembre · ore 18:30';
+
+  // La barra prende l'inchiostro del capitolo che ha sotto
+  var barra = document.getElementById('barra');
+  var capitoli = [].slice.call(document.querySelectorAll('[data-tema]'));
+  function tema() {
+    var y = barra.offsetHeight / 2, sotto = null;
+    capitoli.forEach(function (c) { var r = c.getBoundingClientRect(); if (r.top <= y && r.bottom > y) sotto = c; });
+    var fondo = sotto ? getComputedStyle(sotto).backgroundColor : '';
+    if (!fondo || fondo === 'rgba(0, 0, 0, 0)') fondo = getComputedStyle(document.body).backgroundColor;
+    var foto = !sotto || sotto.dataset.tema === 'foto';
+    barra.classList.toggle('chiara', !!sotto && sotto.dataset.tema === 'chiaro');
+    barra.style.backgroundColor = foto ? 'transparent' : fondo;
+  }
+
+  // Le foto scorrono piano con la pagina
+  var foto = [].slice.call(document.querySelectorAll('.foto-scorre'));
+  var fermo = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function scorre() {
+    if (fermo) return;
+    var h = window.innerHeight;
+    foto.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > h) return;
+      var p = (r.top + r.height / 2 - h / 2) / h;
+      el.querySelector('img').style.setProperty('--sp', (p * -6).toFixed(2) + '%');
+    });
+  }
+  var attesa = false;
+  function onScroll() { if (attesa) return; attesa = true; requestAnimationFrame(function () { tema(); scorre(); attesa = false; }); }
+  window.addEventListener('scroll', onScroll, { passive: true }); window.addEventListener('resize', onScroll); onScroll();
+
+  // Entrate
+  var el = [].slice.call(document.querySelectorAll('[data-entra]'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (voci) {
+      voci.forEach(function (v) { if (v.isIntersecting) { v.target.classList.add('visto'); io.unobserve(v.target); } });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    el.forEach(function (x) { io.observe(x); });
+  } else el.forEach(function (x) { x.classList.add('visto'); });
+})();
+</script>
+</body>
+</html>

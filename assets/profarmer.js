@@ -72,8 +72,10 @@ const ProFarmer = (() => {
       // l'ultimo giro notturno con FiC (30-audit-28-10.sql)
       sb.from('fic_giri').select('il, esito').order('id', { ascending: false }).limit(1),
       // le note interne sui venditori: tabella a parte, il venditore non la legge (31-regole-28-10.sql)
-      sb.from('venditori_note').select('venditore_id, note')
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn]) => {
+      sb.from('venditori_note').select('venditore_id, note'),
+      // le risposte all'invito della serata del 19/11/2026 (33-serata-19-11.sql)
+      sb.from('serata_iscrizioni').select('*').order('creato_il', { ascending: false })
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn, se]) => {
       const noteV = new Map(((!vn.error && vn.data) || []).map(x => [x.venditore_id, x.note]));
       (ve.data || []).forEach(x => { x.note = noteV.get(x.id) || null; });
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
@@ -85,12 +87,33 @@ const ProFarmer = (() => {
                passaggi: (!pa.error && pa.data) || null,
                // le foto per i social (29-foto-social.sql): se la funzione non c'è ancora, la scheda lo dice
                foto: (!fo.error && fo.data) || null,
-               giroFic: (!gi.error && gi.data && gi.data[0]) || null };
+               giroFic: (!gi.error && gi.data && gi.data[0]) || null,
+               serata: (!se.error && se.data) || [] };
     });
   }
 
   /* Il collegamento notturno con FiC: quando è girato e se è andato bene
      (audit 28/10/2026). Se non gira da più di un giorno o ha errori, in rosso. */
+  /* La serata con agenti e rivenditori del 19/11/2026: le risposte arrivate
+     da riposa.profarmer.it/serata/. Sparisce dopo il 20/11. */
+  function bloccoSerata() {
+    if (Date.now() > new Date('2026-11-20T23:59:00').getTime()) return '';
+    const r = dati.serata || [];
+    const si = r.filter(x => x.partecipa), no = r.filter(x => !x.partecipa);
+    const persone = si.reduce((t, x) => t + (x.persone || 0), 0), cena = si.filter(x => x.cena).reduce((t, x) => t + (x.persone || 0), 0);
+    let h = '<div class="blocco"><h3>Serata del 19/11</h3>'
+      + `<p class="aiuto"><strong>${persone}</strong> ${persone === 1 ? 'persona' : 'persone'} (${si.length} ${si.length === 1 ? 'risposta' : 'risposte'}), <strong>${cena}</strong> a cena · ${no.length} non ${no.length === 1 ? 'viene' : 'vengono'}. `
+      + 'Pagina per rispondere: riposa.profarmer.it/serata/</p>';
+    if (r.length) {
+      h += '<ul class="lista-clienti">' + r.map(x => `<li><div class="cliente-testa"><strong>${esc(x.nome)}</strong>`
+        + `<span class="pf-proprietario${x.partecipa ? ' diretto' : ''}">${x.partecipa ? 'viene' : 'non viene'}</span></div>`
+        + `<p class="cliente-dati">${esc([x.azienda, x.ruolo, x.telefono, x.email].filter(Boolean).join(' · '))}</p>`
+        + (x.partecipa ? `<p class="cliente-dati">${x.persone} ${x.persone === 1 ? 'persona' : 'persone'} · cena ${x.cena ? 'sì' : 'no'}${x.allergie ? ' · ' + esc(x.allergie) : ''}</p>` : '')
+        + (x.note ? `<p class="cliente-note">${esc(x.note)}</p>` : '') + '</li>').join('') + '</ul>';
+    }
+    return h + '</div>';
+  }
+
   function rigaGiroFic() {
     const g = dati.giroFic;
     if (!g) return '<p class="aiuto">Collegamento con Fatture in Cloud: ancora nessun giro registrato.</p>';
@@ -726,7 +749,7 @@ const ProFarmer = (() => {
       h += `<button type="button" class="cr-casella${n ? ' cr-attenzione' : ''}" data-vai="${dove}">`
         + `<b>${n}</b><span>${esc(cosa)}</span><small>${esc(sotto)}</small></button>`;
     });
-    h += '</div>' + rigaGiroFic() + '</div>';
+    h += '</div>' + rigaGiroFic() + '</div>' + bloccoSerata();
 
     // i compleanni di oggi e della settimana: un messaggio di auguri
     if (dati.compleanni.length) {
