@@ -34,6 +34,10 @@ database. Lo script Google del foglio non serve più.
 
 **Il calcolatore è online: https://riposa.profarmer.it**
 
+Dal 29/10/2026 c'è anche `serata/`, la pagina di iscrizione alla serata del 19 novembre
+2026 per agenti e rivenditori. È una pagina sola, con stile e script interni, e manda le
+risposte alla funzione Supabase `serata`.
+
 ## Cosa c'è in questo repository, e cosa no
 
 Qui dentro c'è **solo quello che può stare online**: la pagina, gli stili, il
