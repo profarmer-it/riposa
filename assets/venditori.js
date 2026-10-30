@@ -512,15 +512,16 @@ const Venditori = (() => {
       if (codice.length !== 6) return mostraCodice('Il codice ha 6 cifre.');
       const b = ev.currentTarget.querySelector('button');
       b.disabled = true; b.textContent = 'Controllo…';
-      sb.auth.verifyOtp({ email: emailAccesso, token: codice, type: 'email' }).then(({ data, error }) => {
+      sb.auth.verifyOtp({ email: emailAccesso, token: codice, type: 'email' }).then(({ error }) => {
         if (error) {
           return mostraCodice(/expired|invalid/i.test(error.message)
             ? 'Codice sbagliato o scaduto (vale 15 minuti). Ricontrolla, o chiedine uno nuovo.'
             : 'Non riesco a controllare il codice: riprova tra poco.');
         }
         togliCodiceVecchio();
-        const u = data && data.user;
-        mostraPassword(caricaArea, !!(u && u.user_metadata && u.user_metadata.password_scelta));
+        // dopo il codice la password si sceglie sempre: chi avesse registrato prima
+        // questa e-mail con una password sua (account non confermato) la perde
+        mostraPassword(caricaArea, false);
       });
     });
   }

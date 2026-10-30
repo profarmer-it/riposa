@@ -1749,18 +1749,19 @@ const ProFarmer = (() => {
           + '</p></div>';
         return;
       }
-      disegnaApp(corpo, data || []);
+      // le richieste di chi si è registrato su Easy (40-easy-registrazione.sql)
+      sb.rpc('pf_richieste_gestione').then(r => disegnaApp(corpo, data || [], r.error ? [] : (r.data || [])));
     });
   }
 
-  function disegnaApp(corpo, aziende) {
+  function disegnaApp(corpo, aziende, richieste) {
     const giaApp = new Set(aziende.map(a => a.cliente_id).filter(Boolean));
     const clienti = dati.clienti.filter(c => !giaApp.has(c.id)).sort((a, b) => String(a.ragione).localeCompare(String(b.ragione), 'it'));
     let h = '<div class="blocco"><div class="pannello-testa"><h3>App Pro Farmer</h3>'
       + '<button type="button" class="bottone" id="pf-app-nuova">Attiva per un’azienda</button></div>'
-      + '<p class="aiuto">L’app per l’allevatore su easy.profarmer.it: Riposa e Presenze e turni. Ai clienti piùLact è in regalo; '
-      + 'per gli altri c’è l’abbonamento, o la prova di 60 giorni. Qui si vedono le aziende e i piani, mai le presenze dei dipendenti.</p>'
-      + '<div id="pf-app-modulo"></div>';
+      + '<p class="aiuto">Easy (easy.profarmer.it), le presenze e i turni dei dipendenti. Chiunque crea l’account e chiede l’attivazione: '
+      + 'qui abiliti i clienti piùLact, gratis e senza limiti di dipendenti. Qui si vedono le aziende e i piani, mai le presenze dei dipendenti.</p>'
+      + '<div id="pf-app-modulo"></div>' + bloccoRichieste(richieste, clienti);
     if (!aziende.length) h += '<p class="aiuto">Ancora nessuna azienda.</p>';
     else {
       h += casellaCerca('app', 'Cerca azienda o e-mail') + '<ul class="lista-clienti" data-lista-di="app">';
@@ -1793,6 +1794,7 @@ const ProFarmer = (() => {
     h += '</div>';
     corpo.innerHTML = h;
     agganciaCerca(corpo);
+    agganciaRichieste(corpo);
 
     document.getElementById('pf-app-nuova').addEventListener('click', () => {
       const n = document.getElementById('pf-app-modulo');
@@ -1859,6 +1861,73 @@ const ProFarmer = (() => {
           if (ok) { avvisa('Accesso mandato al titolare'); appProFarmer(corpo); }
           else { inv.disabled = false; inv.textContent = 'Riprova'; }
         });
+      });
+    });
+  }
+
+  /* Le richieste da Easy (30/10/2026): se la P.IVA è fra i clienti piùLact lo
+     dice subito; «Abilita» crea l'azienda (piano regalo) e manda l'e-mail al
+     titolare, «Rifiuta» chiede il motivo e glielo manda. */
+  function bloccoRichieste(richieste, clienti) {
+    const attesa = richieste.filter(r => r.stato === 'in_attesa'), decise = richieste.filter(r => r.stato !== 'in_attesa');
+    let h = `<h4 style="margin:18px 0 6px">Richieste da Easy${attesa.length ? ` · <span class="pf-proprietario">${attesa.length} da decidere</span>` : ''}</h4>`;
+    if (!richieste.length) return h + '<p class="aiuto">Nessuna richiesta.</p>';
+    h += '<ul class="lista-clienti">';
+    attesa.forEach(r => {
+      const c = r.cliente;
+      h += `<li><div class="cliente-testa"><strong>${esc(r.ragione)}</strong><span class="pf-proprietario">da decidere</span></div>`
+        + `<p class="cliente-dati">${esc(r.nome)} ${esc(r.cognome || '')} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`
+        + (r.telefono ? ` · <a href="tel:${esc(r.telefono)}">${esc(r.telefono)}</a>` : '') + `</p>`
+        + `<p class="cliente-dati">P.IVA ${esc(r.piva)} · ${esc([r.comune, r.provincia].filter(Boolean).join(' '))} · chiesta il ${dataIt(r.creata)}</p>`
+        + (r.nota ? `<p class="cliente-note">${esc(r.nota)}</p>` : '')
+        + (c ? `<p class="cliente-dati"><strong>✓ Cliente piùLact:</strong> ${esc(c.ragione)}${c.comune ? ' · ' + esc(c.comune) : ''}${c.venditore ? ' · segue ' + esc(c.venditore) : ''}${c.ha_app ? ' · <strong>ha già l’app</strong>' : ''}</p>`
+          : '<p class="cliente-dati"><strong>Questa P.IVA non è fra i clienti piùLact.</strong> Se lo è (per esempio è di un agente non ancora in Riposa Pro), scegli il cliente o abilita lo stesso.</p>')
+        + (r.azienda_esiste ? '<p class="errore">C’è già un’azienda con questa P.IVA nell’app: rifiuta e fai aggiungere la persona dal titolare.</p>' : '')
+        + `<form class="pf-richiesta" data-id="${esc(r.id)}" novalidate><div class="pf-campi">`
+        + (c ? `<input type="hidden" name="cliente" value="${esc(c.id)}">`
+          : '<label class="pf-largo">Cliente piùLact<select name="cliente" class="pf-select"><option value="">— Non è fra i clienti —</option>'
+            + clienti.map(x => `<option value="${esc(x.id)}">${esc(x.ragione)}${x.comune ? ' · ' + esc(x.comune) : ''}</option>`).join('') + '</select></label>')
+        + '<label class="pf-largo">Motivo, se la rifiuti (lo legge chi ha chiesto)<input name="motivo" placeholder="Per esempio: non risulta cliente piùLact"></label>'
+        + '</div><p class="errore" hidden></p><div class="azioni pf-azioni">'
+        + '<button type="submit" class="bottone">Abilita e manda l’e-mail</button>'
+        + '<button type="button" class="bottone bottone-fantasma" data-rifiuta>Rifiuta</button></div></form></li>';
+    });
+    decise.slice(0, 10).forEach(r => {
+      h += `<li><div class="cliente-testa"><strong>${esc(r.ragione)}</strong><span class="pf-proprietario${r.stato === 'abilitata' ? ' diretto' : ''}">`
+        + `${r.stato === 'abilitata' ? 'abilitata' : 'rifiutata'} il ${dataIt(r.decisa)}</span></div>`
+        + `<p class="cliente-dati">${esc(r.nome)} ${esc(r.cognome || '')} · ${esc(r.email)}${r.motivo ? ' · ' + esc(r.motivo) : ''}</p></li>`;
+    });
+    return h + '</ul>';
+  }
+
+  function agganciaRichieste(corpo) {
+    corpo.querySelectorAll('.pf-richiesta').forEach(f => {
+      const err = f.querySelector('.errore');
+      const errore = t => { err.textContent = t; err.hidden = false; };
+      f.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const cliente = f.cliente.value || null;
+        if (!cliente && !confirm('Non l’hai collegata a un cliente piùLact. Abiliti lo stesso?')) return;
+        const b = f.querySelector('button[type=submit]');
+        b.disabled = true; b.textContent = 'Abilito…';
+        sb.rpc('pf_abilita_richiesta', { p_id: f.dataset.id, p_cliente: cliente }).then(({ data, error }) => {
+          if (error) throw new Error(error.message);
+          return invitaTitolare(data.titolare).then(ok => ok ? 'Abilitata: e-mail mandata al titolare'
+            : 'Abilitata. L’e-mail non è partita: usa «Manda l’accesso» qui sotto.');
+        }).then(msg => { avvisa(msg); appProFarmer(corpo); })
+          .catch(e => { b.disabled = false; b.textContent = 'Abilita e manda l’e-mail'; errore('Non abilitata: ' + e.message); });
+      });
+      f.querySelector('[data-rifiuta]').addEventListener('click', ev => {
+        const motivo = f.motivo.value.trim();
+        if (motivo.length < 3) { f.motivo.focus(); return errore('Scrivi il motivo: lo legge chi ha chiesto.'); }
+        const b = ev.currentTarget;
+        b.disabled = true; b.textContent = 'Rifiuto…';
+        sb.rpc('pf_rifiuta_richiesta', { p_id: f.dataset.id, p_motivo: motivo }).then(({ error }) => {
+          if (error) throw new Error(error.message);
+          return sb.functions.invoke('pf-invita', { body: { richiesta: f.dataset.id } }).then(({ data }) =>
+            data && data.ok ? 'Rifiutata: e-mail mandata con il motivo' : 'Rifiutata. L’e-mail non è partita: il motivo lo vede comunque nell’app.');
+        }).then(msg => { avvisa(msg); appProFarmer(corpo); })
+          .catch(e => { b.disabled = false; b.textContent = 'Rifiuta'; errore('Non rifiutata: ' + e.message); });
       });
     });
   }
