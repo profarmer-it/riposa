@@ -402,7 +402,8 @@ const Venditori = (() => {
 
   /* La schermata di accesso è una pagina a sé: niente calcolatore sotto, un
      campo grande (sopra i 16 px, così l'iPhone non zooma quando lo tocchi).
-     Due passi: l'e-mail, poi il codice di 6 cifre che arriva per e-mail.
+     E-mail e password (dal 30/10/2026); il codice di 6 cifre per e-mail resta
+     per il primo accesso e per la password dimenticata.
      Niente link magico: su iPhone aprirebbe Safari e non l'app installata. */
   function mostraAccesso(messaggio, conRiprova) {
     document.body.classList.add('accesso-venditori');
@@ -417,12 +418,16 @@ const Venditori = (() => {
       + 'le tue provvigioni e i materiali da mandare ai clienti.</p>'
       + '<form id="form-accesso" class="venditori-accesso" novalidate>'
       + '<label for="v-email">La tua e-mail</label>'
-      + '<input id="v-email" name="email" type="email" autocomplete="email" autocapitalize="off" autocorrect="off" '
-      + `spellcheck="false" enterkeyhint="send" inputmode="email" placeholder="nome@esempio.it" value="${esc(emailAccesso)}">`
-      + '<button type="submit" class="bottone bottone-grande">Mandami il codice</button>'
+      + '<input id="v-email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" '
+      + `spellcheck="false" inputmode="email" placeholder="nome@esempio.it" value="${esc(emailAccesso)}">`
+      + '<label for="v-password">La password</label>'
+      + '<div class="campo-pw"><input id="v-password" name="password" type="password" autocomplete="current-password" enterkeyhint="go">'
+      + '<button type="button" class="mostra-pw" aria-label="Mostra la password" aria-pressed="false">Mostra</button></div>'
+      + '<button type="submit" class="bottone bottone-grande">Entra</button>'
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
       + (conRiprova ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '')
+      + '<p class="accesso-piede"><a href="#venditori" id="v-col-codice">Primo accesso o password dimenticata? Ricevi un codice per e-mail</a></p>'
       + '<p class="accesso-piede">Usa l’e-mail che hai dato a Pro Farmer. Non sei registrato? Chiama Pro Farmer: '
       + `<a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a></p>`
       + (PRO
@@ -435,11 +440,30 @@ const Venditori = (() => {
       ev.preventDefault();
       chiudiAccesso();
     });
+    occhio();
+    const leggiEmail = () => {
+      const e = document.getElementById('v-email').value.trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { mostraAccesso('Scrivi un’e-mail completa, per esempio nome@libero.it.'); return null; }
+      return (emailAccesso = e);
+    };
+    document.getElementById('v-col-codice').addEventListener('click', ev => {
+      ev.preventDefault();
+      const e = leggiEmail(); if (e) chiediCodice(e, ev.currentTarget);
+    });
     document.getElementById('form-accesso').addEventListener('submit', ev => {
       ev.preventDefault();
-      const e = document.getElementById('v-email').value.trim().toLowerCase();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return mostraAccesso('Scrivi un’e-mail completa, per esempio nome@libero.it.');
-      chiediCodice(e, ev.currentTarget.querySelector('button'));
+      const e = leggiEmail(); if (!e) return;
+      const pw = document.getElementById('v-password').value;
+      if (!pw) return mostraAccesso('Scrivi la password. Se non l’hai ancora scelta, tocca «Primo accesso».');
+      if (!collegamento()) return mostraAccesso('L’area venditori non è raggiungibile: riprova tra poco.');
+      const b = ev.currentTarget.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Controllo…';
+      sb.auth.signInWithPassword({ email: e, password: pw }).then(({ error }) => {
+        if (!error) { togliCodiceVecchio(); return caricaArea(); }
+        const m = String(error.message || '');
+        if (error.status === 429 || /rate|too many/i.test(m)) return mostraAccesso('Troppi tentativi: aspetta qualche minuto e riprova.');
+        if (/invalid|credentials/i.test(m)) return mostraAccesso('E-mail o password sbagliate. Se è il primo accesso o non ricordi la password, ricevi un codice per e-mail.');
+        mostraAccesso(navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.' : 'Non riesco a controllare: riprova tra poco.');
+      });
     });
     // dopo che il browser ha rimesso la posizione di scorrimento della visita prima
     setTimeout(() => window.scrollTo(0, 0), 0);
@@ -447,7 +471,7 @@ const Venditori = (() => {
 
   function chiediCodice(e, bottone) {
     if (!collegamento()) return mostraAccesso('L’area venditori non è raggiungibile: riprova tra poco.');
-    if (bottone) { bottone.disabled = true; bottone.textContent = 'Mando il codice…'; }
+    if (bottone) { bottone.disabled = true; bottone.style.pointerEvents = 'none'; bottone.textContent = 'Mando il codice…'; }
     emailAccesso = e;
     sb.auth.signInWithOtp({ email: e, options: { shouldCreateUser: false } }).then(({ error }) => {
       if (!error) return mostraCodice();
@@ -469,15 +493,15 @@ const Venditori = (() => {
       + (PRO ? '' : '<p class="soprattitolo">Riposa · area venditori</p>')
       + '<h2>Controlla la posta</h2>'
       + `<p class="aiuto">Ti abbiamo mandato un codice di 6 cifre a <strong>${esc(emailAccesso)}</strong>. `
-      + 'Se non lo trovi, guarda nella posta indesiderata.</p>'
+      + 'Vale 15 minuti. Se non lo trovi, guarda nella posta indesiderata.</p>'
       + '<form id="form-codice" class="venditori-accesso" novalidate>'
       + '<label for="v-codice">Il codice</label>'
       + '<input id="v-codice" name="codice" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" '
       + 'maxlength="6" enterkeyhint="go" placeholder="123456">'
-      + '<button type="submit" class="bottone bottone-grande">Entra</button>'
+      + '<button type="submit" class="bottone bottone-grande">Avanti</button>'
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
-      + '<p class="accesso-piede"><a href="#venditori" id="v-altra-email">← Un’altra e-mail, o un codice nuovo</a></p>'
+      + '<p class="accesso-piede"><a href="#venditori" id="v-altra-email">← Torna all’accesso</a></p>'
       + '</div>';
     document.getElementById('v-altra-email').addEventListener('click', ev => { ev.preventDefault(); mostraAccesso(); });
     const campo = document.getElementById('v-codice');
@@ -488,16 +512,73 @@ const Venditori = (() => {
       if (codice.length !== 6) return mostraCodice('Il codice ha 6 cifre.');
       const b = ev.currentTarget.querySelector('button');
       b.disabled = true; b.textContent = 'Controllo…';
-      sb.auth.verifyOtp({ email: emailAccesso, token: codice, type: 'email' }).then(({ error }) => {
+      sb.auth.verifyOtp({ email: emailAccesso, token: codice, type: 'email' }).then(({ data, error }) => {
         if (error) {
           return mostraCodice(/expired|invalid/i.test(error.message)
             ? 'Codice sbagliato o scaduto (vale 15 minuti). Ricontrolla, o chiedine uno nuovo.'
             : 'Non riesco a controllare il codice: riprova tra poco.');
         }
         togliCodiceVecchio();
-        caricaArea();
+        const u = data && data.user;
+        mostraPassword(caricaArea, !!(u && u.user_metadata && u.user_metadata.password_scelta));
       });
     });
+  }
+
+  /* Dal 30/10/2026 si entra con e-mail e password; il codice resta per il
+     primo accesso e per la password dimenticata, e dopo si sceglie la password.
+     Il campo nascosto con l'e-mail serve al telefono per salvarle insieme. */
+  function mostraPassword(dopo, puoSaltare, messaggio) {
+    document.body.classList.add('accesso-venditori');
+    document.body.classList.remove('in-area-venditori');
+    const p = document.getElementById('area-pannello');
+    if (p) p.hidden = true;
+    barra().innerHTML = '<div class="accesso">'
+      + '<h2>Scegli la tua password</h2>'
+      + '<p class="aiuto">La prossima volta entri con l’e-mail e questa password, e il telefono può ricordarla per te. '
+      + 'Almeno 8 caratteri: meglio una frase facile da ricordare, per esempio tre parole.</p>'
+      + '<form id="form-password" class="venditori-accesso" novalidate>'
+      + `<input type="email" name="email" autocomplete="username" value="${esc(emailAccesso)}" hidden>`
+      + '<label for="v-nuova">La nuova password</label>'
+      + '<div class="campo-pw"><input id="v-nuova" name="new-password" type="password" autocomplete="new-password" minlength="8" enterkeyhint="done">'
+      + '<button type="button" class="mostra-pw" aria-label="Mostra la password" aria-pressed="false">Mostra</button></div>'
+      + '<button type="submit" class="bottone bottone-grande">Salva ed entra</button>'
+      + '</form>'
+      + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
+      + (puoSaltare ? '<p class="accesso-piede"><a href="#venditori" id="v-salta">Tengo la password di prima</a></p>' : '')
+      + '</div>';
+    occhio();
+    const campo = document.getElementById('v-nuova');
+    campo.focus();
+    const salta = document.getElementById('v-salta');
+    if (salta) salta.addEventListener('click', ev => { ev.preventDefault(); dopo(); });
+    document.getElementById('form-password').addEventListener('submit', ev => {
+      ev.preventDefault();
+      const pw = campo.value;
+      if (pw.length < 8) return mostraPassword(dopo, puoSaltare, 'La password deve avere almeno 8 caratteri.');
+      const b = ev.currentTarget.querySelector('button[type=submit]');
+      b.disabled = true; b.textContent = 'Salvo…';
+      sb.auth.updateUser({ password: pw, data: { password_scelta: true } }).then(({ error }) => {
+        if (!error || error.code === 'same_password') return dopo();
+        if (error.code === 'weak_password' || /weak|pwned|leak/i.test(error.message)) {
+          return mostraPassword(dopo, puoSaltare, 'Questa password è troppo facile, o è già finita in furti di dati su altri siti: scegline un’altra.');
+        }
+        if (error.code === 'reauthentication_needed' || error.status === 401) {
+          return mostraAccesso('Per cambiare la password, ricevi un codice per e-mail.');
+        }
+        mostraPassword(dopo, puoSaltare, navigator.onLine === false
+          ? 'Sei senza rete: riprova quando torna il segnale.' : 'Non riesco a salvarla: riprova tra poco.');
+      });
+    });
+  }
+
+  function occhio() {
+    document.querySelectorAll('.mostra-pw').forEach(b => b.addEventListener('click', () => {
+      const i = b.previousElementSibling, vedi = i.type === 'password';
+      i.type = vedi ? 'text' : 'password';
+      b.textContent = vedi ? 'Nascondi' : 'Mostra';
+      b.setAttribute('aria-pressed', String(vedi));
+    }));
   }
 
   function chiudiAccesso() {
@@ -728,7 +809,13 @@ const Venditori = (() => {
     if (id === 'contatti') agganciaContatti();
     if (id === 'foto') agganciaFotoSocial();
     if (id === 'materiali') agganciaMateriali();
-    if (id === 'profilo') { agganciaNotifiche(); agganciaFoto(); }
+    if (id === 'profilo') {
+      agganciaNotifiche(); agganciaFoto();
+      document.getElementById('v-cambia-password').addEventListener('click', () => {
+        emailAccesso = area.profilo.email || emailAccesso;
+        mostraPassword(caricaArea, true);
+      });
+    }
   }
 
   /* La sezione nuova compare con una dissolvenza breve dal basso: il
@@ -2034,7 +2121,8 @@ const Venditori = (() => {
     h += `<tr><th>Nome</th><td>${esc(p.nome)}</td></tr>`;
     h += `<tr><th>Ruolo</th><td>${esc(RUOLI[p.ruolo] || p.ruolo)}</td></tr>`;
     h += `<tr><th>E-mail</th><td>${p.email ? esc(p.email) : 'non registrata: chiedila a Pro Farmer, così ricevi copia dei tuoi ordini'}</td></tr>`;
-    h += '</tbody></table></div>';
+    h += '</tbody></table>'
+      + '<div class="azioni"><button type="button" class="bottone bottone-fantasma" id="v-cambia-password">Cambia la password</button></div></div>';
 
     h += '<div class="blocco"><h3>Le tue condizioni</h3><table class="tabella profilo"><tbody>';
     const L = cond.listinoT;

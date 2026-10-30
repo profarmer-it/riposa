@@ -521,6 +521,9 @@ body.in-area-venditori main{padding-top:24px}
 .venditori-accesso input:focus{outline:0;border-color:var(--blu);box-shadow:0 0 0 4px rgba(47,134,224,.15)}
 .venditori-accesso .bottone{width:100%}
 .accesso .errore{margin-top:14px;text-align:left}
+.campo-pw{position:relative}
+.venditori-accesso input[type=password],.campo-pw input[type=text]{text-transform:none;letter-spacing:normal;font-size:20px;font-weight:500;padding:0 96px}
+.mostra-pw{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--blu);font:700 15px/1 Inter,sans-serif;padding:12px;cursor:pointer}
 .accesso-piede{margin:18px 0 0;font-size:14px;color:var(--testo-2)}
 .accesso-piede a{color:var(--blu);font-weight:500}
 
