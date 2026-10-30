@@ -84,7 +84,7 @@ cambia(/(<img class="logo-profarmer"[^>]*>)/,
 const v = (h.match(/app\.js\?v=([\w]+)/) || [])[1];
 if (!v) throw new Error('genera-pro: non trovo la versione di app.js');
 cambia('<!-- RIPOSA PRO: qui strumenti/genera-pro.mjs aggiunge gli script dei venditori -->',
-  `<script>window.RIPOSA_PRO = true;</script>\n<script src="../assets/profarmer.js?v=${v}"></script>\n<script src="../assets/venditori.js?v=${v}"></script>`,
+  `<script>window.RIPOSA_PRO = true;</script>\n<script src="../assets/profarmer.js?v=${v}"></script>\n<script src="../assets/antirobot.js?v=${v}"></script>\n<script src="../assets/venditori.js?v=${v}"></script>`,
   'segnaposto degli script');
 
 h = '<!-- GENERATO da strumenti/genera-pro.mjs a partire da index.html: non modificare qui. -->\n' + h;

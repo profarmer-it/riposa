@@ -457,9 +457,10 @@ const Venditori = (() => {
       if (!pw) return mostraAccesso('Scrivi la password. Se non l’hai ancora scelta, tocca «Primo accesso».');
       if (!collegamento()) return mostraAccesso('L’area venditori non è raggiungibile: riprova tra poco.');
       const b = ev.currentTarget.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Controllo…';
-      sb.auth.signInWithPassword({ email: e, password: pw }).then(({ error }) => {
+      Antirobot.token().then(captchaToken => sb.auth.signInWithPassword({ email: e, password: pw, options: { captchaToken } })).then(({ error }) => {
         if (!error) { togliCodiceVecchio(); return caricaArea(); }
         const m = String(error.message || '');
+        if (Antirobot.errore(error)) return mostraAccesso('Il controllo anti-robot non è riuscito: ricarica la pagina e riprova.');
         if (error.status === 429 || /rate|too many/i.test(m)) return mostraAccesso('Troppi tentativi: aspetta qualche minuto e riprova.');
         if (/invalid|credentials/i.test(m)) return mostraAccesso('E-mail o password sbagliate. Se è il primo accesso o non ricordi la password, ricevi un codice per e-mail.');
         mostraAccesso(navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.' : 'Non riesco a controllare: riprova tra poco.');
@@ -473,9 +474,10 @@ const Venditori = (() => {
     if (!collegamento()) return mostraAccesso('L’area venditori non è raggiungibile: riprova tra poco.');
     if (bottone) { bottone.disabled = true; bottone.style.pointerEvents = 'none'; bottone.textContent = 'Mando il codice…'; }
     emailAccesso = e;
-    sb.auth.signInWithOtp({ email: e, options: { shouldCreateUser: false } }).then(({ error }) => {
+    Antirobot.token().then(captchaToken => sb.auth.signInWithOtp({ email: e, options: { shouldCreateUser: false, captchaToken } })).then(({ error }) => {
       if (!error) return mostraCodice();
       const m = String(error.message || '');
+      if (Antirobot.errore(error)) return mostraAccesso('Il controllo anti-robot non è riuscito: ricarica la pagina e riprova.');
       if (error.status === 429 || /rate|seconds|too many/i.test(m)) {
         return mostraAccesso('Hai chiesto il codice da poco: aspetta un minuto e riprova.');
       }
