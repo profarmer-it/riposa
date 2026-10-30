@@ -1772,7 +1772,8 @@ const ProFarmer = (() => {
           + `<p class="cliente-dati">${esc([a.comune, a.provincia].filter(Boolean).join(' '))}${a.cliente_id ? ' · cliente piùLact' : ''} · `
           + `${a.persone} ${a.persone === 1 ? 'persona' : 'persone'} · ultimo uso ${a.ultimo_uso ? dataIt(a.ultimo_uso) : 'mai'}`
           + (b.fino_al ? ` · fino al ${dataIt(b.fino_al)}` : '') + (b.prezzo_mese ? ` · ${euro(b.prezzo_mese)} al mese` : '') + '</p>'
-          + `<p class="cliente-dati">Titolare: ${esc(t.nome || '—')} · ${esc(t.email || '')} · ${t.invitato ? 'accesso mandato il ' + dataIt(t.invitato) : 'accesso da mandare'}</p>`
+          + `<p class="cliente-dati">Titolare: ${esc(t.nome || '—')} · ${esc(t.email || '')} · ${t.invitato ? 'accesso mandato il ' + dataIt(t.invitato) : 'accesso da mandare'}`
+          + ` · ${a.nomina ? 'nomina a responsabile accettata il ' + dataIt(a.nomina.il) : '<strong>nomina a responsabile da accettare</strong> (al primo accesso)'}</p>`
           + (b.nota ? `<p class="cliente-note">${esc(b.nota)}</p>` : '')
           + `<form class="pf-app-piano" data-id="${esc(b.id || '')}" novalidate><div class="pf-campi">`
           + '<label>Piano<select name="piano" class="pf-select">' + Object.entries(PIANI).map(([k, n]) =>
