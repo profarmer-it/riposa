@@ -9,6 +9,7 @@
      Venditori   condizioni personali, e-mail, attivo; "Manda invito"
      Condizioni  quelle uguali per tutti (listini, ballette, minimi)
      Materiali   i documenti che i venditori mandano ai clienti
+     App Pro Farmer  attivare l'app per un'azienda (dal 30/10/2026)
    Questo file è pubblico come il resto del sito, ma non contiene dati: li
    legge dal database, che li dà SOLO a chi ha il ruolo interno (Row Level
    Security). Per chiunque altro le tabelle risultano vuote.
@@ -29,7 +30,7 @@ const ProFarmer = (() => {
   const aperti = new Set();   // i venditori aperti: restano aperti dopo un salvataggio
 
   const SEZIONI = { cruscotto: 'Cruscotto', ordini: 'Da eseguire', chiamate: 'Chiamate', clienti: 'Clienti', lead: 'Lead', allevatori: 'Allevatori', premi: 'Premi', foto: 'Foto', provvigioni: 'Provvigioni',
-                    venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali' };
+                    venditori: 'Venditori', condizioni: 'Condizioni', materiali: 'Materiali', app: 'App Pro Farmer' };
   /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
   const cerca = {};
   let filtroVenditore = '';   // ordini e clienti: di chi ('' = tutti, 'diretti' = Pro Farmer)
@@ -152,7 +153,7 @@ const ProFarmer = (() => {
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
     setTimeout(() => agganciaCerca(corpo), 0);
-    ({ cruscotto: cruscotto, ordini: ordini, chiamate: chiamate, clienti: clienti, lead: lead, allevatori: allevatori, premi: premi, foto: foto, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali })[sezione](corpo);
+    ({ cruscotto: cruscotto, ordini: ordini, chiamate: chiamate, clienti: clienti, lead: lead, allevatori: allevatori, premi: premi, foto: foto, provvigioni: provvigioni, venditori: venditori, condizioni: condizioni, materiali: materiali, app: appProFarmer })[sezione](corpo);
   }
 
   /* La casella di ricerca di una lista: filtra le righe mentre si scrive,
@@ -1727,6 +1728,143 @@ const ProFarmer = (() => {
         });
       });
     }
+  }
+
+  /* ------------------------------------------------------ App Pro Farmer
+     Dal 30/10/2026: l'app dell'allevatore su easy.profarmer.it, con Riposa e
+     Presenze e turni (36-app-pro-farmer.sql). Qui Pro Farmer la attiva per
+     un'azienda: in regalo ai clienti piùLact, in abbonamento o in prova di
+     60 giorni per gli altri. Si vedono azienda, piano, persone e ultimo uso,
+     MAI le presenze dei dipendenti (decisione del 29/10/2026). */
+  const PIANI = { regalo: 'Regalo piùLact', abbonamento: 'Abbonamento', prova: 'Prova 60 giorni' };
+  const STATI_APP = { attivo: 'Attiva', sospeso: 'Sospesa', chiuso: 'Chiusa' };
+
+  function appProFarmer(corpo) {
+    corpo.innerHTML = '<div class="blocco"><p class="aiuto">Carico le aziende…</p></div>';
+    sb.rpc('pf_gestione').then(({ data, error }) => {
+      if (error) {
+        corpo.innerHTML = '<div class="blocco"><h3>App Pro Farmer</h3><p class="aiuto">'
+          + (/pf_gestione|function|schema cache/i.test(error.message)
+            ? 'La parte del database non è ancora attiva (file 36-app-pro-farmer.sql).' : 'Non riesco a leggere le aziende: ' + esc(error.message))
+          + '</p></div>';
+        return;
+      }
+      disegnaApp(corpo, data || []);
+    });
+  }
+
+  function disegnaApp(corpo, aziende) {
+    const giaApp = new Set(aziende.map(a => a.cliente_id).filter(Boolean));
+    const clienti = dati.clienti.filter(c => !giaApp.has(c.id)).sort((a, b) => String(a.ragione).localeCompare(String(b.ragione), 'it'));
+    let h = '<div class="blocco"><div class="pannello-testa"><h3>App Pro Farmer</h3>'
+      + '<button type="button" class="bottone" id="pf-app-nuova">Attiva per un’azienda</button></div>'
+      + '<p class="aiuto">L’app per l’allevatore su easy.profarmer.it: Riposa e Presenze e turni. Ai clienti piùLact è in regalo; '
+      + 'per gli altri c’è l’abbonamento, o la prova di 60 giorni. Qui si vedono le aziende e i piani, mai le presenze dei dipendenti.</p>'
+      + '<div id="pf-app-modulo"></div>';
+    if (!aziende.length) h += '<p class="aiuto">Ancora nessuna azienda.</p>';
+    else {
+      h += casellaCerca('app', 'Cerca azienda o e-mail') + '<ul class="lista-clienti" data-lista-di="app">';
+      aziende.forEach(a => {
+        const b = a.abbonamento || {};
+        const t = (a.titolari || [])[0] || {};
+        h += `<li data-cerca="${esc([a.ragione, a.piva, a.comune, t.email].join(' '))}"><div class="cliente-testa"><strong>${esc(a.ragione)}</strong>`
+          + `<span class="pf-proprietario${b.stato === 'attivo' ? ' diretto' : ''}">${esc(PIANI[b.piano] || '—')} · ${esc(STATI_APP[b.stato] || 'senza piano')}</span></div>`
+          + `<p class="cliente-dati">${esc([a.comune, a.provincia].filter(Boolean).join(' '))}${a.cliente_id ? ' · cliente piùLact' : ''} · `
+          + `${a.persone} ${a.persone === 1 ? 'persona' : 'persone'} · ultimo uso ${a.ultimo_uso ? dataIt(a.ultimo_uso) : 'mai'}`
+          + (b.fino_al ? ` · fino al ${dataIt(b.fino_al)}` : '') + (b.prezzo_mese ? ` · ${euro(b.prezzo_mese)} al mese` : '') + '</p>'
+          + `<p class="cliente-dati">Titolare: ${esc(t.nome || '—')} · ${esc(t.email || '')} · ${t.invitato ? 'accesso mandato il ' + dataIt(t.invitato) : 'accesso da mandare'}</p>`
+          + (b.nota ? `<p class="cliente-note">${esc(b.nota)}</p>` : '')
+          + `<form class="pf-app-piano" data-id="${esc(b.id || '')}" novalidate><div class="pf-campi">`
+          + '<label>Piano<select name="piano" class="pf-select">' + Object.entries(PIANI).map(([k, n]) =>
+            `<option value="${k}"${b.piano === k ? ' selected' : ''}>${n}</option>`).join('') + '</select></label>'
+          + '<label>Stato<select name="stato" class="pf-select">' + Object.entries(STATI_APP).map(([k, n]) =>
+            `<option value="${k}"${b.stato === k ? ' selected' : ''}>${n}</option>`).join('') + '</select></label>'
+          + campo('fino_al', 'Fino al (vuoto = senza scadenza)', b.fino_al, 'date')
+          + campo('prezzo_mese', 'Prezzo al mese (€)', b.prezzo_mese, 'number', ' step="0.01" min="0"')
+          + `<label class="pf-largo">Nota<input name="nota" value="${esc(v(b.nota))}"></label>`
+          + '</div><p class="errore" hidden></p><div class="azioni pf-azioni">'
+          + '<button type="submit" class="bottone">Salva il piano</button>'
+          + (t.id ? `<button type="button" class="bottone bottone-fantasma" data-invita="${esc(t.id)}">${t.invitato ? 'Rimanda l’accesso' : 'Manda l’accesso al titolare'}</button>` : '')
+          + '</div></form></li>';
+      });
+      h += '</ul>';
+    }
+    h += '</div>';
+    corpo.innerHTML = h;
+    agganciaCerca(corpo);
+
+    document.getElementById('pf-app-nuova').addEventListener('click', () => {
+      const n = document.getElementById('pf-app-modulo');
+      n.innerHTML = '<div class="cliente-modulo"><h4>Attiva l’app per un’azienda</h4><form class="pf-app-nuova" novalidate><div class="pf-campi">'
+        + '<label class="pf-largo">Cliente piùLact<select name="cliente_id" class="pf-select"><option value="">— Azienda nuova, non cliente —</option>'
+        + clienti.map(c => `<option value="${esc(c.id)}">${esc(c.ragione)}${c.comune ? ' · ' + esc(c.comune) : ''}</option>`).join('') + '</select></label>'
+        + '<label>Piano<select name="piano" class="pf-select">' + Object.entries(PIANI).map(([k, nn]) => `<option value="${k}">${nn}</option>`).join('') + '</select></label>'
+        + campo('email', 'E-mail del titolare', '', 'email', ' autocapitalize="off"')
+        + campo('nome', 'Nome del titolare', '') + campo('cognome', 'Cognome', '')
+        + '<div class="pf-largo pf-app-nuova-azienda" hidden><div class="pf-campi">'
+        + campo('ragione', 'Ragione sociale', '') + campo('piva', 'P.IVA', '', 'text', ' inputmode="numeric"')
+        + campo('comune', 'Comune', '') + campo('provincia', 'Provincia (sigla)', '', 'text', ' maxlength="2" autocapitalize="characters"')
+        + '</div></div>'
+        + campo('prezzo_mese', 'Prezzo al mese (€, per l’abbonamento)', '', 'number', ' step="0.01" min="0"')
+        + campo('fino_al', 'Fino al (facoltativo)', '', 'date')
+        + '<label class="pf-largo">Nota<input name="nota"></label>'
+        + '<label class="pf-spunta pf-largo"><input type="checkbox" name="invita" checked> Manda subito al titolare l’e-mail con l’accesso</label>'
+        + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Attiva</button>'
+        + '<button type="button" class="bottone bottone-fantasma" data-annulla>Annulla</button></div></form></div>';
+      const f = n.querySelector('form');
+      const nuova = f.querySelector('.pf-app-nuova-azienda');
+      const aggiornaCampi = () => {
+        nuova.hidden = !!f.cliente_id.value;
+        if (f.cliente_id.value) f.piano.value = 'regalo'; else if (f.piano.value === 'regalo') f.piano.value = 'prova';
+      };
+      f.cliente_id.addEventListener('change', aggiornaCampi); aggiornaCampi();
+      f.querySelector('[data-annulla]').addEventListener('click', () => { n.innerHTML = ''; });
+      f.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const d = Object.fromEntries(new FormData(f));
+        const err = f.querySelector('.errore');
+        const errore = t => { err.textContent = t; err.hidden = false; };
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(d.email || '').trim())) return errore('Serve l’e-mail del titolare.');
+        if (!d.cliente_id && d.piano === 'regalo') return errore('Il regalo è per i clienti piùLact: scegli il cliente, o un altro piano.');
+        if (!d.cliente_id && !String(d.ragione || '').trim()) return errore('Scrivi la ragione sociale dell’azienda.');
+        const b = f.querySelector('button[type=submit]');
+        b.disabled = true; b.textContent = 'Attivo…';
+        sb.rpc('pf_attiva', { p: d }).then(({ data, error }) => {
+          if (error) throw new Error(error.message);
+          return d.invita === 'on' ? invitaTitolare(data.titolare).then(ok => ok ? 'App attivata, accesso mandato al titolare' : 'App attivata. L’e-mail al titolare non è partita: usa «Manda l’accesso».')
+            : 'App attivata';
+        }).then(msg => { avvisa(msg); appProFarmer(corpo); })
+          .catch(e => { b.disabled = false; b.textContent = 'Attiva'; errore('Non attivata: ' + e.message); });
+      });
+    });
+
+    corpo.querySelectorAll('.pf-app-piano').forEach(f => {
+      f.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const d = Object.fromEntries(new FormData(f));
+        const err = f.querySelector('.errore');
+        const b = f.querySelector('button[type=submit]');
+        if (!f.dataset.id) { err.textContent = 'Questa azienda non ha un piano.'; err.hidden = false; return; }
+        b.disabled = true; b.textContent = 'Salvo…';
+        sb.rpc('pf_cambia_abbonamento', { p: { id: f.dataset.id, ...d } }).then(({ error }) => {
+          if (error) throw new Error(error.message);
+          avvisa('Piano salvato'); appProFarmer(corpo);
+        }).catch(e => { b.disabled = false; b.textContent = 'Salva il piano'; err.textContent = 'Non salvato: ' + e.message; err.hidden = false; });
+      });
+      const inv = f.querySelector('[data-invita]');
+      if (inv) inv.addEventListener('click', () => {
+        inv.disabled = true; inv.textContent = 'Mando…';
+        invitaTitolare(inv.dataset.invita).then(ok => {
+          if (ok) { avvisa('Accesso mandato al titolare'); appProFarmer(corpo); }
+          else { inv.disabled = false; inv.textContent = 'Riprova'; }
+        });
+      });
+    });
+  }
+
+  function invitaTitolare(id) {
+    return sb.functions.invoke('pf-invita', { body: { id } })
+      .then(({ data, error }) => !error && !!(data && data.ok)).catch(() => false);
   }
 
   /* «Nuovo preventivo» di Pro Farmer (venditori.js): la Gestione si apre su
