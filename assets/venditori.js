@@ -423,6 +423,7 @@ const Venditori = (() => {
       + '<label for="v-password">La password</label>'
       + '<div class="campo-pw"><input id="v-password" name="password" type="password" autocomplete="current-password" enterkeyhint="go">'
       + '<button type="button" class="mostra-pw" aria-label="Mostra la password" aria-pressed="false">Mostra</button></div>'
+      + '<div class="antirobot" data-antirobot aria-live="polite"></div>'
       + '<button type="submit" class="bottone bottone-grande">Entra</button>'
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
