@@ -46,7 +46,9 @@ repository viene servito da GitHub Pages a un indirizzo indovinabile.
 
 I documenti interni — la mappa del progetto (`MAPPA.html`), le regole di
 dosaggio (`docs/`) e lo schema e le funzioni di Supabase (`integrazioni/`) — restano
-nella cartella sul Mac e il `.gitignore` li tiene fuori da qui. Ci sono dentro
+in `Riposa interno/`, accanto a questa cartella, nel repository privato di Pro
+Farmer: qui ci sono solo collegamenti con lo stesso nome, e il `.gitignore` li
+tiene fuori da questo repository pubblico. Ci sono dentro
 il know-how sui dosaggi e il ragionamento commerciale: non è roba da vetrina.
 
 ## Come provarlo in locale
