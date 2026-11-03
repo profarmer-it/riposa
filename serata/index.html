@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Serata piùLact · giovedì 19 novembre · Pro Farmer</title>
-<meta name="description" content="Giovedì 19 novembre 2026, ritrovo alle 18:30 a Cingia de’ Botti (CR): la serata Pro Farmer per agenti e rivenditori piùLact. Conferma la tua presenza.">
+<meta name="description" content="Giovedì 19 novembre 2026, ritrovo alle 18:00 a Cingia de’ Botti (CR): la serata Pro Farmer per agenti e rivenditori piùLact. Conferma la tua presenza.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#242320">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/icone/favicon-32.png">
-<meta property="og:title" content="Serata piùLact · giovedì 19 novembre, 18:30">
+<meta property="og:title" content="Serata piùLact · giovedì 19 novembre, 18:00">
 <meta property="og:description" content="Per agenti e rivenditori piùLact: la nuova gamma, piùLact Pronto, Riposa Pro. Poi cena insieme. Conferma qui la tua presenza.">
 <meta property="og:image" content="https://riposa.profarmer.it/serata/apertura.jpg">
 <style>
@@ -202,7 +202,7 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
     <img class="foto" src="apertura.jpg" alt="Una stalla di bovine da latte alla mangiatoia" width="1920" height="1440" fetchpriority="high">
     <div class="velo"></div>
     <div class="contenitore">
-      <p class="cartellino" id="quando">Giovedì 19 novembre · ore 18:30</p>
+      <p class="cartellino" id="quando">Giovedì 19 novembre · ore 18:00</p>
       <h1 class="titolo" id="titolo"><span>Serata</span><span>piùLact</span></h1>
       <p class="sotto-testo">Per agenti e rivenditori. Un’ora insieme a Cingia de’ Botti (CR), poi cena offerta da&nbsp;Pro&nbsp;Farmer.</p>
       <div class="azioni">
@@ -221,7 +221,7 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
           <figcaption>Cuccette a buca con piùLact.</figcaption>
         </figure>
         <ul class="tabella" data-entra style="--i:2">
-          <li class="forte"><span class="quando">18:30</span><span class="cosa">Ritrovo e benvenuto<small>Sala meeting di Pieve Ecoenergia</small></span></li>
+          <li class="forte"><span class="quando">18:00</span><span class="cosa">Ritrovo e benvenuto<small>Sala meeting di Pieve Ecoenergia</small></span></li>
           <li><span class="quando">Circa un’ora</span><span class="cosa">piùLact oggi</span></li>
           <li><span class="quando"></span><span class="cosa">Ricerca ed eventi di dicembre</span></li>
           <li><span class="quando"></span><span class="cosa">La nuova gamma</span></li>
@@ -257,7 +257,7 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
         <dl>
           <div><dt>Dove</dt><dd>Sede operativa Pro Farmer, sala meeting di Pieve Ecoenergia</dd></div>
           <div><dt>Indirizzo</dt><dd>Strada Provinciale 87, Cingia de’ Botti (CR)</dd></div>
-          <div><dt>Quando</dt><dd>Giovedì 19 novembre, ritrovo alle 18:30</dd></div>
+          <div><dt>Quando</dt><dd>Giovedì 19 novembre, ritrovo alle 18:00</dd></div>
         </dl>
         <a class="bottone" href="https://www.google.com/maps/search/?api=1&amp;query=Strada%20Provinciale%2087%2C%20Cingia%20de%20Botti%20CR" target="_blank" rel="noopener">Apri la mappa</a>
       </div>
@@ -269,7 +269,7 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
       <div class="sinistra">
         <h2 id="t-rispondi" data-entra>Ci sarai?</h2>
         <p data-entra style="--i:1">Rispondi il prima possibile: ci aiuti a organizzare sala e cena. Ti mandiamo la conferma per e-mail.</p>
-        <p class="riassunto" id="riassunto" aria-live="polite" data-entra style="--i:2">Ti aspettiamo giovedì alle 18:30, e poi a cena.</p>
+        <p class="riassunto" id="riassunto" aria-live="polite" data-entra style="--i:2">Ti aspettiamo giovedì alle 18:00, e poi a cena.</p>
       </div>
       <div class="pannello" id="risposta" data-entra style="--i:1">
         <form id="modulo" novalidate>
@@ -347,9 +347,9 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
     if (f.partecipa.value !== 'si') {
       t = (nome ? 'Peccato, ' + nome + '. ' : 'Peccato. ') + 'Ti mandiamo i materiali della serata.';
     } else if (n > 1) {
-      t = (nome ? nome + ', vi' : 'Vi') + ' aspettiamo in ' + n + ' giovedì alle 18:30' + (cena ? ', e poi tutti a cena.' : '.');
+      t = (nome ? nome + ', vi' : 'Vi') + ' aspettiamo in ' + n + ' giovedì alle 18:00' + (cena ? ', e poi tutti a cena.' : '.');
     } else {
-      t = (nome ? nome + ', ti' : 'Ti') + ' aspettiamo giovedì alle 18:30' + (cena ? ', e poi a cena.' : '.');
+      t = (nome ? nome + ', ti' : 'Ti') + ' aspettiamo giovedì alle 18:00' + (cena ? ', e poi a cena.' : '.');
     }
     riass.textContent = t;
   }
@@ -375,7 +375,7 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
         var box = document.getElementById('risposta');
         box.classList.add('grazie');
         box.innerHTML = d.partecipa === 'si'
-          ? '<div class="spunta"></div><h3>Grazie, ci vediamo il 19 novembre!</h3><p>Ti abbiamo mandato il riepilogo per e-mail. Ritrovo alle 18:30 a Cingia de’ Botti.</p>'
+          ? '<div class="spunta"></div><h3>Grazie, ci vediamo il 19 novembre!</h3><p>Ti abbiamo mandato il riepilogo per e-mail. Ritrovo alle 18:00 a Cingia de’ Botti.</p>'
           : '<div class="spunta"></div><h3>Grazie per averci avvisato</h3><p>Ti mandiamo i materiali della serata. Se vuoi, ti facciamo vedere Riposa Pro un altro giorno.</p>';
         box.scrollIntoView({ behavior: 'smooth', block: 'start' });
       })
@@ -387,10 +387,10 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
   });
 
   // Il cartellino diventa «domani» e «oggi» negli ultimi giorni
-  var giorni = Math.ceil((new Date(2026, 10, 19, 18, 30) - new Date()) / 864e5);
+  var giorni = Math.ceil((new Date(2026, 10, 19, 18, 0) - new Date()) / 864e5);
   var q = document.getElementById('quando');
-  if (giorni === 1) q.textContent = 'Domani, giovedì 19 novembre · ore 18:30';
-  else if (giorni === 0) q.textContent = 'Oggi, giovedì 19 novembre · ore 18:30';
+  if (giorni === 1) q.textContent = 'Domani, giovedì 19 novembre · ore 18:00';
+  else if (giorni === 0) q.textContent = 'Oggi, giovedì 19 novembre · ore 18:00';
 
   // La barra si riempie appena si scorre
   var barra = document.getElementById('barra');
