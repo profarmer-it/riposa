@@ -75,8 +75,11 @@ const ProFarmer = (() => {
       // le note interne sui venditori: tabella a parte, il venditore non la legge (31-regole-28-10.sql)
       sb.from('venditori_note').select('venditore_id, note'),
       // le risposte all'invito della serata del 19/11/2026 (33-serata-19-11.sql)
-      sb.from('serata_iscrizioni').select('*').order('creato_il', { ascending: false })
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn, se]) => {
+      sb.from('serata_iscrizioni').select('*').order('creato_il', { ascending: false }),
+      // gli eventi Pro Farmer con le iscrizioni dalle pagine riposa.profarmer.it/<evento>/ (53-eventi-iscrizioni.sql)
+      sb.from('eventi').select('*').order('quando'),
+      sb.from('eventi_iscrizioni').select('*').order('creato_il')
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn, se, ev, ei]) => {
       const noteV = new Map(((!vn.error && vn.data) || []).map(x => [x.venditore_id, x.note]));
       (ve.data || []).forEach(x => { x.note = noteV.get(x.id) || null; });
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
@@ -89,7 +92,8 @@ const ProFarmer = (() => {
                // le foto per i social (29-foto-social.sql): se la funzione non c'è ancora, la scheda lo dice
                foto: (!fo.error && fo.data) || null,
                giroFic: (!gi.error && gi.data && gi.data[0]) || null,
-               serata: (!se.error && se.data) || [] };
+               serata: (!se.error && se.data) || [],
+               eventi: (!ev.error && ev.data) || [], iscrizioni: (!ei.error && ei.data) || [] };
     });
   }
 
@@ -114,6 +118,63 @@ const ProFarmer = (() => {
     }
     return h + '</div>';
   }
+
+  /* Gli eventi Pro Farmer (dal 4/11/2026, al posto dei moduli Google): iscritti, posti,
+     pranzo e visita, lista d'attesa; «Presente» il giorno dell'evento (serve per gli
+     attestati) e l'elenco da scaricare per Excel. Un evento sparisce il giorno dopo. */
+  const RUOLI_EVENTO = { allevatore: 'allevatore', collaboratore: 'collaboratore', veterinario: 'veterinario', tecnico: 'tecnico', studente: 'studente', altro: 'altro' };
+  function bloccoEventi() {
+    const prossimi = (dati.eventi || []).filter(e => new Date(e.quando).getTime() > Date.now() - 36 * 36e5);
+    return prossimi.map(e => {
+      const r = (dati.iscrizioni || []).filter(x => x.evento === e.codice);
+      const dentro = r.filter(x => !x.lista_attesa), attesa = r.filter(x => x.lista_attesa);
+      const pranzo = dentro.filter(x => x.pranzo).length, visita = dentro.filter(x => x.visita === 'si').length, forse = dentro.filter(x => x.visita === 'forse').length;
+      const presenti = dentro.filter(x => x.presente).length;
+      const quando = new Date(e.quando).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+      let h = `<div class="blocco"><h3>${esc(e.titolo.split(' · ')[0])} · ${esc(quando)}</h3>`
+        + `<p class="aiuto"><strong>${dentro.length}</strong>${e.posti ? ' su ' + e.posti : ''} iscritti`
+        + (attesa.length ? ` · <strong>${attesa.length}</strong> in lista d'attesa` : '')
+        + ` · <strong>${pranzo}</strong> a pranzo · <strong>${visita}</strong> in visita${forse ? ' (+' + forse + ' forse)' : ''}`
+        + (presenti ? ` · <strong>${presenti}</strong> presenti` : '') + '.</p>'
+        + `<p><button type="button" class="bottone bottone-fantasma pf-piccolo" data-csv-evento="${esc(e.codice)}">Scarica l'elenco (Excel)</button></p>`;
+      if (r.length) {
+        h += '<ul class="lista-clienti">' + r.map(x => `<li><div class="cliente-testa"><strong>${esc(x.nome)}</strong>`
+          + (x.lista_attesa ? '<span class="pf-proprietario">lista d’attesa</span>'
+            : `<button type="button" class="pf-proprietario${x.presente ? ' diretto' : ''}" data-presente="${x.id}" aria-pressed="${!!x.presente}">${x.presente ? 'presente' : 'segna presente'}</button>`)
+          + `</div><p class="cliente-dati">${esc([x.azienda, x.comune, RUOLI_EVENTO[x.ruolo] + (x.ruolo_altro ? ': ' + x.ruolo_altro : ''), x.telefono, x.email].filter(Boolean).join(' · '))}</p>`
+          + `<p class="cliente-dati">pranzo ${x.pranzo ? 'sì' : 'no'} · visita ${x.visita === 'si' ? 'sì' : x.visita === 'forse' ? 'forse' : 'no'}`
+          + (x.altri ? ` · altri dell’azienda: ${x.altri === 3 ? '3 o più' : x.altri}` : '') + (x.vacche != null ? ` · ${x.vacche} vacche` : '')
+          + (x.allergie ? ' · ' + esc(x.allergie) : '') + '</p></li>').join('') + '</ul>';
+      }
+      return h + '</div>';
+    }).join('');
+  }
+  // i pulsanti degli eventi: uno solo per tutta la Gestione, perché il cruscotto si ridisegna
+  document.addEventListener('click', ev => {
+    const p = ev.target.closest('[data-presente]'), c = ev.target.closest('[data-csv-evento]');
+    if (p) {
+      const x = (dati.iscrizioni || []).find(i => i.id === p.dataset.presente);
+      if (!x) return;
+      p.disabled = true;
+      sb.from('eventi_iscrizioni').update({ presente: !x.presente }).eq('id', x.id).then(({ error }) => {
+        p.disabled = false;
+        if (error) return alert('Non salvato: ' + error.message);
+        x.presente = !x.presente;
+        p.textContent = x.presente ? 'presente' : 'segna presente';
+        p.classList.toggle('diretto', x.presente); p.setAttribute('aria-pressed', x.presente);
+      });
+    }
+    if (c) {
+      const r = (dati.iscrizioni || []).filter(i => i.evento === c.dataset.csvEvento);
+      const col = ['nome', 'azienda', 'comune', 'ruolo', 'telefono', 'email', 'pranzo', 'visita', 'altri', 'vacche', 'allergie', 'lista_attesa', 'presente', 'consenso_novita', 'creato_il'];
+      const cella = v => '"' + String(v == null ? '' : v === true ? 'sì' : v === false ? 'no' : v).replace(/"/g, '""') + '"';
+      const testo = '\ufeff' + col.join(';') + '\n' + r.map(i => col.map(k => cella(k === 'ruolo' && i.ruolo_altro ? i.ruolo + ': ' + i.ruolo_altro : i[k])).join(';')).join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([testo], { type: 'text/csv;charset=utf-8' }));
+      a.download = 'iscritti-' + c.dataset.csvEvento + '.csv'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+  });
 
   function rigaGiroFic() {
     const g = dati.giroFic;
@@ -750,7 +811,7 @@ const ProFarmer = (() => {
       h += `<button type="button" class="cr-casella${n ? ' cr-attenzione' : ''}" data-vai="${dove}">`
         + `<b>${n}</b><span>${esc(cosa)}</span><small>${esc(sotto)}</small></button>`;
     });
-    h += '</div>' + rigaGiroFic() + '</div>' + bloccoSerata();
+    h += '</div>' + rigaGiroFic() + '</div>' + bloccoEventi() + bloccoSerata();
 
     // i compleanni di oggi e della settimana: un messaggio di auguri
     if (dati.compleanni.length) {
