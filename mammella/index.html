@@ -38,10 +38,6 @@ p{text-wrap:pretty}
 .testata{position:relative;overflow:hidden;padding:max(24px,env(safe-area-inset-top)) 0 56px}
 .marchio{display:flex;align-items:center;gap:16px;padding-top:8px}
 .marchio .pf{height:52px;width:auto}
-.marchio .sep{width:1px;align-self:stretch;background:rgba(255,255,255,.35)}
-.marchio .mm{display:flex;flex-direction:column;gap:5px}
-.marchio small{font-size:12px;font-weight:600;color:var(--cielo)}
-.marchio .mm img{height:34px;width:auto}
 .latte{width:min(620px,100%);margin:4px auto -10px}
 .occhiello{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
 .occhiello::before{content:"";width:34px;height:3px;background:var(--arancio);flex:none}
@@ -108,8 +104,13 @@ input:focus,select:focus{border-color:var(--blu);outline:none;background:#fff}
 .esito.no{display:block;background:#FBEAE8;color:var(--errore)}
 
 footer{padding:40px 0 calc(40px + env(safe-area-inset-bottom));font-size:15px;color:#dfe8f5}
-footer .riga{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px}
-footer img{height:64px;width:auto}
+footer .loghi{display:flex;flex-wrap:wrap;align-items:center;gap:20px 28px;padding-bottom:28px;border-bottom:1px solid rgba(255,255,255,.2);margin-bottom:24px}
+footer .loghi .piulact{height:72px;width:auto}
+footer .loghi .pf{height:44px;width:auto}
+/* il logo Mangimi Mirandola resta com'è, sul suo fondo bianco */
+footer .collab{display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:600;color:var(--cielo)}
+footer .collab span{background:#fff;border-radius:10px;padding:10px 14px;align-self:flex-start}
+footer .collab img{height:40px;width:auto}
 footer a{font-weight:700}
 @media(max-width:480px){.occhiello{font-size:11px;letter-spacing:.1em}.occhiello::before{width:22px}.pillola{font-size:14px;padding:8px 13px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.bottone{transition:none}}
@@ -121,8 +122,6 @@ footer a{font-weight:700}
   <div class="contenitore">
     <div class="marchio">
       <img class="pf" src="pf_bianco.png" alt="Pro Farmer" width="360" height="136">
-      <span class="sep"></span>
-      <span class="mm"><small>in collaborazione con</small><img src="mirandola.png" alt="Mangimi Mirandola" width="420" height="144"></span>
     </div>
     <img class="latte" src="latte.jpg" alt="Una mammella fatta di latte" width="1100" height="1050" fetchpriority="high">
     <div class="occhiello">Mattinata sulla sanità della mammella</div>
@@ -211,9 +210,13 @@ footer a{font-weight:700}
 </section>
 
 <footer>
-  <div class="contenitore riga">
-    <div>Informazioni: <a href="https://wa.me/393761296162">WhatsApp +39 376 129 6162</a> · <a href="mailto:info@profarmer.it">info@profarmer.it</a><br>Pro Farmer in collaborazione con Mangimi Mirandola</div>
-    <img src="piulact.png" alt="piùLact" width="260" height="260">
+  <div class="contenitore">
+    <div class="loghi">
+      <img class="piulact" src="piulact.png" alt="piùLact" width="260" height="260">
+      <img class="pf" src="pf_bianco.png" alt="Pro Farmer" width="360" height="136">
+      <div class="collab">Evento organizzato in collaborazione con<span><img src="mirandola_originale.png" alt="Mangimi Mirandola" width="720" height="242"></span></div>
+    </div>
+    <div>Informazioni: <a href="https://wa.me/393761296162">WhatsApp +39 376 129 6162</a> · <a href="mailto:info@profarmer.it">info@profarmer.it</a></div>
   </div>
 </footer>
 
