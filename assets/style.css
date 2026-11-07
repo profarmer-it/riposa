@@ -488,6 +488,12 @@ body.in-area-venditori .eroe{display:none}
 .numeri.soldi{margin:12px 0}
 .numeri.soldi .numero-cella dd{color:var(--bianco)}
 .tabella.profilo td{white-space:normal;text-align:right}
+/* l'e-mail del profilo sotto la tabella, a tutta larghezza (7/11/2026) */
+.tabella.profilo td{overflow-wrap:anywhere}
+.tabella.profilo-dati tr:last-child th,.tabella.profilo-dati tr:last-child td{border-bottom:1px solid var(--crema-2)}
+.profilo-email{margin:0;padding:11px 0;font-size:15px;color:var(--testo-2);overflow-wrap:anywhere}
+.profilo-email span{display:block;font-weight:500;margin-bottom:2px}
+.profilo-email strong{color:var(--testo);font-weight:600}
 
 /* ------------------------------------------------------- app installabile */
 .installa{margin-top:16px;padding:14px 16px;border-radius:12px;background:#EAF3FD;border:1px solid #CFE3F8;font-size:15px}

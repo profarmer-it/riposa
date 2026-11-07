@@ -2121,11 +2121,12 @@ const Venditori = (() => {
   function disegnaProfilo() {
     const p = area.profilo;
     let h = bloccoFoto() + (cond.ruolo === 'agente' ? legendaDiamanti() : '')
-      + '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo"><tbody>';
+      + '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo profilo-dati"><tbody>';
     h += `<tr><th>Nome</th><td>${esc(p.nome)}</td></tr>`;
     h += `<tr><th>Ruolo</th><td>${esc(RUOLI[p.ruolo] || p.ruolo)}</td></tr>`;
-    h += `<tr><th>E-mail</th><td>${p.email ? esc(p.email) : 'non registrata: chiedila a Pro Farmer, così ricevi copia dei tuoi ordini'}</td></tr>`;
     h += '</tbody></table>'
+      // l'e-mail fuori dalla tabella, a tutta larghezza: una lunga non allarga il riquadro (7/11/2026)
+      + `<p class="profilo-email"><span>E-mail</span>${p.email ? `<strong>${esc(p.email).replace('@', '@<wbr>')}</strong>` : 'non registrata: chiedila a Pro Farmer, così ricevi copia dei tuoi ordini'}</p>`
       + '<div class="azioni"><button type="button" class="bottone bottone-fantasma" id="v-cambia-password">Cambia la password</button></div></div>';
 
     h += '<div class="blocco"><h3>Le tue condizioni</h3><table class="tabella profilo"><tbody>';
