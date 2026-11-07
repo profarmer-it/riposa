@@ -4,9 +4,11 @@
    Dopo il primo calcolo la funzione "lead" dà al telefono un id e una chiave:
    qui li teniamo (localStorage) insieme a quello che serve per la scorta.
    In cima alla pagina compare «La tua stalla»:
-     - quanto consuma, e la scorta: quanti pezzi ha ricevuto e quando →
-       la funzione "allevatore" calcola quando finisce e 10 giorni prima
-       arrivano il promemoria a lui e l'avviso a Pro Farmer;
+     - quanto consuma, e la scorta. Dal 7/11/2026 la scorta non la dice lui:
+       quando in Gestione un suo ordine (stessa P.IVA del calcolo) diventa
+       confermato, Riposa calcola quando finisce e 15 giorni prima arrivano il
+       promemoria a lui e l'avviso a Pro Farmer (file 59). Qui la leggiamo con
+       { azione: 'stato' } della funzione "allevatore";
      - le notifiche: promemoria, consigli e novità di Pro Farmer.
    Su iPhone le notifiche esistono solo con Riposa sulla schermata Home.
    Niente qui legge dati dal database: il telefono sa solo i suoi.
@@ -46,13 +48,60 @@ const Allevatore = (() => {
   function salva(app, info) {
     if (!app || !app.id || !app.chiave) return;
     const prima = leggi() || {};
-    const stessoProdotto = prima.prodotto === info.prodotto && prima.kgPezzo === info.kgPezzo;
-    scrivi({
-      ...prima, id: app.id, chiave: app.chiave, ...info,
-      // un calcolo con un altro prodotto o formato: la scorta di prima non vale più
-      scorta: stessoProdotto ? prima.scorta : null
-    });
+    scrivi({ ...prima, id: app.id, chiave: app.chiave, ...info, scorta: null });
+    biglietto(app);
     disegna();
+    aggiorna();
+  }
+
+  /* Su iPhone l'app sulla schermata Home non vede la memoria di Safari (7/11/2026):
+     dopo il calcolo l'indirizzo della pagina porta id e chiave, così l'icona
+     aggiunta da qui apre Riposa già con «La tua stalla». Nell'app li leggiamo e
+     li togliamo dall'indirizzo. */
+  const PARAM = 'stalla';
+  function biglietto(app) {
+    if (installata()) return;
+    try {
+      const u = new window.URL(location.href);   // URL qui sopra è l'indirizzo della funzione
+      u.searchParams.set(PARAM, app.id + '.' + app.chiave);
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) {}
+  }
+  function leggiBiglietto() {
+    try {
+      const u = new window.URL(location.href);   // URL qui sopra è l'indirizzo della funzione
+      const v = u.searchParams.get(PARAM);
+      if (!v) return;
+      const [id, chiave] = v.split('.');
+      if (/^[0-9a-f-]{36}$/i.test(id || '') && (chiave || '').length >= 40) {
+        const d = leggi();
+        if (!d || d.id !== id) scrivi({ id, chiave });
+      }
+      if (installata()) {
+        u.searchParams.delete(PARAM);
+        history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+      }
+    } catch (e) {}
+  }
+
+  // la scorta e il resto li sa il server: li rileggiamo a ogni apertura
+  function aggiorna() {
+    const d = leggi();
+    if (!d || !d.id) return Promise.resolve();
+    return chiama('stato').then(j => {
+      const x = leggi() || {};
+      x.azienda = j.azienda || x.azienda; x.prodotto = j.prodotto || x.prodotto;
+      x.kgMese = j.kgMese || x.kgMese; x.kgPezzo = j.kgPezzo || x.kgPezzo;
+      x.scorta = j.scorta; x.piva = j.piva;
+      x.notifiche = !!j.notifiche;
+      scrivi(x); disegna();
+    }).catch(e => {
+      // il server non conosce più questo telefono (calcolo cancellato): lo dimentichiamo
+      if (e && e.message === 'non riconosciuto') {
+        try { localStorage.removeItem(CHIAVE); } catch (er) {}
+        disegna();
+      }
+    });
   }
 
   function chiama(azione, extra) {
@@ -90,19 +139,18 @@ const Allevatore = (() => {
     h += `<p class="tua-stalla-consumo"><strong>${esc(d.prodotto || 'piùLact')}</strong>`
       + (d.kgMese ? `: circa <strong>${esc(Number(d.kgMese).toLocaleString('it-IT'))} kg al mese</strong>` : '') + '.</p>';
 
-    // la scorta
-    if (d.scorta && d.scorta.avviso && !d.cambiaScorta) {
-      h += `<p class="tua-stalla-stato">Hai ricevuto ${esc(d.scorta.pezzi)} ${esc(unita)} il ${esc(dataIt(d.scorta.consegna))}. `
-        + `<strong>Ti avvisiamo verso il ${esc(dataIt(d.scorta.avviso))}</strong>, una decina di giorni prima che finisca.</p>`
-        + '<button type="button" class="tua-stalla-link" id="ts-cambia">Ho ricevuto una nuova fornitura</button>';
-    } else if (d.kgPezzo && d.kgMese) {
-      h += '<form class="tua-stalla-scorta" id="ts-scorta" novalidate>'
-        + '<p class="tua-stalla-domanda">Dicci la tua scorta e ti avvisiamo prima che finisca.</p>'
-        + `<label>Quanti ${esc(unita)} hai ricevuto?<input type="number" name="pezzi" min="1" max="500" inputmode="numeric" `
-        + `value="${d.scorta ? esc(d.scorta.pezzi) : ''}" required></label>`
-        + `<label>Quando?<input type="date" name="consegna" max="${oggi()}" value="${d.scorta ? esc(d.scorta.consegna) : oggi()}" required></label>`
-        + '<button type="submit" class="bottone">Avvisami prima che finisca</button>'
-        + '<p class="tua-stalla-errore" id="ts-errore" hidden></p></form>';
+    // la scorta: la calcola Riposa dall'ultimo ordine confermato (7/11/2026)
+    const s = d.scorta;
+    if (s && s.avviso && (s.avvisato || s.avviso <= oggi())) {
+      h += '<p class="tua-stalla-stato"><strong>Il prodotto sta per finire.</strong> '
+        + 'Riordina per tempo: chiama Pro Farmer al <a href="tel:+393761296162">+39 376 129 6162</a> o il tuo rivenditore.</p>';
+    } else if (s && s.avviso) {
+      h += `<p class="tua-stalla-stato">Ultimo ordine confermato il ${esc(dataIt(s.dal))}`
+        + (s.pezzi ? `: ${esc(s.pezzi)} ${esc(unita)}` : '') + '. '
+        + `<strong>Ti avvisiamo verso il ${esc(dataIt(s.avviso))}</strong>, quindici giorni prima che finisca.</p>`;
+    } else {
+      h += '<p class="tua-stalla-stato">Quando Pro Farmer conferma un tuo ordine, calcoliamo noi quanto ti dura '
+        + 'e ti avvisiamo quindici giorni prima che finisca.</p>';
     }
 
     // le notifiche
@@ -133,33 +181,53 @@ const Allevatore = (() => {
   }
 
   function aggancia() {
-    const f = document.getElementById('ts-scorta');
-    if (f) f.addEventListener('submit', ev => {
-      ev.preventDefault();
-      const err = document.getElementById('ts-errore');
-      const pezzi = parseInt(f.pezzi.value, 10), consegna = f.consegna.value;
-      if (!(pezzi >= 1)) { err.textContent = 'Scrivi quanti ne hai ricevuti.'; err.hidden = false; return; }
-      if (!consegna) { err.textContent = 'Scrivi quando sono arrivati.'; err.hidden = false; return; }
-      const b = f.querySelector('button'); b.disabled = true; b.textContent = 'Un attimo…';
-      chiama('scorta', { pezzi, consegna }).then(j => {
-        const d = leggi(); d.scorta = { pezzi, consegna, avviso: j.avviso }; delete d.cambiaScorta; scrivi(d); disegna();
-      }).catch(() => {
-        b.disabled = false; b.textContent = 'Avvisami prima che finisca';
-        err.textContent = navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.' : 'Non è andata: riprova tra poco.';
-        err.hidden = false;
-      });
-    });
-    const c = document.getElementById('ts-cambia');
-    if (c) c.addEventListener('click', () => { const d = leggi(); d.cambiaScorta = true; scrivi(d); disegna(); });
     const n = document.getElementById('ts-notifiche');
     if (n) n.addEventListener('click', () => {
       n.disabled = true; n.textContent = 'Un attimo…';
-      attivaNotifiche().then(disegna).catch(() => { disegna(); });
+      attivaNotifiche().then(disegna).catch(() => {
+        disegna();
+        // il motivo, dentro «La tua stalla» (7/11/2026): prima il riquadro si ridisegnava senza dire niente
+        const sez = document.getElementById('tua-stalla');
+        if (sez && Notification.permission !== 'denied') sez.insertAdjacentHTML('beforeend', '<p class="tua-stalla-nota">Non è andata: riprova tra poco.</p>');
+      });
+    });
+  }
+
+  /* Subito dopo il calcolo (7/11/2026): la domanda delle notifiche nella conferma.
+     Dove non si può (iPhone senza l'app sulla schermata Home) non c'è: lì c'è
+     l'invito a installare Riposa, e le notifiche si chiedono dentro l'app. */
+  function invitoNotifiche() {
+    const d = leggi();
+    const permesso = 'Notification' in window ? Notification.permission : 'default';
+    if (!d || !d.id || !notifichePossibili() || permesso === 'denied' || (d.notifiche && permesso === 'granted')) return '';
+    return '<div class="invito-notifiche"><p class="invito-app-titolo">Ti avvisiamo noi quando il prodotto sta per finire</p>'
+      + '<p>Quando Pro Farmer conferma un tuo ordine, calcoliamo quanto ti dura e ti mandiamo un avviso sul telefono '
+      + 'quindici giorni prima che finisca. In più i consigli per le cuccette e le novità piùLact.</p>'
+      + '<button type="button" class="bottone" id="conf-notifiche">Attiva le notifiche</button>'
+      + '<p class="aiuto" id="conf-notifiche-esito" hidden></p></div>';
+  }
+  function agganciaInvitoNotifiche() {
+    const b = document.getElementById('conf-notifiche');
+    if (!b) return;
+    b.addEventListener('click', () => {
+      b.disabled = true; b.textContent = 'Un attimo…';
+      const esito = document.getElementById('conf-notifiche-esito');
+      attivaNotifiche().then(() => {
+        b.remove(); esito.textContent = '✓ Notifiche attive.'; esito.hidden = false; disegna();
+      }).catch(() => {
+        b.disabled = false; b.textContent = 'Attiva le notifiche';
+        esito.textContent = Notification.permission === 'denied'
+          ? 'Le notifiche sono bloccate nelle impostazioni del telefono per Riposa.'
+          : 'Non è andata: riprova tra poco.';
+        esito.hidden = false; disegna();
+      });
     });
   }
 
   // all'apertura: se il telefono ha già fatto un calcolo, «La tua stalla» è in cima
+  leggiBiglietto();
   disegna();
+  aggiorna();
 
-  return { credenziali, salva, disegna, notifichePossibili };
+  return { credenziali, salva, disegna, notifichePossibili, invitoNotifiche, agganciaInvitoNotifiche };
 })();

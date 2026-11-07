@@ -112,14 +112,39 @@ modulo.addEventListener('change', e => {
 
 /* --------------------------------------------------- lettura e validazione */
 
+/* Un numero intero, controllato (7/11/2026): il modulo ha novalidate, quindi i
+   max dei campi non li guarda nessuno, e parseInt legge «1e3» come 1 e «1.200»
+   come 1. Vuoto → null; non intero, sotto 1 o sopra il tetto → l'errore. */
+function intero(v, max, nome) {
+  const t = String(v == null ? '' : v).trim();
+  if (!t) return { n: null };
+  const n = Number(t);
+  if (!Number.isInteger(n)) return { errore: `${nome}: scrivi un numero intero, senza punti né virgole.` };
+  if (n < 1) return { errore: `${nome}: deve essere almeno 1.` };
+  if (n > max) return { errore: `${nome}: il numero è troppo grande (al massimo ${max.toLocaleString('it-IT')}).` };
+  return { n };
+}
+
+/* Quanto dura l'ordine minimo, detto in modo leggibile (7/11/2026):
+   per una stalla piccolissima «ti copre circa 320 mesi» non ha senso. */
+function copre(mesi) {
+  return mesi > 24 ? 'ti basta per più di due anni' : `ti copre circa ${num(mesi, 1)} mesi`;
+}
+
 function leggiModulo() {
   const f = new FormData(modulo);
   const zona = f.get('zona');
-  const cuccetteInput = parseInt(f.get('cuccette'), 10);
-  const capiInput     = parseInt(f.get('capi'), 10);
 
   if (!zona) return { errore: 'Indica com’è fatta la zona di riposo.', campo: 'input[name=zona]' };
   if (!f.get('mungitura')) return { errore: 'Indica come mungi: sala o robot.', campo: 'input[name=mungitura]' };
+
+  const sup = (zona === 'lettiera' || zona === 'compost');
+  const vC = sup ? { n: null } : intero(f.get('cuccette'), 5000, 'Numero di cuccette');
+  if (vC.errore) return { errore: vC.errore, campo: '#cuccette' };
+  const vK = sup ? { n: null } : intero(f.get('capi'), 5000, 'Capi in mungitura');
+  if (vK.errore) return { errore: vK.errore, campo: '#capi' };
+  const cuccetteInput = vC.n === null ? NaN : vC.n;
+  const capiInput     = vK.n === null ? NaN : vK.n;
 
   let cuccette = null;
   if (Number.isFinite(cuccetteInput) && cuccetteInput > 0) {
@@ -132,8 +157,12 @@ function leggiModulo() {
   // i campi delle cuccette sono nascosti: se erano stati compilati prima di
   // cambiare zona, non devono finire nel calcolo né sul foglio
   if (suSuperficie) cuccette = null;
-  const mq       = parseInt(f.get('mq'), 10);
-  const capiZona = parseInt(f.get('capiZona'), 10);
+  const vZ = suSuperficie ? intero(f.get('capiZona'), 5000, 'Capi presenti in quella zona') : { n: null };
+  const vQ = suSuperficie ? intero(f.get('mq'), 50000, 'Metri quadri di lettiera') : { n: null };
+  if (vQ.errore) return { errore: vQ.errore, campo: '#mq' };
+  if (vZ.errore) return { errore: vZ.errore, campo: '#capiZona' };
+  const mq       = vQ.n === null ? NaN : vQ.n;
+  const capiZona = vZ.n === null ? NaN : vZ.n;
 
   if (suSuperficie) {
     if (!(Number.isFinite(mq) && mq > 0)) {
@@ -536,6 +565,8 @@ function mostraContatti(r) {
   h += '<form id="modulo-contatti" class="contatti" novalidate>';
   h += campoTesto('nome', 'Nome e cognome', 'text', true);
   h += campoTesto('azienda', 'Ragione sociale', 'text', true);
+  // la P.IVA collega Riposa agli ordini: il promemoria si calcola da lì (Giulio, 7/11/2026)
+  h += campoTesto('piva', 'Partita IVA', 'text', true);
   h += campoTesto('provincia', 'Provincia', 'text', true);
   h += campoTesto('email', 'E-mail', 'email', true);
   h += campoTesto('telefono', 'Telefono', 'tel', false, 'pieno');
@@ -560,6 +591,8 @@ function mostraContatti(r) {
 
     if (!dati.nome) return errore(err, 'Serve il tuo nome.');
     if (!dati.azienda) return errore(err, 'Serve la ragione sociale dell’azienda.');
+    dati.piva = (dati.piva || '').toUpperCase().replace(/^IT/, '').replace(/\D/g, '');
+    if (!/^\d{11}$/.test(dati.piva)) return errore(err, 'Serve la partita IVA: 11 cifre.');
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
     if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
@@ -581,7 +614,7 @@ function mostraContatti(r) {
         ? 'Sei senza rete: il risultato non è partito. I dati restano qui, riprova quando torna il segnale.'
         : e.message === 'troppe richieste'
           ? 'Troppe richieste in questo momento: riprova tra qualche minuto.'
-          : 'Non sono riuscito a mandarlo: riprova tra poco. Se continua, chiama Pro Farmer al +39 376 129 6162.');
+          : 'Non siamo riusciti a mandarlo: riprova tra poco. Se continua, chiama Pro Farmer al +39 376 129 6162.');
     });
   });
 }
@@ -608,7 +641,7 @@ function rimandaATuaStalla() {
   if (!document.querySelector('.invito-app')) return;
   const p = document.createElement('p');
   p.className = 'conferma-nota';
-  p.innerHTML = 'In cima alla pagina trovi <a href="#tua-stalla">La tua stalla</a>: dicci la scorta e ti avvisiamo prima che finisca.';
+  p.innerHTML = 'In cima alla pagina trovi <a href="#tua-stalla">La tua stalla</a>: quando Pro Farmer conferma un tuo ordine, ti avvisiamo noi prima che finisca.';
   document.querySelector('.trovato').appendChild(p);
 }
 function suIPhone() {
@@ -625,7 +658,7 @@ function invitoInstalla() {
   let h = '<div class="invito-app">';
   h += '<img src="assets/icone/icona-192.png" alt="" width="64" height="64" class="invito-app-icona">';
   h += '<div><p class="invito-app-titolo">Tieni Riposa sul telefono</p>';
-  h += '<p>Si apre dall’icona, come un’app. Ti avvisiamo quando il prodotto sta per finire, '
+  h += '<p>Si apre dall’icona, come un’app. Quando Pro Farmer conferma un tuo ordine, ti avvisiamo prima che finisca, '
     + 'e rifai il calcolo in un attimo, anche in stalla senza campo.</p>';
   if (suIPhone()) {
     h += `<p class="invito-app-come">In Safari tocca ${condividi} e poi <strong>«Aggiungi alla schermata Home»</strong>.</p>`;
@@ -657,9 +690,9 @@ function agganciaInvito() {
 function mostraConferma(esito) {
   let h = '<div class="trovato">';
   h += '<span class="trovato-spunta">✓</span>';
-  h += '<h2>Te l’abbiamo mandato per e-mail</h2>';
-  // il motivo vero, se l'e-mail non è partita (audit 28/10/2026)
+  // il motivo vero, se l'e-mail non è partita (audit 28/10/2026); il titolo non deve dire il contrario (7/11/2026)
   const perche = esito && esito.email === false ? (esito.perche || 'recente') : null;
+  h += `<h2>${perche && perche !== 'recente' ? 'Abbiamo ricevuto la tua richiesta' : 'Te l’abbiamo mandato per e-mail'}</h2>`;
   h += `<p>${perche === 'recente'
     ? 'Questo stesso calcolo te l’abbiamo già mandato pochi minuti fa a ' + esc(datiContatto.email) + ': controlla la casella e la posta indesiderata.'
     : perche
@@ -671,9 +704,12 @@ function mostraConferma(esito) {
   h += '<p class="conferma-nota">Se hai bisogno di una mano ti richiamiamo noi: '
     + 'un tecnico Pro Farmer può fare il punto sulla tua stalla.</p>';
   h += '</div>';
+  // le notifiche si chiedono subito, qui (Giulio, 7/11/2026); su iPhone senza l'app c'è l'invito a installarla
+  h += typeof Allevatore !== 'undefined' ? Allevatore.invitoNotifiche() : '';
   h += invitoInstalla();
   mostra(h);
   agganciaInvito();
+  if (typeof Allevatore !== 'undefined') Allevatore.agganciaInvitoNotifiche();
 
   const ts = document.getElementById('tua-stalla');
   if (ts) rimandaATuaStalla();
@@ -702,14 +738,15 @@ function spuntaConsenso() {
 
 /* Il telefono riconosce i campi e propone i dati salvati: due tocchi invece
    di scrivere tutto. La provincia italiana per il browser è "address-level2". */
-const AUTOCOMPLETA = { nome: 'name', azienda: 'organization', provincia: 'address-level2', email: 'email', telefono: 'tel' };
+const AUTOCOMPLETA = { nome: 'name', azienda: 'organization', provincia: 'address-level2', email: 'email', telefono: 'tel', piva: 'off' };
 
 function campoTesto(id, etichetta, tipo, obbligatorio, classe) {
   return `<div class="campo ${classe || ''}">`
     + `<label for="c-${id}">${esc(etichetta)}`
     + (obbligatorio ? '' : ' <span class="opzionale">facoltativo</span>')
     + '</label>'
-    + `<input type="${tipo}" id="c-${id}" name="${id}" autocomplete="${AUTOCOMPLETA[id] || 'on'}"${id === 'provincia' ? ' autocapitalize="characters"' : ''}>`
+    + `<input type="${tipo}" id="c-${id}" name="${id}" autocomplete="${AUTOCOMPLETA[id] || 'on'}"${id === 'provincia' ? ' autocapitalize="characters"' : ''}`
+    + `${id === 'piva' ? ' inputmode="numeric" maxlength="16"' : ''}>`
     + '</div>';
 }
 
@@ -757,9 +794,9 @@ function consiglioTrasporto(r) {
        detti tutti e due: "servono 10" a chi ne consuma 6 sarebbe falso. */
     if (servono < T.balletteMinimo) {
       const mesi = T.balletteMinimo * T.ballettaKg / r.kgMese;
-      return `${camion} Al mese servono ${num(servono)} ballette. L'ordine minimo \u00E8 di `
+      return `${camion} Al mese ${servono === 1 ? 'serve 1 balletta' : `servono ${num(servono)} ballette`}. L'ordine minimo \u00E8 di `
         + `${num(T.balletteMinimo)} ballette su ${num(T.balletteMinimo / T.ballettePerBancale)} bancali, `
-        + `circa ${ton(T.balletteMinimo * T.ballettaKg)} t, e ti copre circa ${num(mesi, 1)} mesi. ${staff}`;
+        + `circa ${ton(T.balletteMinimo * T.ballettaKg)} t, e ${copre(mesi)}. ${staff}`;
     }
     const ballette = Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale;
     // il camion (Giulio, 26/10/2026): una motrice ne porta 18, un bilico 36
@@ -774,7 +811,7 @@ function consiglioTrasporto(r) {
   const sottoMinimo = (minimoKg, testoMinimo, chiusa) => {
     const mesi = minimoKg / r.kgMese;
     return `${camion} Sul trimestre servono circa ${migliaia(kgOrizzonte)} kg. `
-      + `L'ordine minimo \u00E8 di ${testoMinimo}, ${ton(minimoKg)} t, e ti copre circa ${num(mesi, 1)} mesi. ${chiusa}`;
+      + `L'ordine minimo \u00E8 di ${testoMinimo}, ${ton(minimoKg)} t, e ${copre(mesi)}. ${chiusa}`;
   };
 
   // Sacchetti: bancali interi, minimo 2, nessun camion da saturare.
@@ -882,7 +919,7 @@ function testoRiepilogo(dati, r) {
   if (r.superficie) {
     contesto.push(`${num(d.mq)} m\u00B2`);
   } else if (d.cuccette) {
-    contesto.push(`${num(d.cuccette)} cuccette`);
+    contesto.push(d.cuccette === 1 ? '1 cuccetta' : `${num(d.cuccette)} cuccette`);
   }
   if (d.mungitura === 'robot') contesto.push('mungitura con robot');
   L.push(`Caratteristiche stalla: ${maiuscola(contesto.join(', '))}`);
@@ -952,6 +989,7 @@ function inviaLead(dati, r) {
 
   const corpo = {
     azienda:        dati.azienda || '',
+    piva:           dati.piva || '',
     nome:           dati.nome || '',
     provincia:      dati.provincia || '',
     telefono:       dati.telefono || '',

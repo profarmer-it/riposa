@@ -226,7 +226,7 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
           <li><span class="quando"></span><span class="cosa">Ricerca ed eventi di dicembre</span></li>
           <li><span class="quando"></span><span class="cosa">La nuova gamma</span></li>
           <li><span class="quando"></span><span class="cosa">piùLact Pronto in ballette<small>con le condizioni</small></span></li>
-          <li><span class="quando"></span><span class="cosa">Riposa e Riposa Pro<small>la installiamo insieme sul telefono</small></span></li>
+          <li><span class="quando"></span><span class="cosa">Riposa e Riposa Pro<small>le installiamo insieme sul telefono</small></span></li>
           <li class="cena"><span class="quando">Dopo</span><span class="cosa">Cena insieme, offerta da Pro Farmer<small>in un locale qui vicino</small></span></li>
         </ul>
       </div>
@@ -381,13 +381,18 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
       })
       .catch(function (e) {
         b.disabled = false; b.textContent = 'Manda la risposta';
-        err.textContent = navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.' : e.message;
+        // i messaggi del server sono in italiano; gli errori del browser («Failed to fetch») no (7/11/2026)
+        err.textContent = navigator.onLine === false ? 'Sei senza rete: riprova quando torna il segnale.'
+          : (e && e.name === 'Error' && e.message) ? e.message
+          : 'Non è partita: riprova tra poco o chiama il +39 376 129 6162.';
         err.hidden = false;
       });
   });
 
   // Il cartellino diventa «domani» e «oggi» negli ultimi giorni
-  var giorni = Math.ceil((new Date(2026, 10, 19, 18, 0) - new Date()) / 864e5);
+  // i giorni di calendario, non le ore che mancano (7/11/2026)
+  var adesso = new Date();
+  var giorni = Math.round((new Date(2026, 10, 19) - new Date(adesso.getFullYear(), adesso.getMonth(), adesso.getDate())) / 864e5);
   var q = document.getElementById('quando');
   if (giorni === 1) q.textContent = 'Domani, giovedì 19 novembre · ore 18:00';
   else if (giorni === 0) q.textContent = 'Oggi, giovedì 19 novembre · ore 18:00';

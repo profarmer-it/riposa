@@ -373,7 +373,7 @@ const ProFarmer = (() => {
       + `<div class="cliente-testa"><strong>${esc(o.cliente || (o.ruolo === 'rivenditore' ? 'Magazzino del rivenditore' : '—'))}</strong>`
       + `<span>${o.tipo === 'preventivo' ? '<em class="pf-etichetta">Preventivo</em> ' : ''}n. ${esc(o.numero)} · ${esc(dataIt(o.creato_il))}</span></div>`
       + `<p class="cliente-dati">${esc(vend.nome || '')} (${esc(RUOLI[o.ruolo] || o.ruolo)}) · ${esc(pezzi(o))}`
-      + `${o.annuale ? ' · fornitura annuale' : ''} · ${num(o.t, 1)} t`
+      + ` · ${num(o.t, 1)} t`
       + (o.totale_cliente !== null && o.totale_cliente !== undefined ? ` · al cliente ${euro(o.totale_cliente)}` : '') + (soldi ? ' · ' + soldi : '') + '</p>';
     const cd = o.cliente_dati || {};
     const fatt = [cd.piva && 'P.IVA ' + cd.piva, cd.pec && 'PEC ' + cd.pec, cd.sdi && 'SDI ' + cd.sdi, cd.telefono, cd.indirizzo, cd.comune, cd.provincia].filter(Boolean);
@@ -695,7 +695,7 @@ const ProFarmer = (() => {
     lista.forEach(x => {
       const chi = x.direzionale ? 'direzionale' : x.assegnato_a ? 'a ' + ((dati.venditori.find(a => a.id === x.assegnato_a) || {}).nome || 'un agente') : '';
       const sotto = [x.nome, x.provincia, dataIt(x.creato_il), x.consenso ? '' : 'senza consenso', chi].filter(Boolean).join(' · ');
-      h += `<li data-cerca="${esc([x.azienda, x.nome, x.provincia, x.email, x.telefono].join(' '))}"><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
+      h += `<li data-cerca="${esc([x.azienda, x.nome, x.provincia, x.email, x.telefono, x.piva].join(' '))}"><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
         + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span></span>`
         + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
         + bloccoAgente(x)
@@ -703,6 +703,7 @@ const ProFarmer = (() => {
         + '<p class="cliente-dati">'
         + `<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>`
         + (x.telefono ? ` · <a href="tel:${esc(String(x.telefono).replace(/[^\d+]/g, ''))}">${esc(x.telefono)}</a>` : '')
+        + (x.piva ? ` · P.IVA ${esc(x.piva)}` : '')
         + '</p><p class="cliente-dati">'
         + esc([ZONE[x.zona] || x.zona, x.cuccette && `${x.cuccette} cuccette`, x.mq && `${x.mq} m²`,
                x.capi && `${x.capi} capi`, x.mungitura === 'robot' ? 'robot' : ''].filter(Boolean).join(' · '))
@@ -802,7 +803,7 @@ const ProFarmer = (() => {
       ['ordini', daSeguire.length, 'ordini da seguire', 'inviati, confermati o consegnati, non ancora pagati'],
       ['chiamate', dati.chiamate.length, 'chiamate di feedback', 'ai clienti, dopo il 1°, 3°, 5°… ordine'],
       ['lead', leadNuovi.length, 'lead da richiamare', 'allevatori che hanno fatto il calcolo'],
-      ['allevatori', caldi.length, 'allevatori a fine scorta', 'nei prossimi 14 giorni: chiamarli'],
+      ['allevatori', caldi.length, 'allevatori a fine scorta', 'avviso entro 14 giorni: chiamarli'],
       ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini'],
       ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'buoni da approvare', 'richieste degli agenti con i diamanti'],
       ['foto', (dati.foto && dati.foto.invii || []).filter(i => i.stato === 'da_vedere').length, 'foto da vedere', 'per i social, da agenti e rivenditori']
@@ -1465,10 +1466,11 @@ const ProFarmer = (() => {
       + '<dl class="numeri soldi">'
       + `<div class="numero-cella"><dt>Con l’app</dt><dd>${tutti.length}</dd></div>`
       + `<div class="numero-cella"><dt>Notifiche attive</dt><dd>${conNotifiche}</dd></div>`
-      + `<div class="numero-cella"><dt>Stanno per finire</dt><dd>${caldi.length}<small>nei prossimi 14 giorni</small></dd></div>`
+      + `<div class="numero-cella"><dt>Stanno per finire</dt><dd>${caldi.length}<small>avviso entro 14 giorni</small></dd></div>`
       + '</dl>';
-    h += '<p class="aiuto">Un allevatore è qui quando ha mandato il calcolo dal telefono. Se ci dice la scorta, '
-      + '10 giorni prima che finisca il prodotto avvisiamo lui e voi: è il momento di chiamarlo.</p>';
+    h += '<p class="aiuto">Un allevatore è qui quando ha mandato il calcolo dal telefono. Quando un suo ordine '
+      + '(stessa P.IVA del calcolo) diventa confermato, Riposa calcola quanto gli dura: 15 giorni prima che finisca '
+      + 'avvisiamo lui e voi. È il momento di chiamarlo.</p>';
     if (caldi.length) {
       h += '<h4>Stanno per finire</h4><ul class="lista-clienti">';
       caldi.forEach(a => {

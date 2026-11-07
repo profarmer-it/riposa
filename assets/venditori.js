@@ -1089,7 +1089,7 @@ const Venditori = (() => {
       + '<li>La stagione va da <strong>gennaio a dicembre</strong>. I diamanti vinti in un anno si riscattano entro il <strong>31 marzo</strong> dell’anno dopo: quelli rimasti scadono.</li>'
       + '<li>Quando riscatti un buono si spendono per primi i diamanti <strong>più vecchi</strong>. Il minimo di ' + taglio + ' vale sul totale: puoi sommare diamanti di due stagioni.</li>'
       + '<li>Ti avvisiamo con una notifica il 1° febbraio, il 1° marzo e il 25 marzo, se hai diamanti in scadenza.</li>'
-      + '<li>Se un ordine consegnato viene <strong>annullato</strong>, si tolgono i diamanti che aveva fatto vincere (anche costanza e volumi del mese, se non bastano più gli altri ordini).</li>'
+      + '<li>Se un ordine consegnato viene <strong>annullato</strong>, si tolgono i diamanti che aveva fatto vincere.</li>'
       + '<li>Se il rapporto con Pro Farmer si chiude, hai <strong>30 giorni</strong> per chiedere il buono a Pro Farmer: poi i diamanti decadono.</li></ul>';
     return h + '</div></details>';
   }
@@ -1525,7 +1525,7 @@ const Venditori = (() => {
         + `<div class="ordine-testa"><strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
         + `<span class="stato stato-${esc(o.stato)}">${esc(o.tipo === 'preventivo' && o.stato === 'inviato' ? 'Preventivo da approvare'
           : o.tipo === 'preventivo' && o.stato === 'confermato' ? 'Preventivo al cliente' : (STATI[o.stato] || o.stato))}</span></div>`
-        + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t${o.annuale ? ' · fornitura annuale' : ''}</p>`
+        + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t</p>`
         + `<p class="ordine-dati">${esc(o.data)} · n. ${esc(o.numero)} · ${cond.ruolo === 'rivenditore' ? 'paghi' : 'importo'} `
         + `<b>${euro(importoOrdine(o))}</b>`
         + (etSoldi ? ` · ${etSoldi} <b>${euro(soldiOrdine(o))}</b>` : '')

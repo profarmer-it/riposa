@@ -948,18 +948,29 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 .invito-app-no{min-height:44px;padding:0 4px;font:inherit;font-size:15px;color:#B9CBE0;background:none;border:0;cursor:pointer;text-decoration:underline}
 @media (max-width:380px){ .invito-app{flex-direction:column} }
 @media (prefers-reduced-motion:reduce){ .invito-app{animation:none} }
+/* la domanda delle notifiche, subito dopo il calcolo (7/11/2026): come l'invito all'app */
+.invito-notifiche{margin-top:16px;padding:20px;border-radius:var(--raggio);
+  background:radial-gradient(120% 120% at 0% 0%,#1F4C88 0%,#0E2340 60%);color:#fff;animation:entra .4s var(--ease-out) .3s both}
+.invito-notifiche p{margin:0 0 8px;color:#DCE6F2;font-size:15.5px;line-height:1.5}
+.invito-notifiche .invito-app-titolo{margin:2px 0 6px;font-family:Fraunces,Georgia,serif;font-size:21px;font-weight:600;color:#fff;line-height:1.2}
+.invito-notifiche .bottone{width:auto;margin-top:8px;background:#fff;color:var(--navy)}
+.invito-notifiche .aiuto{margin:10px 0 0;color:#B7F0C8;font-weight:600}
+@media (prefers-reduced-motion:reduce){ .invito-notifiche{animation:none} }
 
 /* «La tua stalla»: in cima alla pagina, per chi ha già fatto un calcolo (24/10/2026) */
 .tua-stalla{position:relative;margin:-28px 0 18px;padding:22px 22px 20px;border-radius:var(--raggio);
   background:linear-gradient(140deg,#16325A 0%,#0E2340 70%);color:#DCE6F2;box-shadow:0 10px 30px rgba(14,35,64,.18)}
 .tua-stalla + .scheda{margin-top:0}
+/* staccato dalla testata blu (Giulio, 7/11/2026): prima si sovrapponeva e i due blu si confondevano */
+.tua-stalla{margin-top:20px}
 .tua-stalla p{margin:0 0 10px;font-size:16px;line-height:1.5}
 .tua-stalla strong{color:#fff}
+.tua-stalla-stato a{color:#fff;text-decoration:underline;white-space:nowrap}
 .tua-stalla-titolo{font-family:Fraunces,Georgia,serif;font-size:22px !important;font-weight:600;color:#fff}
 .tua-stalla-stato{padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.08)}
 .tua-stalla-link{min-height:44px;padding:0;font:inherit;font-size:15px;font-weight:600;color:var(--blu-chiaro);
   background:none;border:0;text-decoration:underline;cursor:pointer}
-.tua-stalla-scorta{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin:4px 0 6px}
+.tua-stalla-scorta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 12px;margin:4px 0 6px}
 .tua-stalla-scorta .tua-stalla-domanda,.tua-stalla-scorta .bottone,.tua-stalla-errore{grid-column:1 / -1}
 .tua-stalla-scorta label{display:flex;flex-direction:column;gap:6px;font-size:14.5px;font-weight:600;color:#fff}
 .tua-stalla-scorta input{width:100%;min-height:48px;padding:10px 12px;font:inherit;font-size:17px;font-weight:500;
@@ -972,6 +983,10 @@ html.apertura-finita .bovina-eroe{animation:ap-compare .6s cubic-bezier(.34,1.56
 .tua-stalla-nota{margin-top:12px !important;font-size:14.5px !important;color:#B9CBE0 !important}
 @media (max-width:360px){ .tua-stalla-scorta{grid-template-columns:1fr} }
 .tua-stalla-scorta label{justify-content:flex-end}
+/* il campo della data su iPhone ha una larghezza sua: lo teniamo nella colonna (7/11/2026) */
+.tua-stalla-scorta input{min-width:0;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none}
+/* le scelte piccole (sala o robot) hanno il pallino a destra: il testo non ci deve finire sotto (7/11/2026) */
+.scelta-piccola .scelta-corpo{padding-right:46px}
 
 /* ------------------------------------------- Gestione: filtri e ricerche (24/10/2026) */
 .pf-filtri{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:14px 0 4px}
