@@ -1132,11 +1132,9 @@ const ProFarmer = (() => {
         + storicoFic(c)
         + (c.da_completare ? `<p class="cliente-dati pf-da-completare">Da completare per fatturare: ${esc(c.da_completare.replace(/\.$/, '').toLowerCase())}.</p>` : '')
         + '<div class="pf-campi"><label>Assegnato a' + selectVenditore('venditore_id', c.venditore_id, false) + '</label>'
-        // la fornitura annuale la mette Pro Farmer (Giulio, 28/10/2026): vale per le ballette dei clienti di agenti e rivenditori
-        + (diretto ? '' : `<label>Fornitura annuale fino al <small>(vuoto = nessuna)</small><input type="date" name="annuale_fino_al" value="${esc(v(c.annuale_fino_al))}" data-prima="${esc(v(c.annuale_fino_al))}"></label>`)
         + '</div>'
         + '<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone" disabled>Sposta</button>'
-        + (diretto ? '' : '<button type="button" class="bottone bottone-fantasma" data-annuale disabled>Salva la fornitura annuale</button>') + '</div>'
+        + '</div>'
         + '</form></li>';
     });
     h += '</ul></div>';
@@ -1145,14 +1143,6 @@ const ProFarmer = (() => {
     // «Sposta» si accende solo se l'assegnazione cambia davvero
     corpo.querySelectorAll('.pf-cliente').forEach(f => f.addEventListener('change', () => {
       f.querySelector('button[type=submit]').disabled = new FormData(f).get('venditore_id') === f.dataset.prima;
-      const a = f.querySelector('[name=annuale_fino_al]');
-      if (a) f.querySelector('[data-annuale]').disabled = a.value === a.dataset.prima;
-    }));
-    corpo.querySelectorAll('[data-annuale]').forEach(b => b.addEventListener('click', () => {
-      const f = b.closest('form'), data = f.querySelector('[name=annuale_fino_al]').value || null;
-      const ragione = f.querySelector('strong').textContent;
-      salva(b, () => sb.from('clienti').update({ annuale_fino_al: data }).eq('id', f.dataset.id),
-        data ? `${ragione}: fornitura annuale fino al ${dataIt(data)}` : `${ragione}: fornitura annuale tolta`);
     }));
     corpo.querySelectorAll('.pf-cliente').forEach(f => f.addEventListener('submit', ev => {
       ev.preventDefault();
@@ -1699,9 +1689,7 @@ const ProFarmer = (() => {
       + campo('listino_sacchi', 'Listino piùLact sacchi €/t', c.listino_sacchi, 'number', ' step="0.01"')
       + campo('listino_ballette_q', 'Listino ballette €/q', c.listino_ballette / 10, 'number', ' step="0.01"')
       + campo('sconto_riv_ballette', 'Ballette, sconto rivenditore %', perc(c.sconto_riv_ballette), 'number', ' step="0.1"')
-      + campo('sconto_riv_ballette_ann', 'Ballette, sconto rivenditore annuale %', perc(c.sconto_riv_ballette_ann), 'number', ' step="0.1"')
       + campo('provv_ag_ballette', 'Ballette, provvigione agente %', perc(c.provv_ag_ballette), 'number', ' step="0.1"')
-      + campo('provv_ag_ballette_ann', 'Ballette, provvigione agente annuale %', perc(c.provv_ag_ballette_ann), 'number', ' step="0.1"')
       + campo('minimo_bigbag', 'Ordine minimo big bag', c.minimo_bigbag, 'number', ' step="1"')
       + campo('minimo_sacchi', 'Ordine minimo bancali sacchi', c.minimo_sacchi, 'number', ' step="1"')
       + campo('minimo_ballette', 'Ordine minimo ballette', c.minimo_ballette, 'number', ' step="1"')
@@ -1715,8 +1703,9 @@ const ProFarmer = (() => {
       const n = k => Number(d.get(k));
       const riga = {
         listino_bigbag: n('listino_bigbag'), listino_sacchi: n('listino_sacchi'), listino_ballette: n('listino_ballette_q') * 10,
-        sconto_riv_ballette: n('sconto_riv_ballette') / 100, sconto_riv_ballette_ann: n('sconto_riv_ballette_ann') / 100,
-        provv_ag_ballette: n('provv_ag_ballette') / 100, provv_ag_ballette_ann: n('provv_ag_ballette_ann') / 100,
+        // niente più fornitura annuale (Giulio, 7/11/2026): le condizioni «annuali» restano uguali alle normali
+        sconto_riv_ballette: n('sconto_riv_ballette') / 100, sconto_riv_ballette_ann: n('sconto_riv_ballette') / 100,
+        provv_ag_ballette: n('provv_ag_ballette') / 100, provv_ag_ballette_ann: n('provv_ag_ballette') / 100,
         minimo_bigbag: n('minimo_bigbag'), minimo_sacchi: n('minimo_sacchi'), minimo_ballette: n('minimo_ballette'),
         kg_ballette: n('kg_ballette'), aggiornato_il: new Date().toISOString()
       };

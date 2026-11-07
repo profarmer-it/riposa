@@ -2134,16 +2134,14 @@ const Venditori = (() => {
     if (cond.ruolo === 'agente') {
       h += `<tr><th>piùLact, big bag</th><td>listino ${euro(L.bigbag)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
       h += `<tr><th>piùLact, sacchi</th><td>listino ${euro(L.sacchi)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
-      h += `<tr><th>piùLact Pronto, ballette</th><td>listino ${euro(L.ballette / 10)}/q · provvigione ${perc(cond.ballette.provvigione.standard)}, `
-        + `${perc(cond.ballette.provvigione.annuale)} con fornitura annuale (la attiva Pro Farmer sul cliente)</td></tr>`;
+      h += `<tr><th>piùLact Pronto, ballette</th><td>listino ${euro(L.ballette / 10)}/q · provvigione ${perc(cond.ballette.provvigione.standard)}</td></tr>`;
       h += '<tr><th>Su cosa</th><td>Solo sulle tue vendite dirette al cliente finale.</td></tr>';
       h += '<tr><th>Sconti</th><td>Se Pro Farmer fa uno sconto al tuo cliente (al massimo il 10%), lo dividiamo a metà: '
         + 'la tua provvigione cala di metà dello sconto. La cifra aggiornata la vedi nell’ordine.</td></tr>';
     } else if (cond.ruolo === 'rivenditore') {
       h += `<tr><th>piùLact, big bag</th><td>paghi ${euro(cond.piulact.bigbag)}/t · listino ${euro(L.bigbag)}/t</td></tr>`;
       h += `<tr><th>piùLact, sacchi</th><td>paghi ${euro(cond.piulact.sacchi)}/t · listino ${euro(L.sacchi)}/t</td></tr>`;
-      h += `<tr><th>piùLact Pronto, ballette</th><td>sconto ${perc(cond.ballette.sconto.standard)} sul listino di ${euro(L.ballette / 10)}/q, `
-        + `${perc(cond.ballette.sconto.annuale)} con fornitura annuale (la attiva Pro Farmer sul cliente)</td></tr>`;
+      h += `<tr><th>piùLact Pronto, ballette</th><td>sconto ${perc(cond.ballette.sconto.standard)} sul listino di ${euro(L.ballette / 10)}/q</td></tr>`;
     } else {
       h += `<tr><th>Listini</th><td>big bag ${euro(L.bigbag)}/t · sacchi ${euro(L.sacchi)}/t · ballette ${euro(L.ballette / 10)}/q</td></tr>`;
     }
@@ -2284,15 +2282,9 @@ const Venditori = (() => {
     stato.annuale = !!annualeFino(stato.clienteId);
   }
 
-  /* La fornitura annuale la mette Pro Farmer sul cliente (Giulio, 28/10/2026):
-     se il contratto è in corso, le ballette hanno le condizioni annuali. */
-  function annualeFino(clienteId) {
-    const c = clienteId && area.clienti.find(x => x.id === clienteId);
-    const m = c && /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(c.annualeFinoAl || '');
-    if (!m) return '';
-    const fine = new Date(+m[3], +m[2] - 1, +m[1], 23, 59);
-    return fine >= new Date() ? c.annualeFinoAl : '';
-  }
+  /* La fornitura annuale non c'è più (Giulio, 7/11/2026): ballette sempre alle
+     condizioni normali, per agenti e rivenditori. */
+  function annualeFino() { return ''; }
 
   function righeOrdine() {
     return VOCI.map(v => ({ voce: v.id, pezzi: stato[v.id] }));
