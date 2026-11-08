@@ -184,8 +184,11 @@ const Allevatore = (() => {
         + 'i consigli per le cuccette e le novità piùLact.</p>'
         + '<button type="button" class="bottone bottone-chiaro" id="ts-notifiche">Attiva le notifiche</button></div>';
     } else if (suIPhone() && !installata()) {
-      h += '<p class="tua-stalla-nota">Per ricevere il promemoria sul telefono metti Riposa sulla schermata Home: '
-        + 'in Safari, Condividi → «Aggiungi alla schermata Home». Poi apri Riposa dall’icona.</p>';
+      // finché non la mette sulla schermata Home, a ogni visita (Giulio, 8/11/2026)
+      h += '<div class="tua-stalla-installa"><p><strong>Non ti possiamo ancora avvisare:</strong> su iPhone il promemoria arriva '
+        + 'solo con Riposa sulla schermata Home.</p>'
+        + '<details><summary>Come si fa (un minuto)</summary>'
+        + (typeof passiIPhone === 'function' ? passiIPhone() : '') + '</details></div>';
     } else if (permesso === 'denied') {
       h += '<p class="tua-stalla-nota">Le notifiche sono bloccate nelle impostazioni del telefono per Riposa.</p>';
     }
@@ -203,6 +206,7 @@ const Allevatore = (() => {
   }
 
   function aggancia() {
+    if (typeof agganciaCopia === 'function') agganciaCopia();
     const n = document.getElementById('ts-notifiche');
     if (n) n.addEventListener('click', () => {
       n.disabled = true; n.textContent = 'Un attimo…';

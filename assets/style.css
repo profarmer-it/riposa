@@ -1430,3 +1430,37 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 .antirobot-widget{border-radius:10px;overflow:hidden;line-height:0}
 .antirobot-widget.stretto{display:flex;justify-content:center;overflow:visible}
 .antirobot-fisso.aperto{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:420px;margin:0 auto;z-index:9999;box-shadow:var(--ombra)}
+
+/* iPhone: Riposa sulla schermata Home, i tocchi numerati (Giulio, 8/11/2026) */
+.trovato .invito-iphone{margin:4px -8px 24px;text-align:left;display:block;padding:20px 18px}
+.invito-iphone-testa{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.invito-iphone-testa .invito-app-icona{flex:0 0 52px;width:52px;height:52px;border-radius:12px}
+.invito-iphone-testa .invito-app-titolo{margin:0 !important}
+.invito-iphone .invito-app-titolo{font-size:22px}
+.invito-iphone p strong{color:#fff}
+.passi-installa{list-style:none;margin:6px 0 12px;padding:0;display:grid;gap:10px}
+.passi-installa li{display:flex;gap:12px;align-items:flex-start;font-size:16px;line-height:1.45;color:#DCE6F2}
+.passi-installa li strong{color:#fff}
+.passo-n{flex:0 0 28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#fff;color:#0E2340;font-weight:700;font-size:15px}
+.passi-installa .ic{width:19px;height:19px;vertical-align:-4px;color:#8EC5FF}
+.ic-punti{display:inline-block;padding:0 6px;border-radius:999px;background:rgba(255,255,255,.16);color:#fff;font-weight:700;letter-spacing:1px;line-height:1.3}
+.bottone-copia{margin-top:6px;min-height:40px;padding:0 14px;border-radius:10px;border:0;background:#fff;color:#0E2340;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.freccia-installa{position:fixed;z-index:900;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:6px;
+  padding:10px 8px 10px 16px;border-radius:999px;background:#fff;color:#0E2340;font-size:15.5px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.freccia-installa .ic{width:19px;height:19px;vertical-align:-4px;color:#1F6FD1}
+.freccia-installa .ic-punti{background:#E3ECF7;color:#0E2340}
+.freccia-installa button{width:32px;height:32px;border:0;border-radius:50%;background:#EEF2F7;color:#0E2340;font-size:20px;line-height:1;cursor:pointer}
+.freccia-installa::after{content:"";position:absolute;bottom:-7px;width:14px;height:14px;background:#fff;transform:rotate(45deg)}
+.freccia-safari{left:50%;transform:translateX(-50%)}
+.freccia-safari::after{left:calc(50% - 7px)}
+.freccia-safari26{right:12px}
+.freccia-safari26::after{right:26px}
+.freccia-chrome{top:calc(10px + env(safe-area-inset-top));bottom:auto;right:12px}
+.freccia-chrome::after{top:-7px;bottom:auto;right:26px}
+@media (prefers-reduced-motion:no-preference){.freccia-installa{animation:freccia-su 1.4s var(--ease-out) infinite alternate}}
+@keyframes freccia-su{from{margin-bottom:0}to{margin-bottom:8px}}
+.tua-stalla-installa{margin-top:14px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.08)}
+.tua-stalla-installa p{margin:0 0 8px;font-size:15px;color:#DCE6F2}
+.tua-stalla-installa strong{color:#fff}
+.tua-stalla-installa summary{cursor:pointer;font-weight:600;color:#8EC5FF;min-height:32px;display:flex;align-items:center}
+.tua-stalla-installa details[open] summary{margin-bottom:10px}

@@ -674,23 +674,94 @@ function suIPhone() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+/* --- iPhone: Riposa sulla schermata Home (Giulio, 8/11/2026) ---------------
+   Su iPhone le notifiche arrivano solo con Riposa sulla schermata Home, e non
+   è scontato che l'allevatore lo faccia: il riquadro è in cima alla conferma,
+   con i tocchi numerati e le icone come le vede lui, secondo il browser e la
+   versione di iPhone (in iOS 26 Safari ha spostato Condividi dentro «···»).
+   Una freccia in basso indica il tasto da toccare. */
+const ICONA_CONDIVIDI = '<svg class="ic" viewBox="0 0 20 20" aria-hidden="true">'
+  + '<path d="M10 2v11M6 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  + '<path d="M5 9H4v9h12V9h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICONA_PIU = '<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="15" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/>'
+  + '<path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+const ICONA_TRE_PUNTI = '<span class="ic-punti" aria-hidden="true">···</span>';
+
+function browserIPhone() {
+  const ua = navigator.userAgent;
+  if (/CriOS/.test(ua)) return 'chrome';
+  if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return 'altro';
+  if (!/Safari\//.test(ua) || /GSA\/|FBAN|FBAV|Instagram|Line\//.test(ua)) return 'dentro-app';
+  const v = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
+  return v >= 26 ? 'safari26' : 'safari';
+}
+
+function passiIPhone() {
+  const b = browserIPhone();
+  const passo = (n, t) => `<li><span class="passo-n">${n}</span><span>${t}</span></li>`;
+  const aggiungi = `Tocca ${ICONA_PIU} <strong>«Aggiungi alla schermata Home»</strong>. Se non lo vedi, scorri in giù o tocca «Altro».`;
+  const conferma = 'Tocca <strong>«Aggiungi»</strong> in alto a destra.';
+  let p = '';
+  if (b === 'dentro-app') {
+    return '<ol class="passi-installa">'
+      + passo(1, 'Questa pagina è aperta dentro un’altra app (WhatsApp, e-mail…). Tocca il pulsante del menu di questa app e scegli <strong>«Apri in Safari»</strong>.')
+      + passo(2, 'Se non lo trovi, copia l’indirizzo e incollalo in Safari: <button type="button" class="bottone-copia" id="copia-indirizzo">Copia l’indirizzo</button>')
+      + passo(3, 'In Safari ti mostriamo gli ultimi due tocchi.')
+      + '</ol>';
+  }
+  if (b === 'safari26') p = passo(1, `Tocca ${ICONA_TRE_PUNTI} in basso a destra.`) + passo(2, `Tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(3, aggiungi) + passo(4, conferma);
+  else if (b === 'safari') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> nella barra in basso.`) + passo(2, aggiungi) + passo(3, conferma);
+  else if (b === 'chrome') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> in alto a destra, accanto all’indirizzo.`) + passo(2, aggiungi) + passo(3, conferma);
+  else p = passo(1, `Apri il menu del browser e tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(2, aggiungi) + passo(3, conferma);
+  return '<ol class="passi-installa">' + p + '</ol>'
+    + '<p class="invito-app-come">Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home e tocca «Attiva le notifiche».</p>';
+}
+
+// la freccia in basso (o in alto, per Chrome) sul tasto da toccare
+function frecciaInstalla() {
+  togliFreccia();
+  const b = browserIPhone();
+  if (b === 'dentro-app' || b === 'altro') return;
+  const testo = b === 'safari26' ? `Tocca ${ICONA_TRE_PUNTI} qui sotto` : b === 'chrome' ? `Tocca ${ICONA_CONDIVIDI} qui sopra` : `Tocca ${ICONA_CONDIVIDI} qui sotto`;
+  const el = document.createElement('div');
+  el.className = 'freccia-installa freccia-' + b;
+  el.id = 'freccia-installa';
+  el.innerHTML = `<span>${testo}</span><button type="button" aria-label="Chiudi">×</button>`;
+  el.querySelector('button').addEventListener('click', togliFreccia);
+  document.body.appendChild(el);
+}
+function togliFreccia() { const f = document.getElementById('freccia-installa'); if (f) f.remove(); }
+
+function agganciaCopia() {
+  const c = document.getElementById('copia-indirizzo');
+  if (!c) return;
+  c.addEventListener('click', () => {
+    const fatto = () => { c.textContent = '✓ Copiato: incollalo in Safari'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(fatto, () => { c.textContent = location.href; });
+    else c.textContent = location.href;
+  });
+}
+
 function invitoInstalla() {
+  if (appInstallata()) return '';
+  if (suIPhone()) {
+    // su iPhone niente «Non ora» che lo nasconde per sempre: senza l'icona non arrivano i promemoria
+    return '<div class="invito-app invito-iphone" id="invito-iphone">'
+      + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
+      + '<p class="invito-app-titolo">Ultimo passo: metti Riposa sul telefono</p></div>'
+      + '<p>Solo così ti possiamo avvisare <strong>quindici giorni prima che finisca il prodotto</strong>. Ci vuole un minuto:</p>'
+      + passiIPhone() + '</div>';
+  }
   let nonOra = false;
   try { nonOra = localStorage.getItem(CHIAVE_NON_ORA) === '1'; } catch (e) {}
-  if (appInstallata() || nonOra || (!suIPhone() && !invitoAndroid)) return '';
-  const condividi = '<span class="icona-condividi">Condividi <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true">'
-    + '<path d="M10 2v11M6 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
-    + '<path d="M5 9H4v9h12V9h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>';
+  if (nonOra || !invitoAndroid) return '';
   let h = '<div class="invito-app">';
   h += '<img src="assets/icone/icona-192.png" alt="" width="64" height="64" class="invito-app-icona">';
   h += '<div><p class="invito-app-titolo">Tieni Riposa sul telefono</p>';
   h += '<p>Si apre dall’icona, come un’app. Quando Pro Farmer conferma un tuo ordine, ti avvisiamo prima che finisca, '
     + 'e rifai il calcolo in un attimo, anche in stalla senza campo.</p>';
-  if (suIPhone()) {
-    h += `<p class="invito-app-come">In Safari tocca ${condividi} e poi <strong>«Aggiungi alla schermata Home»</strong>.</p>`;
-  }
   h += '<div class="invito-app-azioni">';
-  if (!suIPhone()) h += '<button type="button" class="bottone" id="btn-installa">Installa Riposa</button>';
+  h += '<button type="button" class="bottone" id="btn-installa">Installa Riposa</button>';
   h += '<button type="button" class="invito-app-no" id="btn-installa-no">Non ora</button></div></div></div>';
   return h;
 }
@@ -704,7 +775,8 @@ function agganciaInvito() {
     invitoAndroid.prompt();
     invitoAndroid.userChoice.finally(() => { invitoAndroid = null; box.remove(); });
   });
-  document.getElementById('btn-installa-no').addEventListener('click', () => {
+  const no = document.getElementById('btn-installa-no');
+  if (no) no.addEventListener('click', () => {
     try { localStorage.setItem(CHIAVE_NON_ORA, '1'); } catch (e) {}
     box.remove();
   });
@@ -724,6 +796,9 @@ function mostraConferma(esito) {
     : perche
       ? 'L’abbiamo ricevuto, ma in questo momento l’e-mail non è partita. Ti ricontattiamo noi, oppure chiamaci al +39 376 129 6162.'
       : 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi tra qualche minuto, guarda nella posta indesiderata.'}</p>`;
+  // su iPhone senza l'icona l'invito sta qui, subito sotto la conferma (Giulio, 8/11/2026)
+  const invitoIPhone = suIPhone() ? invitoInstalla() : '';
+  h += invitoIPhone;
   h += '<div class="azioni">';
   h += '<button type="button" class="bottone bottone-fantasma" id="btn-ricomincia">Fai un altro calcolo</button>';
   h += '</div>';
@@ -732,15 +807,18 @@ function mostraConferma(esito) {
   h += '</div>';
   // le notifiche si chiedono subito, qui (Giulio, 7/11/2026); su iPhone senza l'app c'è l'invito a installarla
   h += typeof Allevatore !== 'undefined' ? Allevatore.invitoNotifiche() : '';
-  h += invitoInstalla();
+  if (!invitoIPhone) h += invitoInstalla();
   mostra(h);
   agganciaInvito();
+  agganciaCopia();
+  if (invitoIPhone) frecciaInstalla();
   if (typeof Allevatore !== 'undefined') Allevatore.agganciaInvitoNotifiche();
 
   const ts = document.getElementById('tua-stalla');
   if (ts) rimandaATuaStalla();
   document.getElementById('btn-ricomincia').addEventListener('click', () => {
     contaPasso('altro_calcolo');
+    togliFreccia();
     boxRis.hidden = true;
     boxRis.innerHTML = '';
     modulo.scrollIntoView({ behavior: 'smooth', block: 'start' });
