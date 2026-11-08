@@ -720,7 +720,7 @@ function passiIPhone(finale) {
 }
 
 // la freccia in basso (o in alto, per Chrome) sul tasto da toccare
-function frecciaInstalla() {
+function frecciaInstalla(fissa) {
   togliFreccia();
   const b = browserIPhone();
   if (b === 'dentro-app' || b === 'altro') return;
@@ -728,8 +728,10 @@ function frecciaInstalla() {
   const el = document.createElement('div');
   el.className = 'freccia-installa freccia-' + b;
   el.id = 'freccia-installa';
-  el.innerHTML = `<span>${testo}</span><button type="button" aria-label="Chiudi">×</button>`;
-  el.querySelector('button').addEventListener('click', togliFreccia);
+  // con il foglio d'avvio la freccia non si chiude (Giulio, 8/11/2026)
+  el.innerHTML = `<span>${testo}</span>` + (fissa ? '' : '<button type="button" aria-label="Chiudi">×</button>');
+  if (!fissa) el.querySelector('button').addEventListener('click', togliFreccia);
+  else el.classList.add('freccia-fissa');
   document.body.appendChild(el);
 }
 function togliFreccia() { const f = document.getElementById('freccia-installa'); if (f) f.remove(); }

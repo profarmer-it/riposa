@@ -274,11 +274,9 @@ const Allevatore = (() => {
      subito, 5 secondi dopo l'apertura, non solo dopo il calcolo (Giulio, 8/11/2026).
      Safari non può sapere se l'icona c'è già (Apple tiene separate la pagina e
      l'app), quindi torna a ogni visita da Safari; dall'icona non compare mai.
-     «Ok» lo chiude per questa visita e lascia la freccia sul tasto. */
-  const CHIAVE_FOGLIO = 'riposa-foglio-installa';
+     Non si chiude: in Safari resta finché l'allevatore non usa l'icona (Giulio, 8/11/2026). */
   function foglioInstalla() {
     if (!suIPhone() || installata() || typeof passiIPhone !== 'function') return;
-    try { if (sessionStorage.getItem(CHIAVE_FOGLIO) === '1') return; } catch (e) {}
     const html = document.documentElement;
     const parti = () => setTimeout(mostraFoglio, 5000);
     if (html.classList.contains('con-apertura')) {
@@ -291,7 +289,6 @@ const Allevatore = (() => {
   }
   function mostraFoglio() {
     if (document.getElementById('foglio-installa') || document.getElementById('invito-iphone')) return;
-    try { sessionStorage.setItem(CHIAVE_FOGLIO, '1'); } catch (e) {}
     const el = document.createElement('div');
     el.className = 'foglio-velo';
     el.id = 'foglio-installa';
@@ -299,12 +296,11 @@ const Allevatore = (() => {
       + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
       + '<p class="invito-app-titolo" id="foglio-titolo">Metti Riposa sul telefono</p></div>'
       + passiIPhone('Poi apri Riposa <strong>dall’icona</strong> e fai lì il calcolo.')
-      + '<button type="button" class="bottone foglio-ok" id="foglio-ok">Ok</button></div>';
+      + '</div>';
     document.body.appendChild(el);
-    // «Ok» chiude il foglio e lascia la freccia sul tasto da toccare (Giulio, 8/11/2026)
-    el.querySelector('#foglio-ok').addEventListener('click', () => el.remove());
+    // niente pulsanti per chiuderlo (Giulio, 8/11/2026): l'unica cosa da fare è il tasto di Safari indicato dalla freccia
     if (typeof agganciaCopia === 'function') agganciaCopia();
-    if (typeof frecciaInstalla === 'function') frecciaInstalla();
+    if (typeof frecciaInstalla === 'function') frecciaInstalla(true);
   }
 
   // all'apertura: se il telefono ha già fatto un calcolo, «La tua stalla» è in cima
