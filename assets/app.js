@@ -8,6 +8,17 @@
 const modulo    = document.getElementById('modulo');
 const boxErrore = document.getElementById('errore');
 const boxRis    = document.getElementById('risultato');
+
+/* La versione in un angolo dell'apertura e in fondo alla pagina (Giulio, 8/11/2026):
+   guardando il telefono di un allevatore si vede subito quale sta usando.
+   Si legge dall'indirizzo di questo file (?v=20261108c → 8/11/2026 c), così è sempre giusta. */
+(function () {
+  const v = ((document.currentScript && document.currentScript.src) || '').split('v=')[1] || '';
+  const m = v.match(/^(\d{4})(\d{2})(\d{2})([a-z]*)$/);
+  if (!m) return;
+  const testo = `versione ${+m[3]}/${+m[2]}/${m[1]}${m[4] ? ' ' + m[4] : ''}`;
+  ['apertura-versione', 'pedana-versione'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = testo; });
+})();
 const boxRiemp  = document.getElementById('blocco-riempimento');
 const boxSup    = document.getElementById('blocco-superficie');
 const boxCucc   = document.getElementById('blocco-cuccette');

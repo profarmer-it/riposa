@@ -1008,6 +1008,8 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .apertura-pro .ap-alone,.apertura-pro .ap-bolla{fill:#E3B354}
 .apertura-pro .apertura-nome b{font-weight:600;color:#F4CF7A}
 .apertura-pro .apertura-sotto{color:#E9D3A0}
+.apertura-versione{position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));margin:0;text-align:center;font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.45)}
+.pedana-versione{margin:14px 0 0;font-size:12px;color:rgba(255,255,255,.4)}
 
 /* Riposa Pro sul computer: chi lavora dal portatile ha più spazio (24/10/2026).
    Sul telefono non cambia niente. */
