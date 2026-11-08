@@ -696,7 +696,7 @@ function browserIPhone() {
   return v >= 26 ? 'safari26' : 'safari';
 }
 
-function passiIPhone() {
+function passiIPhone(finale) {
   const b = browserIPhone();
   const passo = (n, t) => `<li><span class="passo-n">${n}</span><span>${t}</span></li>`;
   const aggiungi = `Tocca ${ICONA_PIU} <strong>«Aggiungi alla schermata Home»</strong>. Se non lo vedi, scorri in giù o tocca «Altro».`;
@@ -714,7 +714,7 @@ function passiIPhone() {
   else if (b === 'chrome') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> in alto a destra, accanto all’indirizzo.`) + passo(2, aggiungi) + passo(3, conferma);
   else p = passo(1, `Apri il menu del browser e tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(2, aggiungi) + passo(3, conferma);
   return '<ol class="passi-installa">' + p + '</ol>'
-    + '<p class="invito-app-come">Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home e tocca «Attiva le notifiche».</p>';
+    + '<p class="invito-app-come">' + (finale || 'Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home e tocca «Attiva le notifiche».') + '</p>';
 }
 
 // la freccia in basso (o in alto, per Chrome) sul tasto da toccare
@@ -733,13 +733,11 @@ function frecciaInstalla() {
 function togliFreccia() { const f = document.getElementById('freccia-installa'); if (f) f.remove(); }
 
 function agganciaCopia() {
-  const c = document.getElementById('copia-indirizzo');
-  if (!c) return;
-  c.addEventListener('click', () => {
+  document.querySelectorAll('#copia-indirizzo:not([data-pronto])').forEach(c => { c.dataset.pronto = '1'; c.addEventListener('click', () => {
     const fatto = () => { c.textContent = '✓ Copiato: incollalo in Safari'; };
     if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(fatto, () => { c.textContent = location.href; });
     else c.textContent = location.href;
-  });
+  }); });
 }
 
 function invitoInstalla() {

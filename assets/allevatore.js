@@ -270,10 +270,50 @@ const Allevatore = (() => {
     }).catch(() => {});
   });
 
+  /* iPhone da Safari: l'invito a mettere Riposa sulla schermata Home arriva
+     subito, 5 secondi dopo l'apertura, non solo dopo il calcolo (Giulio, 8/11/2026).
+     Safari non può sapere se l'icona c'è già (Apple tiene separate la pagina e
+     l'app), quindi torna a ogni visita da Safari; dall'icona non compare mai.
+     «Lo faccio dopo» lo chiude solo per questa visita. */
+  const CHIAVE_FOGLIO = 'riposa-foglio-installa';
+  function foglioInstalla() {
+    if (!suIPhone() || installata() || typeof passiIPhone !== 'function') return;
+    try { if (sessionStorage.getItem(CHIAVE_FOGLIO) === '1') return; } catch (e) {}
+    const html = document.documentElement;
+    const parti = () => setTimeout(mostraFoglio, 5000);
+    if (html.classList.contains('con-apertura')) {
+      // aspettiamo la fine dell'apertura animata, poi i 5 secondi
+      const oss = new MutationObserver(() => {
+        if (!html.classList.contains('con-apertura') || html.classList.contains('apertura-finita')) { oss.disconnect(); parti(); }
+      });
+      oss.observe(html, { attributes: true, attributeFilter: ['class'] });
+    } else parti();
+  }
+  function mostraFoglio() {
+    if (document.getElementById('foglio-installa') || document.getElementById('invito-iphone')) return;
+    try { sessionStorage.setItem(CHIAVE_FOGLIO, '1'); } catch (e) {}
+    const el = document.createElement('div');
+    el.className = 'foglio-velo';
+    el.id = 'foglio-installa';
+    el.innerHTML = '<div class="foglio invito-iphone" role="dialog" aria-modal="true" aria-labelledby="foglio-titolo">'
+      + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
+      + '<p class="invito-app-titolo" id="foglio-titolo">Prima di tutto: metti Riposa sul telefono</p></div>'
+      + '<p>Così ti avvisiamo <strong>quindici giorni prima che finisca il prodotto</strong>, e il calcolo lo rifai in un attimo, anche in stalla senza campo. Ci vuole un minuto:</p>'
+      + passiIPhone('Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home e fai lì il calcolo.')
+      + '<button type="button" class="foglio-dopo" id="foglio-dopo">Lo faccio dopo</button></div>';
+    document.body.appendChild(el);
+    const chiudi = () => { el.remove(); if (typeof togliFreccia === 'function') togliFreccia(); };
+    el.querySelector('#foglio-dopo').addEventListener('click', chiudi);
+    el.addEventListener('click', ev => { if (ev.target === el) chiudi(); });
+    if (typeof agganciaCopia === 'function') agganciaCopia();
+    if (typeof frecciaInstalla === 'function') frecciaInstalla();
+  }
+
   // all'apertura: se il telefono ha già fatto un calcolo, «La tua stalla» è in cima
   leggiBiglietto();
   disegna();
   aggiorna();
+  foglioInstalla();
 
-  return { credenziali, salva, disegna, notifichePossibili, chiediNotifiche, invitoNotifiche, agganciaInvitoNotifiche };
+  return { credenziali, salva, disegna, notifichePossibili, chiediNotifiche, invitoNotifiche, agganciaInvitoNotifiche, foglioInstalla };
 })();
