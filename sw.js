@@ -58,6 +58,7 @@ self.addEventListener('fetch', ev => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;   // Supabase e ogni altro sito: sempre in rete
+  if (url.searchParams.has('controlla-versione')) return;   // il controllo della versione nuova (8/11/2026): sempre in rete, mai in copia
 
   // La pagina: prima la rete (così si vede subito la versione nuova), senza rete la copia.
   // Due pagine: quella dell'allevatore ('./') e Riposa Pro ('pro/').

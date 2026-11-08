@@ -96,6 +96,8 @@ const Allevatore = (() => {
       x.scorta = j.scorta; x.piva = j.piva;
       x.notifiche = !!j.notifiche;
       scrivi(x); disegna();
+      // il telefono ha detto sì ma il server non lo sa (iscrizione persa o non arrivata): la rifacciamo
+      if (!j.notifiche) attivaSeConsentite();
     }).catch(e => {
       // il server non conosce più questo telefono (calcolo cancellato): lo dimentichiamo
       if (e && e.message === 'non riconosciuto') {
@@ -138,8 +140,11 @@ const Allevatore = (() => {
   }
 
   async function attivaNotifiche() {
-    const permesso = await Notification.requestPermission();
-    if (permesso !== 'granted') throw new Error('permesso negato');
+    // se il sì c'è già non lo richiediamo: su iPhone, fuori da un tocco, la domanda può non tornare
+    if (Notification.permission !== 'granted') {
+      const permesso = await Notification.requestPermission();
+      if (permesso !== 'granted') throw new Error('permesso negato');
+    }
     const reg = await navigator.serviceWorker.ready;
     const iscr = (await reg.pushManager.getSubscription())
       || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveVapid() });
@@ -241,6 +246,25 @@ const Allevatore = (() => {
       });
     });
   }
+
+  /* L'app sulla schermata Home, quando torna in primo piano, riprende la pagina
+     che aveva in memoria e non si accorge di una versione nuova (8/11/2026).
+     Se è pubblicata una versione nuova e l'allevatore non ha ancora iniziato
+     il calcolo, ricarichiamo la pagina. */
+  const versione = ((document.querySelector('script[src*="app.js?v="]') || {}).src || '').split('v=')[1];
+  function nienteIniziato() {
+    const box = document.getElementById('risultato');
+    const form = document.getElementById('modulo');
+    if (box && !box.hidden) return false;
+    return !form || ![...form.elements].some(e => (e.type === 'radio' || e.type === 'checkbox') ? e.checked : (e.value && e.type !== 'submit' && e.type !== 'button'));
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !versione || !nienteIniziato()) return;
+    fetch('./?controlla-versione=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).then(t => {
+      const v = (t.match(/app\.js\?v=([\w]+)/) || [])[1];
+      if (v && v !== versione && nienteIniziato()) location.reload();
+    }).catch(() => {});
+  });
 
   // all'apertura: se il telefono ha già fatto un calcolo, «La tua stalla» è in cima
   leggiBiglietto();
