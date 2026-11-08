@@ -1453,8 +1453,8 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 .freccia-installa::after{content:"";position:absolute;bottom:-7px;width:14px;height:14px;background:#fff;transform:rotate(45deg)}
 .freccia-safari{left:50%;transform:translateX(-50%)}
 .freccia-safari::after{left:calc(50% - 7px)}
-.freccia-safari26{right:12px}
-.freccia-safari26::after{right:26px}
+.freccia-safari26{left:max(12px, calc(26% - 32px))}
+.freccia-safari26::after{left:24px}
 .freccia-chrome{top:calc(10px + env(safe-area-inset-top));bottom:auto;right:12px}
 .freccia-chrome::after{top:-7px;bottom:auto;right:26px}
 @media (prefers-reduced-motion:no-preference){.freccia-installa{animation:freccia-su 1.4s var(--ease-out) infinite alternate}}
@@ -1472,5 +1472,5 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
   background:radial-gradient(120% 120% at 0% 0%,#1F4C88 0%,#0E2340 60%);box-shadow:0 18px 50px rgba(0,0,0,.4)}
 .foglio p{margin:0 0 8px;color:#DCE6F2;font-size:15.5px;line-height:1.5}
 .foglio .invito-app-titolo{font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;color:#fff;line-height:1.2}
-.foglio-dopo{display:block;margin:6px auto 0;min-height:44px;padding:0 10px;font:inherit;font-size:15px;color:#B9CBE0;background:none;border:0;text-decoration:underline;cursor:pointer}
+.foglio-ok{display:block;width:100%;margin:12px 0 4px;background:#fff;color:#0E2340}
 @media (prefers-reduced-motion:no-preference){.foglio{animation:entra .4s var(--ease-out) both}}

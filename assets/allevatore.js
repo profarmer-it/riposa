@@ -274,7 +274,7 @@ const Allevatore = (() => {
      subito, 5 secondi dopo l'apertura, non solo dopo il calcolo (Giulio, 8/11/2026).
      Safari non può sapere se l'icona c'è già (Apple tiene separate la pagina e
      l'app), quindi torna a ogni visita da Safari; dall'icona non compare mai.
-     «Lo faccio dopo» lo chiude solo per questa visita. */
+     «Ok» lo chiude per questa visita e lascia la freccia sul tasto. */
   const CHIAVE_FOGLIO = 'riposa-foglio-installa';
   function foglioInstalla() {
     if (!suIPhone() || installata() || typeof passiIPhone !== 'function') return;
@@ -297,14 +297,12 @@ const Allevatore = (() => {
     el.id = 'foglio-installa';
     el.innerHTML = '<div class="foglio invito-iphone" role="dialog" aria-modal="true" aria-labelledby="foglio-titolo">'
       + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
-      + '<p class="invito-app-titolo" id="foglio-titolo">Prima di tutto: metti Riposa sul telefono</p></div>'
-      + '<p>Così ti avvisiamo <strong>quindici giorni prima che finisca il prodotto</strong>, e il calcolo lo rifai in un attimo, anche in stalla senza campo. Ci vuole un minuto:</p>'
-      + passiIPhone('Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home e fai lì il calcolo.')
-      + '<button type="button" class="foglio-dopo" id="foglio-dopo">Lo faccio dopo</button></div>';
+      + '<p class="invito-app-titolo" id="foglio-titolo">Metti Riposa sul telefono</p></div>'
+      + passiIPhone('Poi apri Riposa <strong>dall’icona</strong> e fai lì il calcolo.')
+      + '<button type="button" class="bottone foglio-ok" id="foglio-ok">Ok</button></div>';
     document.body.appendChild(el);
-    const chiudi = () => { el.remove(); if (typeof togliFreccia === 'function') togliFreccia(); };
-    el.querySelector('#foglio-dopo').addEventListener('click', chiudi);
-    el.addEventListener('click', ev => { if (ev.target === el) chiudi(); });
+    // «Ok» chiude il foglio e lascia la freccia sul tasto da toccare (Giulio, 8/11/2026)
+    el.querySelector('#foglio-ok').addEventListener('click', () => el.remove());
     if (typeof agganciaCopia === 'function') agganciaCopia();
     if (typeof frecciaInstalla === 'function') frecciaInstalla();
   }

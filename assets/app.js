@@ -686,6 +686,8 @@ const ICONA_CONDIVIDI = '<svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
 const ICONA_PIU = '<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="15" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/>'
   + '<path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 const ICONA_TRE_PUNTI = '<span class="ic-punti" aria-hidden="true">···</span>';
+// in iOS 26, con la barra compatta, il menu di Safari è l'icona a righe accanto all'indirizzo (schermata di Giulio, 8/11/2026)
+const ICONA_MENU = '<svg class="ic ic-menu" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 
 function browserIPhone() {
   const ua = navigator.userAgent;
@@ -699,7 +701,7 @@ function browserIPhone() {
 function passiIPhone(finale) {
   const b = browserIPhone();
   const passo = (n, t) => `<li><span class="passo-n">${n}</span><span>${t}</span></li>`;
-  const aggiungi = `Tocca ${ICONA_PIU} <strong>«Aggiungi alla schermata Home»</strong>. Se non lo vedi, scorri in giù o tocca «Altro».`;
+  const aggiungi = `Tocca ${ICONA_PIU} <strong>«Aggiungi alla schermata Home»</strong> (scorri se non lo vedi).`;
   const conferma = 'Tocca <strong>«Aggiungi»</strong> in alto a destra.';
   let p = '';
   if (b === 'dentro-app') {
@@ -709,12 +711,12 @@ function passiIPhone(finale) {
       + passo(3, 'In Safari ti mostriamo gli ultimi due tocchi.')
       + '</ol>';
   }
-  if (b === 'safari26') p = passo(1, `Tocca ${ICONA_TRE_PUNTI} in basso a destra.`) + passo(2, `Tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(3, aggiungi) + passo(4, conferma);
+  if (b === 'safari26') p = passo(1, `Tocca ${ICONA_MENU} accanto all’indirizzo, in basso (o ${ICONA_TRE_PUNTI} se c’è).`) + passo(2, `Tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(3, aggiungi) + passo(4, conferma);
   else if (b === 'safari') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> nella barra in basso.`) + passo(2, aggiungi) + passo(3, conferma);
   else if (b === 'chrome') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> in alto a destra, accanto all’indirizzo.`) + passo(2, aggiungi) + passo(3, conferma);
   else p = passo(1, `Apri il menu del browser e tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(2, aggiungi) + passo(3, conferma);
   return '<ol class="passi-installa">' + p + '</ol>'
-    + '<p class="invito-app-come">' + (finale || 'Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home e tocca «Attiva le notifiche».') + '</p>';
+    + '<p class="invito-app-come">' + (finale || 'Poi apri Riposa <strong>dall’icona</strong> e tocca «Attiva le notifiche».') + '</p>';
 }
 
 // la freccia in basso (o in alto, per Chrome) sul tasto da toccare
@@ -722,7 +724,7 @@ function frecciaInstalla() {
   togliFreccia();
   const b = browserIPhone();
   if (b === 'dentro-app' || b === 'altro') return;
-  const testo = b === 'safari26' ? `Tocca ${ICONA_TRE_PUNTI} qui sotto` : b === 'chrome' ? `Tocca ${ICONA_CONDIVIDI} qui sopra` : `Tocca ${ICONA_CONDIVIDI} qui sotto`;
+  const testo = b === 'safari26' ? `Tocca ${ICONA_MENU} qui sotto` : b === 'chrome' ? `Tocca ${ICONA_CONDIVIDI} qui sopra` : `Tocca ${ICONA_CONDIVIDI} qui sotto`;
   const el = document.createElement('div');
   el.className = 'freccia-installa freccia-' + b;
   el.id = 'freccia-installa';
@@ -747,7 +749,6 @@ function invitoInstalla() {
     return '<div class="invito-app invito-iphone" id="invito-iphone">'
       + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
       + '<p class="invito-app-titolo">Ultimo passo: metti Riposa sul telefono</p></div>'
-      + '<p>Solo così ti possiamo avvisare <strong>quindici giorni prima che finisca il prodotto</strong>. Ci vuole un minuto:</p>'
       + passiIPhone() + '</div>';
   }
   let nonOra = false;
