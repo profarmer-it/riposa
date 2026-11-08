@@ -52,6 +52,7 @@ const Allevatore = (() => {
     biglietto(app);
     disegna();
     aggiorna();
+    attivaSeConsentite();
   }
 
   /* Su iPhone l'app sulla schermata Home non vede la memoria di Safari (7/11/2026):
@@ -118,6 +119,22 @@ const Allevatore = (() => {
   function chiaveVapid() {
     const b = atob((VAPID + '='.repeat((4 - VAPID.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
     return Uint8Array.from(b, c => c.charCodeAt(0));
+  }
+
+  /* Dal tocco su «Calcola il dosaggio» (8/11/2026): la domanda del telefono
+     compare durante il ragionamento. Restituisce la promessa della risposta,
+     o null se qui non si può chiedere o la risposta c'è già. */
+  function chiediNotifiche() {
+    if (!notifichePossibili() || Notification.permission !== 'default') return null;
+    try {
+      const p = Notification.requestPermission();
+      return p && typeof p.then === 'function' ? p : null;
+    } catch (e) { return null; }
+  }
+  // dopo l'invio del calcolo: se ha già detto sì, iscriviamo il telefono senza chiedere altro
+  function attivaSeConsentite() {
+    if (!notifichePossibili() || Notification.permission !== 'granted') return;
+    attivaNotifiche().then(disegna).catch(() => {});
   }
 
   async function attivaNotifiche() {
@@ -199,7 +216,8 @@ const Allevatore = (() => {
   function invitoNotifiche() {
     const d = leggi();
     const permesso = 'Notification' in window ? Notification.permission : 'default';
-    if (!d || !d.id || !notifichePossibili() || permesso === 'denied' || (d.notifiche && permesso === 'granted')) return '';
+    // solo se la domanda durante il calcolo è rimasta senza risposta: il sì si attiva da solo
+    if (!d || !d.id || !notifichePossibili() || permesso !== 'default') return '';
     return '<div class="invito-notifiche"><p class="invito-app-titolo">Ti avvisiamo noi quando il prodotto sta per finire</p>'
       + '<p>Quando Pro Farmer conferma un tuo ordine, calcoliamo quanto ti dura e ti mandiamo un avviso sul telefono '
       + 'quindici giorni prima che finisca. In più i consigli per le cuccette e le novità piùLact.</p>'
@@ -229,5 +247,5 @@ const Allevatore = (() => {
   disegna();
   aggiorna();
 
-  return { credenziali, salva, disegna, notifichePossibili, invitoNotifiche, agganciaInvitoNotifiche };
+  return { credenziali, salva, disegna, notifichePossibili, chiediNotifiche, invitoNotifiche, agganciaInvitoNotifiche };
 })();

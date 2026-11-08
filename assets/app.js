@@ -526,7 +526,7 @@ function bovinaChePensa() {
   </svg>`;
 }
 
-function mostraRagionamento(r) {
+function mostraRagionamento(r, permesso) {
   contaPasso('calcolo');
   const n = PASSI_RAGIONAMENTO.length, passo = 950;          // 4 passi × 0,95 s, poi «fatto»
   let h = '<div class="ragiona">';
@@ -551,7 +551,21 @@ function mostraRagionamento(r) {
     const t = document.getElementById('ragiona-titolo');
     if (t) { t.textContent = 'Fatto: ecco la tua soluzione'; t.classList.add('ragiona-fatto'); }
   }, passo * n + 50);
-  setTimeout(() => mostraContatti(r), DURATA_RAGIONAMENTO);
+  /* Le notifiche (Giulio, 8/11/2026): la domanda del telefono compare durante il
+     ragionamento, e i contatti arrivano quando l'allevatore ha risposto. Se dice
+     di no o non risponde entro 20 secondi, si va avanti lo stesso. */
+  const fineAnimazione = new Promise(ok => setTimeout(ok, DURATA_RAGIONAMENTO));
+  if (permesso) {
+    const nota = document.createElement('p');
+    nota.className = 'ragiona-notifiche';
+    nota.textContent = 'Consenti le notifiche: ti avvisiamo noi quando il prodotto sta per finire.';
+    document.querySelector('.ragiona').appendChild(nota);
+    permesso.then(() => nota.remove(), () => nota.remove());
+  }
+  const risposta = permesso
+    ? Promise.race([permesso.catch(() => null), new Promise(ok => setTimeout(ok, DURATA_RAGIONAMENTO + 20000))])
+    : Promise.resolve();
+  Promise.all([fineAnimazione, risposta]).then(() => mostraContatti(r));
 }
 
 /* --- 2. dove te lo mandiamo ------------------------------------------- */
@@ -1126,5 +1140,7 @@ modulo.addEventListener('submit', ev => {
     disegnaRisultato(ultimoRisultato);
     return;
   }
-  mostraRagionamento(ultimoRisultato);
+  // la domanda delle notifiche parte qui, dal tocco su «Calcola»: i telefoni la vogliono così
+  const permesso = typeof Allevatore !== 'undefined' ? Allevatore.chiediNotifiche() : null;
+  mostraRagionamento(ultimoRisultato, permesso);
 });
