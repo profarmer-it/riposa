@@ -591,8 +591,9 @@ function mostraContatti(r) {
 
     if (!dati.nome) return errore(err, 'Serve il tuo nome.');
     if (!dati.azienda) return errore(err, 'Serve la ragione sociale dell’azienda.');
-    dati.piva = (dati.piva || '').toUpperCase().replace(/^IT/, '').replace(/\D/g, '');
-    if (!/^\d{11}$/.test(dati.piva)) return errore(err, 'Serve la partita IVA: 11 cifre.');
+    const pivaErrore = errorePartitaIva(dati.piva);
+    if (pivaErrore) return errore(err, pivaErrore);
+    dati.piva = pulisciPartitaIva(dati.piva);
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
     if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
@@ -738,6 +739,35 @@ function spuntaConsenso() {
 
 /* Il telefono riconosce i campi e propone i dati salvati: due tocchi invece
    di scrivere tutto. La provincia italiana per il browser è "address-level2". */
+// la partita IVA: solo le cifre, senza «IT», spazi, punti o trattini
+function pulisciPartitaIva(t) {
+  return String(t || '').toUpperCase().replace(/^IT/, '').replace(/[\s.\-\/]/g, '');
+}
+
+// perché la partita IVA scritta non va: '' se va bene
+function errorePartitaIva(t) {
+  const p = pulisciPartitaIva(t);
+  if (!p) return 'Serve la partita IVA: 11 cifre.';
+  if (/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(p)) return 'Questo è un codice fiscale: serve la partita IVA dell’azienda, 11 cifre.';
+  if (/\D/.test(p)) return 'La partita IVA ha solo numeri: hai scritto anche delle lettere o dei simboli.';
+  if (p.length !== 11) {
+    const quante = p.length === 1 ? '1 cifra' : p.length + ' cifre';
+    const diff = Math.abs(p.length - 11);
+    const scarto = diff === 1 ? '1 cifra' : diff + ' cifre';
+    return `La partita IVA che hai scritto ha ${quante}: ne servono 11, ${p.length > 11 ? (diff === 1 ? 'c’è ' : 'ci sono ') + scarto + ' di troppo' : (diff === 1 ? 'manca ' : 'mancano ') + scarto}.`;
+  }
+  if (/^0+$/.test(p)) return 'La partita IVA non può essere tutta di zeri: scrivi quella della tua azienda.';
+  // l'ultima cifra è di controllo e si calcola dalle altre dieci
+  let somma = 0;
+  for (let i = 0; i < 10; i++) {
+    let c = Number(p[i]);
+    if (i % 2 === 1) { c *= 2; if (c > 9) c -= 9; }
+    somma += c;
+  }
+  if ((10 - somma % 10) % 10 !== Number(p[10])) return 'Questa partita IVA non torna: forse c’è una cifra sbagliata o due cifre scambiate. Ricontrollala sulla fattura o sul certificato di attribuzione.';
+  return '';
+}
+
 const AUTOCOMPLETA = { nome: 'name', azienda: 'organization', provincia: 'address-level2', email: 'email', telefono: 'tel', piva: 'off' };
 
 function campoTesto(id, etichetta, tipo, obbligatorio, classe) {
