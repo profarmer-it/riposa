@@ -590,11 +590,12 @@ function mostraContatti(r) {
   h += '<form id="modulo-contatti" class="contatti" novalidate>';
   h += campoTesto('nome', 'Nome e cognome', 'text', true);
   h += campoTesto('azienda', 'Ragione sociale', 'text', true);
-  // la P.IVA collega Riposa agli ordini: il promemoria si calcola da lì (Giulio, 7/11/2026)
-  h += campoTesto('piva', 'Partita IVA', 'text', true);
   h += campoTesto('provincia', 'Provincia', 'text', true);
   h += campoTesto('email', 'E-mail', 'email', true);
   h += campoTesto('telefono', 'Telefono', 'tel', false, 'pieno');
+  /* La P.IVA collega Riposa agli ordini (7/11/2026). Facoltativa dall'8/11/2026 (Giulio):
+     per non frenare i contatti; senza, il collegamento si fa per e-mail (file 61). */
+  h += campoTesto('piva', 'Partita IVA', 'text', false, 'pieno');
   h += spuntaConsenso();
   h += '<p id="errore-contatti" class="errore pieno" hidden></p>';
   h += '<div class="azioni pieno">';
@@ -616,12 +617,15 @@ function mostraContatti(r) {
 
     if (!dati.nome) return errore(err, 'Serve il tuo nome.');
     if (!dati.azienda) return errore(err, 'Serve la ragione sociale dell’azienda.');
-    const pivaErrore = errorePartitaIva(dati.piva);
-    if (pivaErrore) return errore(err, pivaErrore);
-    dati.piva = pulisciPartitaIva(dati.piva);
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
     if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
+    // facoltativa: se c'è, deve essere giusta
+    if (pulisciPartitaIva(dati.piva)) {
+      const pivaErrore = errorePartitaIva(dati.piva);
+      if (pivaErrore) return errore(err, pivaErrore);
+    }
+    dati.piva = pulisciPartitaIva(dati.piva);
     if (!dati.consenso) { contaPasso('senza_consenso'); return errore(err, 'Per ricevere il risultato spunta «Sì, ricontattatemi».'); }
     err.hidden = true;
 
@@ -877,7 +881,7 @@ const AUTOCOMPLETA = { nome: 'name', azienda: 'organization', provincia: 'addres
 function campoTesto(id, etichetta, tipo, obbligatorio, classe) {
   return `<div class="campo ${classe || ''}">`
     + `<label for="c-${id}">${esc(etichetta)}`
-    + (obbligatorio ? '' : ' <span class="opzionale">facoltativo</span>')
+    + (obbligatorio ? '' : ` <span class="opzionale">${id === 'piva' ? 'facoltativa' : 'facoltativo'}</span>`)
     + '</label>'
     + `<input type="${tipo}" id="c-${id}" name="${id}" autocomplete="${AUTOCOMPLETA[id] || 'on'}"${id === 'provincia' ? ' autocapitalize="characters"' : ''}`
     + `${id === 'piva' ? ' inputmode="numeric" maxlength="16"' : ''}>`
