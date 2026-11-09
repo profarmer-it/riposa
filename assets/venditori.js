@@ -1074,7 +1074,7 @@ const Venditori = (() => {
     const interno = cond && cond.ruolo === 'interno';
     let h = '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Legenda dei 💎</h3>'
       + `<span>${interno ? 'Il regolamento dei Diamanti, come lo leggono gli agenti' : 'Il regolamento dei Diamanti piùLact'}</span></summary><div class="legenda-corpo">`;
-    if (interno) h += '<p class="aiuto">I Diamanti sono degli agenti. I rivenditori non li hanno: per loro ogni foto approvata vale uno sconto dello stesso valore sul prossimo ordine (lo vedono così nel loro Profilo).</p>';
+    if (interno) h += '<p class="aiuto">I Diamanti sono solo degli agenti. I rivenditori non hanno Diamanti né premi sulle foto (lo leggono così nel loro Profilo).</p>';
     h += '<h4>Come funziona</h4><ul>'
       + `<li>I diamanti si vincono raggiungendo i traguardi qui sotto. Valgono solo gli ordini <strong>consegnati</strong> (o pagati): un ordine annullato non conta.</li>`
       + `<li>${gemme(1)} un diamante azzurro vale 1. ${gemme(10)} un diamante viola vale 10: dieci azzurri fanno un viola.</li>`
@@ -1108,14 +1108,13 @@ const Venditori = (() => {
     return h + '</div></details>';
   }
 
-  /* Il regolamento per i rivenditori (Giulio, 9/11/2026): i Diamanti sono degli agenti;
-     al rivenditore le foto approvate valgono uno sconto dello stesso valore (29-foto-social.sql). */
+  /* Il regolamento per i rivenditori (Giulio, 9/11/2026): i Diamanti sono solo degli agenti;
+     i rivenditori non hanno Diamanti né premi sulle foto (69-foto-rivenditori-senza-sconto.sql). */
   function legendaRivenditore() {
-    return '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Diamanti e premi</h3>'
+    return '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Diamanti piùLact</h3>'
       + '<span>Cosa vale per te come rivenditore</span></summary><div class="legenda-corpo"><ul>'
-      + '<li>I <strong>Diamanti piùLact</strong> sono il premio degli agenti di Pro Farmer: si vincono con i clienti nuovi, i riordini, i feedback positivi dei clienti e le foto. I rivenditori non hanno Diamanti.</li>'
-      + '<li>Per te valgono le <strong>foto per i social</strong>: ogni foto che Pro Farmer approva vale uno <strong>sconto di 4 €</strong> sul tuo prossimo ordine, fino a 10 foto al mese. Lo trovi sull’ordine: puoi girarlo all’allevatore.</li>'
-      + '<li>Le foto valgono quando Pro Farmer le approva. Le regole sono nel Regolamento foto, in «Foto per i social».</li>'
+      + '<li>I <strong>Diamanti piùLact</strong> sono il premio degli agenti di Pro Farmer: si vincono con i clienti nuovi, i riordini, i feedback positivi dei clienti e le foto. <strong>I rivenditori non hanno Diamanti.</strong></li>'
+      + '<li>Le <strong>foto per i social</strong> puoi mandarle lo stesso, se ti va: aiutano a far conoscere piùLact ai tuoi clienti. Per i rivenditori non danno premi né sconti. Le regole sono nel Regolamento foto, in «Foto per i social».</li>'
       + '<li>I tuoi prezzi e sconti sono qui sotto, in «Le tue condizioni»: li decide Pro Farmer con te.</li>'
       + '</ul></div></details>';
   }
@@ -1780,7 +1779,7 @@ const Venditori = (() => {
     if (attesa) return `${attesa} ${attesa === 1 ? 'invio' : 'invii'} in attesa di Pro Farmer`;
     const v = d.valori || {};
     return d.ruolo === 'agente' ? `${v.foto || 1} 💎 a foto usabile`
-      : d.ruolo === 'rivenditore' ? 'Uno sconto sul tuo prossimo ordine' : 'Le foto dei clienti diretti';
+      : d.ruolo === 'rivenditore' ? 'Le foto di piùLact in stalla' : 'Le foto dei clienti diretti';
   }
 
   function caricaFotoSocial() {
@@ -1820,15 +1819,15 @@ const Venditori = (() => {
      licenza d'uso a Pro Farmer delle foto che si mandano. */
   function testoRegolamentoFoto(d) {
     const v = d.valori || {}, r = d.regole || {}, eur = Number(d.euro) || 4;
-    const premio = d.ruolo === 'rivenditore'
-      ? `${(v.foto || 1) * eur} € di sconto sul tuo prossimo ordine per ogni foto usabile`
-      : `${v.foto || 1} 💎 per ogni foto usabile`;
+    const riv = d.ruolo === 'rivenditore';
+    const premio = `${v.foto || 1} 💎 per ogni foto usabile`;
     return '<ul class="regolamento-foto">'
       + '<li><strong>Cosa mandare:</strong> foto vere di piùLact in uso: cuccette, lettiere, il prodotto, le bovine sulla zona di riposo. A fuoco, con buona luce, scattate da meno di 3 mesi.</li>'
-      + `<li><strong>Il premio:</strong> ${premio}, quando Pro Farmer le approva. Al massimo ${r.tetto_foto_mese || 10} 💎 al mese dalle foto. Più foto quasi uguali contano come una.</li>`
+      + (riv ? '<li><strong>Il premio:</strong> per i rivenditori le foto non danno premi né sconti: le mandi se ti va, per far conoscere piùLact.</li>'
+             : `<li><strong>Il premio:</strong> ${premio}, quando Pro Farmer le approva. Al massimo ${r.tetto_foto_mese || 10} 💎 al mese dalle foto. Più foto quasi uguali contano come una.</li>`)
       + '<li><strong>Le persone:</strong> niente volti riconoscibili senza la liberatoria firmata da quella persona. Mai minori.</li>'
       + '<li><strong>Di chi sono le foto:</strong> mandi solo foto scattate da te, o dall’allevatore con il suo permesso. Mai foto prese da internet o da altri.</li>'
-      + '<li><strong>L’uso:</strong> concedi a Pro Farmer Srls, gratis e senza scadenza, il diritto non esclusivo di usare le foto che mandi, anche tagliate o ritoccate, su social, sito, stampati e fiere. Il premio è il compenso. Pro Farmer non è obbligata a pubblicarle.</li>'
+      + '<li><strong>L’uso:</strong> concedi a Pro Farmer Srls, gratis e senza scadenza, il diritto non esclusivo di usare le foto che mandi, anche tagliate o ritoccate, su social, sito, stampati e fiere.' + (riv ? '' : ' Il premio è il compenso.') + ' Pro Farmer non è obbligata a pubblicarle.</li>'
       + '<li><strong>Privacy:</strong> il telefono toglie dalle foto la posizione GPS prima di mandarle. Le foto non usate si cancellano dopo 12 mesi.</li></ul>';
   }
 

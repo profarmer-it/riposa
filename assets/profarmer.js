@@ -1240,7 +1240,7 @@ const ProFarmer = (() => {
 
     // le regole
     const R = F.regole;
-    h += '<div class="blocco"><h3>Regole</h3><p class="aiuto">I diamanti di una foto si cambiano in Premi → Traguardi. Ai rivenditori vanno come sconto, a 4 € a diamante.</p>'
+    h += '<div class="blocco"><h3>Regole</h3><p class="aiuto">I diamanti di una foto si cambiano in Premi → Traguardi. Valgono solo per gli agenti: ai rivenditori le foto non danno premi né sconti (dal 9/11/2026).</p>'
       + '<form id="pf-regole-foto" novalidate><div class="pf-campi">'
       + `<label>Tetto 💎 al mese dalle foto<input name="tetto_foto_mese" type="number" min="0" max="200" step="1" value="${R.tetto_foto_mese}"></label>`
       // la storia non c'è più (29/10/2026): storie_mese e sconto_allevatore restano a 0
