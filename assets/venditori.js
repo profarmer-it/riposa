@@ -922,6 +922,18 @@ const Venditori = (() => {
      traguardi in corso, i buoni acquisto, le richieste e la classifica
      (solo nomi e diamanti, mai tonnellate o soldi degli altri). */
   function caricaDiamanti() {
+    // Pro Farmer (interni): solo traguardi e valori, per leggere il regolamento come lo vedono gli agenti (9/11/2026)
+    if (cond && cond.ruolo === 'interno') {
+      return Promise.all([
+        sb.from('traguardi').select('codice, nome, descrizione, diamanti, gruppo, posizione').eq('attivo', true).order('posizione'),
+        sb.from('regole_diamanti').select('euro, taglio').eq('id', 1).maybeSingle()
+      ]).then(([t, r]) => {
+        if (t.error) return;
+        area.diamanti = { traguardi: t.data || [], euro: r && r.data ? r.data.euro : 4, taglio: r && r.data ? r.data.taglio : 25, soloLegenda: true };
+        const leg = document.getElementById('legenda-diamanti');
+        if (scheda === 'profilo' && leg && !leg.querySelector('.legenda-traguardi')) { const aperta = leg.open; leg.outerHTML = legendaDiamanti(); if (aperta) document.getElementById('legenda-diamanti').open = true; }
+      }).catch(() => {});
+    }
     if (!cond || cond.ruolo !== 'agente') return Promise.resolve();
     return rpc('diamanti_agente').then(d => {
       area.diamanti = d;
@@ -1059,8 +1071,10 @@ const Venditori = (() => {
   function legendaDiamanti() {
     const d = area.diamanti;
     const euro = Number(d && d.euro) || 4, taglio = Number(d && d.taglio) || 25;
+    const interno = cond && cond.ruolo === 'interno';
     let h = '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Legenda dei 💎</h3>'
-      + '<span>Il regolamento dei Diamanti piùLact</span></summary><div class="legenda-corpo">';
+      + `<span>${interno ? 'Il regolamento dei Diamanti, come lo leggono gli agenti' : 'Il regolamento dei Diamanti piùLact'}</span></summary><div class="legenda-corpo">`;
+    if (interno) h += '<p class="aiuto">I Diamanti sono degli agenti. I rivenditori non li hanno: per loro ogni foto approvata vale uno sconto dello stesso valore sul prossimo ordine (lo vedono così nel loro Profilo).</p>';
     h += '<h4>Come funziona</h4><ul>'
       + `<li>I diamanti si vincono raggiungendo i traguardi qui sotto. Valgono solo gli ordini <strong>consegnati</strong> (o pagati): un ordine annullato non conta.</li>`
       + `<li>${gemme(1)} un diamante azzurro vale 1. ${gemme(10)} un diamante viola vale 10: dieci azzurri fanno un viola.</li>`
@@ -1092,6 +1106,18 @@ const Venditori = (() => {
       + '<li>Se un ordine consegnato viene <strong>annullato</strong>, si tolgono i diamanti che aveva fatto vincere.</li>'
       + '<li>Se il rapporto con Pro Farmer si chiude, hai <strong>30 giorni</strong> per chiedere il buono a Pro Farmer: poi i diamanti decadono.</li></ul>';
     return h + '</div></details>';
+  }
+
+  /* Il regolamento per i rivenditori (Giulio, 9/11/2026): i Diamanti sono degli agenti;
+     al rivenditore le foto approvate valgono uno sconto dello stesso valore (29-foto-social.sql). */
+  function legendaRivenditore() {
+    return '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Diamanti e premi</h3>'
+      + '<span>Cosa vale per te come rivenditore</span></summary><div class="legenda-corpo"><ul>'
+      + '<li>I <strong>Diamanti piùLact</strong> sono il premio degli agenti di Pro Farmer: si vincono con i clienti nuovi, i riordini, i feedback positivi dei clienti e le foto. I rivenditori non hanno Diamanti.</li>'
+      + '<li>Per te valgono le <strong>foto per i social</strong>: ogni foto che Pro Farmer approva vale uno <strong>sconto di 4 €</strong> sul tuo prossimo ordine, fino a 10 foto al mese. Lo trovi sull’ordine: puoi girarlo all’allevatore.</li>'
+      + '<li>Le foto valgono quando Pro Farmer le approva. Le regole sono nel Regolamento foto, in «Foto per i social».</li>'
+      + '<li>I tuoi prezzi e sconti sono qui sotto, in «Le tue condizioni»: li decide Pro Farmer con te.</li>'
+      + '</ul></div></details>';
   }
 
   function agganciaDiamanti() {
@@ -2120,7 +2146,7 @@ const Venditori = (() => {
 
   function disegnaProfilo() {
     const p = area.profilo;
-    let h = bloccoFoto() + (cond.ruolo === 'agente' ? legendaDiamanti() : '')
+    let h = bloccoFoto() + (cond.ruolo === 'agente' || cond.ruolo === 'interno' ? legendaDiamanti() : cond.ruolo === 'rivenditore' ? legendaRivenditore() : '')
       + '<div class="blocco"><h3>Il tuo profilo</h3><table class="tabella profilo profilo-dati"><tbody>';
     h += `<tr><th>Nome</th><td>${esc(p.nome)}</td></tr>`;
     h += `<tr><th>Ruolo</th><td>${esc(RUOLI[p.ruolo] || p.ruolo)}</td></tr>`;
