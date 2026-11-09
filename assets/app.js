@@ -592,7 +592,8 @@ function mostraContatti(r) {
   h += campoTesto('azienda', 'Ragione sociale', 'text', true);
   h += campoTesto('provincia', 'Provincia', 'text', true);
   h += campoTesto('email', 'E-mail', 'email', true);
-  h += campoTesto('telefono', 'Telefono', 'tel', false, 'pieno');
+  // obbligatorio dal 9/11/2026 (Giulio): senza telefono i contatti si possono solo scrivere
+  h += campoTesto('telefono', 'Telefono', 'tel', true, 'pieno');
   /* La P.IVA collega Riposa agli ordini (7/11/2026). Facoltativa dall'8/11/2026 (Giulio):
      per non frenare i contatti; senza, il collegamento si fa per e-mail (file 61). */
   h += campoTesto('piva', 'Partita IVA', 'text', false, 'pieno');
@@ -619,7 +620,8 @@ function mostraContatti(r) {
     if (!dati.azienda) return errore(err, 'Serve la ragione sociale dell’azienda.');
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
-    if (dati.telefono && dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
+    if (!dati.telefono) return errore(err, 'Serve il telefono: ti chiamiamo solo per il risultato e i consigli.');
+    if (dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
     // facoltativa: se c'è, deve essere giusta
     if (pulisciPartitaIva(dati.piva)) {
       const pivaErrore = errorePartitaIva(dati.piva);

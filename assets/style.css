@@ -1474,3 +1474,11 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 .foglio .invito-app-titolo{font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;color:#fff;line-height:1.2}
 .freccia-fissa{padding-right:16px}
 @media (prefers-reduced-motion:no-preference){.foglio{animation:entra .4s var(--ease-out) both}}
+
+/* Gestione → Lead: consenso e «già cliente» ben visibili (Giulio, 9/11/2026) */
+.pf-etichette{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pf-etichetta{display:inline-block;font-size:12.5px;font-weight:700;line-height:1.3;padding:3px 9px;border-radius:999px;border:1px solid transparent}
+.pf-etichetta.si{background:#E7F6EC;color:#1E6B3A;border-color:#B9E3C6}
+.pf-etichetta.no{background:#FDECEC;color:#A12C2C;border-color:#F3C1C1}
+.pf-etichetta.cliente{background:#FFF3DC;color:#8A5300;border-color:#F0D29A}
+.pf-etichetta.nuovo{background:#EEF2F7;color:#3D4B5E;border-color:#D8E0EA}

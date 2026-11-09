@@ -679,6 +679,21 @@ const ProFarmer = (() => {
     return h + '<p class="errore" hidden></p></div>';
   }
 
+  /* Il contatto è già un cliente? Stessa P.IVA o stessa e-mail di un cliente (Giulio, 9/11/2026). */
+  const soloCifre = v => String(v || '').replace(/\D/g, '');
+  function clienteDelLead(x) {
+    const pv = soloCifre(x.piva), em = String(x.email || '').trim().toLowerCase();
+    return dati.clienti.find(c => (pv.length >= 11 && soloCifre(c.piva) === pv) || (em && String(c.email || '').trim().toLowerCase() === em)) || null;
+  }
+  function etichetteLead(x) {
+    const c = clienteDelLead(x);
+    return '<span class="pf-etichette">'
+      + (x.consenso ? '<span class="pf-etichetta si">Ok a ricontattarlo</span>' : '<span class="pf-etichetta no">Non vuole essere ricontattato</span>')
+      + (c ? `<span class="pf-etichetta cliente">Già cliente: ${esc(c.ragione)}</span>` : '<span class="pf-etichetta nuovo">Non è cliente</span>')
+      + (x.telefono ? '' : '<span class="pf-etichetta no">Senza telefono</span>')
+      + '</span>';
+  }
+
   function lead(corpo) {
     const lista = dati.lead.filter(x => filtroLead === 'tutti' || x.stato === filtroLead);
     const nuovi = dati.lead.filter(x => x.stato === 'nuovo').length;
@@ -694,9 +709,9 @@ const ProFarmer = (() => {
     h += '<ul class="lista-clienti" data-lista-di="lead">';
     lista.forEach(x => {
       const chi = x.direzionale ? 'direzionale' : x.assegnato_a ? 'a ' + ((dati.venditori.find(a => a.id === x.assegnato_a) || {}).nome || 'un agente') : '';
-      const sotto = [x.nome, x.provincia, dataIt(x.creato_il), x.consenso ? '' : 'senza consenso', chi].filter(Boolean).join(' · ');
+      const sotto = [x.nome, x.provincia, dataIt(x.creato_il), chi].filter(Boolean).join(' · ');
       h += `<li data-cerca="${esc([x.azienda, x.nome, x.provincia, x.email, x.telefono, x.piva].join(' '))}"><details class="pf-dettagli" data-id="${esc(x.id)}"${leadAperti.has(x.id) ? ' open' : ''}>`
-        + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span></span>`
+        + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span>${etichetteLead(x)}</span>`
         + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
         + bloccoAgente(x)
         + `<form class="pf-lead" data-id="${esc(x.id)}" novalidate>`
@@ -802,7 +817,10 @@ const ProFarmer = (() => {
     const subito = [
       ['ordini', daSeguire.length, 'ordini da seguire', 'inviati, confermati o consegnati, non ancora pagati'],
       ['chiamate', dati.chiamate.length, 'chiamate di feedback', 'ai clienti, dopo il 1°, 3°, 5°… ordine'],
-      ['lead', leadNuovi.length, 'lead da richiamare', 'allevatori che hanno fatto il calcolo'],
+      ['lead', leadNuovi.length, 'lead da richiamare', (() => {
+        const no = leadNuovi.filter(x => !x.consenso).length, gia = leadNuovi.filter(x => clienteDelLead(x)).length;
+        return leadNuovi.length ? `${no} senza l’ok a ricontattarli · ${gia} già clienti` : 'allevatori che hanno fatto il calcolo';
+      })()],
       ['allevatori', caldi.length, 'allevatori a fine scorta', 'avviso entro 14 giorni: chiamarli'],
       ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini'],
       ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'buoni da approvare', 'richieste degli agenti con i diamanti'],
