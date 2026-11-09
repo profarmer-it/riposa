@@ -626,7 +626,8 @@ function mostraContatti(r) {
       if (pivaErrore) return errore(err, pivaErrore);
     }
     dati.piva = pulisciPartitaIva(dati.piva);
-    if (!dati.consenso) { contaPasso('senza_consenso'); return errore(err, 'Per ricevere il risultato spunta «Sì, ricontattatemi».'); }
+    // dal 9/11/2026 il consenso non blocca più: il risultato arriva comunque (Giulio)
+    if (!dati.consenso) contaPasso('senza_consenso');
     err.hidden = true;
 
     datiContatto = dati;
@@ -835,11 +836,10 @@ function spuntaConsenso() {
     ? `<a href="${esc(CONFIG.urlPrivacy)}" target="_blank" rel="noopener">Informativa privacy</a>`
     : 'Informativa privacy';
   return '<label class="consenso pieno">'
-    // non spuntata in partenza: il consenso va dato con un gesto. Dal 26/10/2026
-    // è OBBLIGATORIO per avere il risultato: decisione di Giulio, informato che
-    // per il GDPR (art. 7.4) un consenso condizionato al servizio può non essere
-    // considerato libero. Testo scelto da Giulio.
-    + '<input type="checkbox" id="c-consenso" name="consenso" required aria-required="true">'
+    // non spuntata in partenza: il consenso va dato con un gesto. Dal 26/10 all'8/11/2026
+    // era obbligatorio per avere il risultato; dal 9/11 è facoltativo (Giulio, dopo
+    // che in due giorni 7 persone si erano fermate lì). Testo scelto da Giulio.
+    + '<input type="checkbox" id="c-consenso" name="consenso">'
     + '<span><strong>Sì, ricontattatemi:</strong> Pro Farmer o il suo agente di zona, anche con novità su piùLact. '
     + link + '</span>'
     + '</label>';

@@ -653,8 +653,8 @@ const ProFarmer = (() => {
     const nome = id => (dati.venditori.find(a => a.id === id) || {}).nome || 'un agente';
     let h = '<div class="pf-lead-agente">';
     if (x.direzionale) {
-      h += '<p class="cliente-dati"><strong>Direzionale</strong>: lo segue Pro Farmer, non va ad agenti o rivenditori.</p>'
-        + `<div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="0">Non più direzionale</button></div>`;
+      h += '<p class="cliente-dati"><strong>Direzionale</strong>: lo segue Pro Farmer. Ogni contatto nasce direzionale; va a un agente o rivenditore solo se lo decidete voi.</p>'
+        + (x.consenso && x.stato !== 'prova' ? `<div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="0">Passalo a un agente</button></div>` : '');
     } else if (x.assegnato_a) {
       h += `<p class="cliente-dati">Passato a <strong>${esc(nome(x.assegnato_a))}</strong> il ${esc(dataIt(x.assegnato_il))}.`
         + (x.esito_agente_il ? ` Il ${esc(dataIt(x.esito_agente_il))} ha segnato: <strong>${esc(STATI_LEAD[x.stato] || x.stato)}</strong>${x.note_agente ? ' · «' + esc(x.note_agente) + '»' : ''}.` : ' Non ha ancora segnato com’è andata.')
@@ -736,7 +736,7 @@ const ProFarmer = (() => {
     }));
     corpo.querySelectorAll('[data-direzionale]').forEach(b => b.addEventListener('click', () => {
       const si = b.dataset.si === '1';
-      salva(b, () => sb.rpc('lead_direzionale', { p_lead: b.dataset.direzionale, p_si: si }), si ? 'Lead direzionale: lo seguite voi' : 'Lead non più direzionale');
+      salva(b, () => sb.rpc('lead_direzionale', { p_lead: b.dataset.direzionale, p_si: si }), si ? 'Lead direzionale: lo seguite voi' : 'Scegli a chi passarlo');
     }));
     corpo.querySelectorAll('.pf-lead').forEach(f => f.addEventListener('submit', ev => {
       ev.preventDefault();
