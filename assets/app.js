@@ -732,10 +732,10 @@ function passiIPhone(finale) {
   else if (b === 'chrome') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> in alto a destra, accanto all’indirizzo.`) + passo(2, aggiungi) + passo(3, conferma);
   else p = passo(1, `Apri il menu del browser e tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(2, aggiungi) + passo(3, conferma);
   // dentro WhatsApp, Gmail e simili il browser si presenta spesso come Safari, ma «Aggiungi alla schermata Home» lì non c'è:
-  // la via d'uscita resta sempre visibile (audit 10/11/2026)
+  // la via d'uscita resta visibile (audit 10/11/2026); non in Chrome, che si riconosce con certezza (video di Giulio, 10/11)
   return '<ol class="passi-installa">' + p + '</ol>'
     + '<p class="invito-app-come">' + (finale || 'Poi apri Riposa <strong>dall’icona</strong> e tocca «Attiva le notifiche».') + '</p>'
-    + '<p class="invito-app-come">Non trovi «Aggiungi alla schermata Home»? La pagina è aperta dentro un’altra app (WhatsApp, e-mail…): tocca <strong>«Apri in Safari»</strong> (o l’icona della bussola), oppure <button type="button" class="bottone-copia" id="copia-indirizzo">Copia l’indirizzo</button> e incollalo in Safari.</p>';
+    + (b === 'chrome' ? '' : '<p class="invito-app-come">Non trovi «Aggiungi alla schermata Home»? La pagina è aperta dentro un’altra app (WhatsApp, e-mail…): tocca <strong>«Apri in Safari»</strong> (o l’icona della bussola), oppure <button type="button" class="bottone-copia" id="copia-indirizzo">Copia l’indirizzo</button> e incollalo in Safari.</p>');
 }
 
 // la freccia in basso (o in alto, per Chrome) sul tasto da toccare
