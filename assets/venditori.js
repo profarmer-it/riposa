@@ -67,20 +67,22 @@ const Venditori = (() => {
   /* I dati del cliente. Obbligatori per fatturare (Giulio, 22/10/2026):
      ragione sociale, P.IVA, telefono, e PEC o codice univoco (uno dei due). */
   const CAMPI_CLIENTE = [
-    { id: 'ragione', etichetta: 'Ragione sociale', obbligatorio: true },
+    // la P.IVA per prima: «Cerca i dati» compila ragione sociale e indirizzo dal VIES (funzione piva, 10/11/2026, richiesta di Elsa)
     { id: 'piva', etichetta: 'P.IVA', obbligatorio: true, modo: 'numeric' },
+    { id: 'ragione', etichetta: 'Ragione sociale', obbligatorio: true },
     { id: 'pec', etichetta: 'PEC', tipo: 'email', unoDeiDue: true },
     { id: 'sdi', etichetta: 'Codice univoco (SDI)', unoDeiDue: true, maiuscolo: true },
     { id: 'telefono', etichetta: 'Telefono', obbligatorio: true, tipo: 'tel' },
     { id: 'email', etichetta: 'E-mail', tipo: 'email' },
     { id: 'referente', etichetta: 'Referente' },
     { id: 'indirizzo', etichetta: 'Indirizzo (via e numero, per la consegna)' },
+    { id: 'cap', etichetta: 'CAP', modo: 'numeric' },
     { id: 'comune', etichetta: 'Comune' },
     { id: 'provincia', etichetta: 'Provincia' },
     { id: 'capi', etichetta: 'Capi in lattazione', tipo: 'number' }
   ];
   /* Nel modulo d'ordine, per un cliente nuovo, servono solo questi. */
-  const CAMPI_ORDINE = ['ragione', 'piva', 'pec', 'sdi', 'telefono', 'email', 'indirizzo', 'comune', 'provincia'];
+  const CAMPI_ORDINE = ['piva', 'ragione', 'pec', 'sdi', 'telefono', 'email', 'indirizzo', 'cap', 'comune', 'provincia'];
 
   /* La stessa regola di mancaNelCliente() nello script Google: se cambi una,
      cambia l'altra. Restituisce il messaggio da mostrare, o ''. */
@@ -93,6 +95,7 @@ const Venditori = (() => {
     if (t('sdi') && !/^[A-Za-z0-9]{6,7}$/.test(t('sdi'))) return 'Il codice univoco ha 7 caratteri, lettere e numeri.';
     if (t('telefono').replace(/\D/g, '').length < 8) return 'Serve il telefono del cliente.';
     if (t('email') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t('email'))) return 'L’e-mail del cliente non sembra valida.';
+    if (t('cap') && !/^\d{5}$/.test(t('cap'))) return 'Il CAP ha 5 cifre.';
     return '';
   }
 
@@ -103,8 +106,52 @@ const Venditori = (() => {
     return `<div class="campo"><label for="${prefisso}-${f.id}">${esc(f.etichetta)}${nota}</label>`
       + `<input id="${prefisso}-${f.id}" name="${f.id}" type="${f.tipo || 'text'}"`
       + (f.modo ? ` inputmode="${f.modo}"` : '') + (f.maiuscolo ? ' autocapitalize="characters"' : '')
-      + ` value="${esc(valore || '')}"></div>`;
+      + ` value="${esc(valore || '')}">`
+      + (f.id === 'piva' ? `<button type="button" class="bottone bottone-fantasma cerca-piva" data-cerca-piva="${prefisso}">Cerca i dati</button>`
+        + `<p class="aiuto cerca-piva-esito" id="${prefisso}-piva-esito" aria-live="polite"></p>` : '')
+      + '</div>';
   }
+
+  /* «Cerca i dati» dalla P.IVA (10/11/2026, richiesta di Elsa): ragione sociale e indirizzo dal VIES,
+     attraverso la funzione piva. Compila solo i campi vuoti; PEC, codice univoco e telefono restano da scrivere.
+     Se il cliente c'è già nella lista, lo dice (e nell'ordine lo sceglie). */
+  function cercaPiva(b) {
+    const pre = b.dataset.cercaPiva;
+    const campo = id => document.getElementById(pre + '-' + id);
+    const esito = campo('piva-esito');
+    const dici = (t, errore) => { esito.textContent = t; esito.classList.toggle('errore-testo', !!errore); };
+    const piva = String(campo('piva').value || '').toUpperCase().replace(/^IT/, '').replace(/\D/g, '');
+    if (!/^\d{11}$/.test(piva)) { dici('Scrivi la P.IVA: 11 cifre.', true); campo('piva').focus(); return; }
+    const gia = (area.clienti || []).find(c => String(c.piva || '').replace(/\D/g, '') === piva);
+    if (gia) {
+      const scegli = pre === 'o' && document.getElementById('o-scegli');
+      if (scegli) { scegli.value = gia.id; scegli.dispatchEvent(new Event('change', { bubbles: true })); scegli.focus(); scegli.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      dici(`È già nella tua lista: ${gia.ragione}.` + (scegli ? ' L’ho scelto qui sopra.' : ''));
+      return;
+    }
+    const sbc = collegamento();
+    if (!sbc) { dici('Senza collegamento: scrivi i dati a mano.', true); return; }
+    b.disabled = true; const testo = b.textContent; b.textContent = 'Cerco…'; dici('');
+    sbc.functions.invoke('piva', { body: { piva } }).then(({ data, error }) => {
+      if (error || !data) throw new Error('Non riesco a cercare adesso: scrivi i dati a mano.');
+      if (!data.ok) throw new Error(data.motivo || 'Non trovata.');
+      const messi = [];
+      [['ragione', 'ragione sociale'], ['indirizzo', 'indirizzo'], ['cap', 'CAP'], ['comune', 'comune'], ['provincia', 'provincia']].forEach(([k, nome]) => {
+        const el = campo(k);
+        if (el && data[k] && !String(el.value || '').trim()) { el.value = data[k]; messi.push(nome); }
+      });
+      campo('piva').value = piva;
+      const form = campo('piva').form;
+      if (form) form.dispatchEvent(new Event('input', { bubbles: true }));
+      dici(messi.length
+        ? `Trovata: «${data.ragione || 'azienda attiva'}». Ho compilato ${messi.join(', ')}. Controlla, poi aggiungi PEC o codice univoco e il telefono.`
+        : `Trovata: «${data.ragione || 'azienda attiva'}». I campi erano già scritti: li ho lasciati come sono.`);
+    }).catch(e => dici(e.message, true)).finally(() => { b.disabled = false; b.textContent = testo; });
+  }
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest && ev.target.closest('[data-cerca-piva]');
+    if (b) { ev.preventDefault(); cercaPiva(b); }
+  });
   const PRO_FARMER = { email: 'info@profarmer.it', telefono: '+39 376 129 6162', tel: '+393761296162' };
 
   function nuovaChiave() {

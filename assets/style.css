@@ -1482,3 +1482,8 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 .pf-etichetta.no{background:#FDECEC;color:#A12C2C;border-color:#F3C1C1}
 .pf-etichetta.cliente{background:#FFF3DC;color:#8A5300;border-color:#F0D29A}
 .pf-etichetta.nuovo{background:#EEF2F7;color:#3D4B5E;border-color:#D8E0EA}
+/* «Cerca i dati» dalla P.IVA nel modulo cliente (10/11/2026) */
+.cerca-piva{margin-top:8px;padding:8px 14px;font-size:15px}
+.cerca-piva-esito{margin:6px 0 0}
+.cerca-piva-esito:empty{display:none}
+.cerca-piva-esito.errore-testo{color:#C0392B}
