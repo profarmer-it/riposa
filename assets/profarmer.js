@@ -694,13 +694,21 @@ const ProFarmer = (() => {
       + '</span>';
   }
 
+  /* «Da chiamare» (lavoro n. 1 dalla Classe, 10/11/2026): con il telefono, con l'ok a
+     ricontattarlo, ancora «Da richiamare» e non passato a un agente o rivenditore.
+     I direzionali e i già clienti restano dentro. */
+  const daChiamare = x => !!String(x.telefono || '').trim() && !!x.consenso && x.stato === 'nuovo' && !x.assegnato_a;
+
   function lead(corpo) {
-    const lista = dati.lead.filter(x => filtroLead === 'tutti' || x.stato === filtroLead);
+    const lista = dati.lead.filter(x => filtroLead === 'tutti' || (filtroLead === 'chiamare' ? daChiamare(x) : x.stato === filtroLead));
     const nuovi = dati.lead.filter(x => x.stato === 'nuovo').length;
+    const conteggi = { nuovo: nuovi, chiamare: dati.lead.filter(daChiamare).length };
+    const voci = Object.entries(STATI_LEAD);
+    voci.splice(1, 0, ['chiamare', 'Da chiamare']);
     let h = '<div class="blocco"><div class="pannello-testa"><h3>Lead degli allevatori</h3>'
       + '<select id="pf-filtro-lead" class="pf-select" aria-label="Quali lead">'
-      + Object.entries(Object.assign({ tutti: 'Tutti' }, STATI_LEAD))
-        .map(([k, n]) => `<option value="${k}"${k === filtroLead ? ' selected' : ''}>${esc(n)}${k === 'nuovo' ? ` (${nuovi})` : ''}</option>`).join('')
+      + [['tutti', 'Tutti']].concat(voci)
+        .map(([k, n]) => `<option value="${k}"${k === filtroLead ? ' selected' : ''}>${esc(n)}${k in conteggi ? ` (${conteggi[k]})` : ''}</option>`).join('')
       + '</select></div>'
       + '<p class="aiuto">Chi ha fatto il calcolo e ha ricevuto il risultato per e-mail. «Senza consenso» vuol dire che '
       + 'non ha accettato di essere ricontattato a scopo commerciale: non è in ActiveCampaign.</p>';
