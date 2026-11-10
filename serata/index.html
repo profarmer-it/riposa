@@ -396,6 +396,12 @@ form .bottone{width:100%;min-height:58px;font-size:17px}
   var q = document.getElementById('quando');
   if (giorni === 1) q.textContent = 'Domani, giovedì 19 novembre · ore 18:00';
   else if (giorni === 0) q.textContent = 'Oggi, giovedì 19 novembre · ore 18:00';
+  // dopo la serata le iscrizioni si chiudono (audit 10/11/2026; lo fa anche la funzione serata)
+  if (giorni < 0) {
+    q.textContent = 'Giovedì 19 novembre · la serata c’è stata';
+    var m = document.getElementById('modulo');
+    if (m) m.outerHTML = '<p class="nota">Le iscrizioni sono chiuse: la serata si è tenuta il 19 novembre. Grazie a chi c’era!</p>';
+  }
 
   // La barra si riempie appena si scorre
   var barra = document.getElementById('barra');

@@ -34,6 +34,9 @@ const ProFarmer = (() => {
   /* Le ricerche delle liste: restano scritte quando la lista si ridisegna. */
   const cerca = {};
   let filtroVenditore = '';   // ordini e clienti: di chi ('' = tutti, 'diretti' = Pro Farmer)
+  /* Conta come vendita un ordine non annullato; un preventivo non ancora
+     accettato dal cliente no (stesso criterio di venditori.js). */
+  const vendita = o => o.stato !== 'annullato' && o.tipo !== 'preventivo';
   const STATI = ['inviato', 'confermato', 'consegnato', 'pagato', 'annullato'];
   const NOME_STATO = { inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato', pagato: 'Pagato', annullato: 'Annullato' };
   const RUOLI = { agente: 'Agente', rivenditore: 'Rivenditore', interno: 'Pro Farmer' };
@@ -278,6 +281,22 @@ const ProFarmer = (() => {
     });
   }
 
+  /* La risposta di una funzione Supabase: dal 10/11/2026 rispondono sempre 200
+     con { ok, motivo } (arriva in data); le versioni vecchie mandavano 4xx/5xx
+     (arriva in error, col corpo nella risposta). Se non è andata, un errore
+     col motivo vero, che salva() mostra. */
+  function motivoFunzione(x, riserva) {
+    const d = x && x.data;
+    if (d && d.ok === false) throw new Error(d.motivo || riserva);
+    if (x && x.error) {
+      const ctx = x.error.context;
+      if (ctx && typeof ctx.json === 'function') {
+        return ctx.json().catch(() => ({})).then(c => { throw new Error((c && c.motivo) || riserva); });
+      }
+      throw new Error(riserva);
+    }
+  }
+
   /* La conferma dopo un salvataggio: un avviso in basso che sparisce da solo
      (24/10/2026). role=status: lo legge anche il lettore dello schermo. */
   let timerAvviso = null;
@@ -508,8 +527,8 @@ const ProFarmer = (() => {
       const r = f.querySelector('[data-rimanda]');
       if (r) r.addEventListener('click', () => salva(r, () =>
         sb.functions.invoke('manda-ordine', { body: { id: f.dataset.id } }).then(x => {
-          if (x.error) throw new Error('e-mail non partita, riprova più tardi');
-        })));
+          return motivoFunzione(x, 'e-mail non partita, riprova più tardi');
+        }), 'E-mail dell’ordine mandata'));
     });
   }
 
@@ -620,10 +639,11 @@ const ProFarmer = (() => {
   const STATI_LEAD = { nuovo: 'Da richiamare', richiamato: 'Richiamato', cliente: 'Diventato cliente',
     'non interessato': 'Non interessato', prova: 'Prova / da ignorare' };
   const ZONE = { materassino: 'materassino', buca: 'cuccetta a buca', lettiera: 'lettiera', compost: 'compost barn' };
-  /* Dal 25/10/2026 il lead può andare all'agente della provincia (22-lead-agli-agenti.sql).
-     Prima decide Pro Farmer: «Direzionale» lo tiene per sé e non va mai a un agente.
-     Se no, la Gestione propone l'agente che ha la provincia nelle sue zone e
-     «Passa all'agente» glielo manda, con una notifica. Solo col consenso. */
+  /* Dal 9/11/2026 ogni lead nasce direzionale: lo segue Pro Farmer (62).
+     Va a un agente o rivenditore solo se lo decide Pro Farmer: «Passalo a un
+     agente» toglie il direzionale, la Gestione propone chi ha la provincia
+     nelle sue zone (22-lead-agli-agenti.sql) e «Passalo» glielo manda, con una
+     notifica. Solo col consenso. */
   /* La zona di un venditore: sigle (LO) e regioni intere (Lombardia), dal 25/10/2026
      anche per i rivenditori (23-zone-regioni-rivenditori.sql). */
   const REGIONI = {
@@ -710,8 +730,8 @@ const ProFarmer = (() => {
       + [['tutti', 'Tutti']].concat(voci)
         .map(([k, n]) => `<option value="${k}"${k === filtroLead ? ' selected' : ''}>${esc(n)}${k in conteggi ? ` (${conteggi[k]})` : ''}</option>`).join('')
       + '</select></div>'
-      + '<p class="aiuto">Chi ha fatto il calcolo e ha ricevuto il risultato per e-mail. «Senza consenso» vuol dire che '
-      + 'non ha accettato di essere ricontattato a scopo commerciale: non è in ActiveCampaign.</p>';
+      + '<p class="aiuto">Chi ha fatto il calcolo e ha ricevuto il risultato per e-mail. «Non vuole essere ricontattato» vuol dire che '
+      + 'non ha spuntato la casella del consenso (facoltativa dal 9/11): niente ActiveCampaign e niente agenti, il risultato l’ha avuto lo stesso.</p>';
     if (!lista.length) h += '<p class="aiuto">Nessun lead qui.</p>';
     else h += casellaCerca('lead', 'Cerca azienda, nome, provincia, e-mail');
     h += '<ul class="lista-clienti" data-lista-di="lead">';
@@ -798,7 +818,7 @@ const ProFarmer = (() => {
     });
     h += '</ol>';
     const note = [];
-    if (T.senza_consenso) note.push(`<strong>${T.senza_consenso}</strong> si sono fermati alla casella «Sì, ricontattatemi»`);
+    if (T.senza_consenso) note.push(`<strong>${T.senza_consenso}</strong> hanno chiesto il risultato senza spuntare «Sì, ricontattatemi» (prima del 9/11 si fermavano lì)`);
     if (T.altro_calcolo) note.push(`<strong>${T.altro_calcolo}</strong> hanno fatto un altro calcolo`);
     if (note.length) h += '<p class="cliente-dati">' + note.join(' · ') + '.</p>';
     return h + '<p class="aiuto">Contatore anonimo: solo quante volte si arriva a ogni passaggio, nessun dato della persona.</p>';
@@ -809,11 +829,14 @@ const ProFarmer = (() => {
     const oggiD = new Date();
     const inizioMese = new Date(oggiD.getFullYear(), oggiD.getMonth(), 1);
     const inizioPrima = new Date(oggiD.getFullYear(), oggiD.getMonth() - 1, 1);
-    const validi = dati.ordini.filter(o => o.stato !== 'annullato');
+    /* Vendite = ordini non annullati; i preventivi non ancora accettati dal
+       cliente no, come nell'area dei venditori (audit 10/11/2026). Da seguire
+       restano anche i preventivi aperti: sono lavoro da fare. */
+    const validi = dati.ordini.filter(vendita);
     const delMese = validi.filter(o => new Date(o.creato_il) >= inizioMese);
     const mesePrima = validi.filter(o => new Date(o.creato_il) >= inizioPrima && new Date(o.creato_il) < inizioMese);
     const somma = (l, k) => l.reduce((x, o) => x + (Number(o[k]) || 0), 0);
-    const daSeguire = validi.filter(o => ['inviato', 'confermato', 'consegnato'].includes(o.stato));
+    const daSeguire = dati.ordini.filter(o => ['inviato', 'confermato', 'consegnato'].includes(o.stato));
     const leadNuovi = dati.lead.filter(x => x.stato === 'nuovo');
     const fra14 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('sv-SE'); })();
     const caldi = dati.allevatori.filter(a => a.avviso_il && a.avviso_il <= fra14);
@@ -949,7 +972,7 @@ const ProFarmer = (() => {
     });
     const max = Math.max(1, ...mesi.map(m => m.t));
     const tot = anno.reduce((x, o) => x + (Number(o.t) || 0), 0);
-    let h = '<div class="blocco"><h3>Statistiche</h3><p class="aiuto">Ultimi 12 mesi, ordini non annullati.</p>';
+    let h = '<div class="blocco"><h3>Statistiche</h3><p class="aiuto">Ultimi 12 mesi, ordini non annullati (i preventivi non accettati non contano).</p>';
     h += '<div class="cr-mesi" role="img" aria-label="Tonnellate ordinate mese per mese">';
     mesi.forEach(m => {
       h += `<div class="cr-mese" title="${esc(m.nome)}: ${t(m.t)} t, ${m.n} ordini"><span class="cr-mese-val">${m.t ? t(m.t) : ''}</span>`
@@ -1571,7 +1594,7 @@ const ProFarmer = (() => {
       + 'Quando la fattura arriva nel cassetto fiscale, «Saldate oggi» mette la data di oggi su tutte quelle da fatturare di quell’agente.</p>'
       + '<div class="ordine-scorri"><table class="tabella ordine-conto"><thead><tr><th>Agente</th><th>In attesa di pagamento</th><th>Da fatturare</th><th>Saldate</th><th></th></tr></thead><tbody>';
     agenti.forEach(a => {
-      const suoi = dati.ordini.filter(o => o.venditore_id === a.id && o.stato !== 'annullato');
+      const suoi = dati.ordini.filter(o => o.venditore_id === a.id && vendita(o));
       const somma = l => l.reduce((s, o) => s + Number(o.provvigione || 0), 0);
       const liq = suoi.filter(o => o.provvigione_liquidata_il);
       const mat = suoi.filter(o => o.stato === 'pagato' && !o.provvigione_liquidata_il);
@@ -1582,7 +1605,7 @@ const ProFarmer = (() => {
     h += '</tbody></table></div><p class="errore" hidden></p></div>';
     corpo.innerHTML = h;
     corpo.querySelectorAll('[data-liquida]').forEach(b => b.addEventListener('click', () => {
-      const ids = dati.ordini.filter(o => o.venditore_id === b.dataset.liquida && o.stato === 'pagato' && !o.provvigione_liquidata_il).map(o => o.id);
+      const ids = dati.ordini.filter(o => o.venditore_id === b.dataset.liquida && vendita(o) && o.stato === 'pagato' && !o.provvigione_liquidata_il).map(o => o.id);
       if (!confirm(`Fattura ricevuta: segno saldate ${ids.length} ${ids.length === 1 ? 'provvigione' : 'provvigioni'} con la data di oggi?`)) return;
       salva(b, () => sb.from('ordini').update({ provvigione_liquidata_il: oggi() }).in('id', ids));
     }));
@@ -1698,7 +1721,7 @@ const ProFarmer = (() => {
         const inv = f.querySelector('[data-invita]');
         if (inv) inv.addEventListener('click', () => { aperti.delete(f.dataset.id); salva(inv, () =>
           sb.functions.invoke('invita', { body: { id: f.dataset.id } }).then(x => {
-            if (x.error) throw new Error('invito non partito, riprova più tardi');
+            return motivoFunzione(x, 'invito non partito, riprova più tardi');
           }), 'Invito mandato'); });
       });
     }

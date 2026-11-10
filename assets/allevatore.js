@@ -61,7 +61,8 @@ const Allevatore = (() => {
      li togliamo dall'indirizzo. */
   const PARAM = 'stalla';
   function biglietto(app) {
-    if (installata()) return;
+    // solo dove serve (iPhone senza l'icona): altrove un link copiato non deve portarsi dietro l'identità (audit 10/11)
+    if (installata() || !suIPhone()) return;
     try {
       const u = new window.URL(location.href);   // URL qui sopra è l'indirizzo della funzione
       u.searchParams.set(PARAM, app.id + '.' + app.chiave);
@@ -75,8 +76,8 @@ const Allevatore = (() => {
       if (!v) return;
       const [id, chiave] = v.split('.');
       if (/^[0-9a-f-]{36}$/i.test(id || '') && (chiave || '').length >= 40) {
-        const d = leggi();
-        if (!d || d.id !== id) scrivi({ id, chiave });
+        // solo su un telefono che non ha ancora una stalla: un link inoltrato non sostituisce quella che c'è (audit 10/11)
+        if (!leggi()) scrivi({ id, chiave });
       }
       if (installata()) {
         u.searchParams.delete(PARAM);

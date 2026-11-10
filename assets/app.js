@@ -190,7 +190,10 @@ function leggiModulo() {
     return { errore: 'Dicci come riempi la buca: con una miscelata o spagliando il prodotto sopra il materiale.', campo: 'input[name=riempimento]' };
   }
 
-  const cellule = parseInt(f.get('cellule'), 10);
+  // cellule: facoltative, intere e con un tetto (audit 10/11: «1e3» diventava 1)
+  const vCel = intero(f.get('cellule'), 3000, 'Cellule somatiche');
+  if (vCel.errore) return { errore: vCel.errore, campo: 'input[name=cellule]' };
+  const cellule = vCel.n === null ? NaN : vCel.n;
 
   return {
     zona,
@@ -537,7 +540,11 @@ function bovinaChePensa() {
   </svg>`;
 }
 
+/* un secondo tocco su «Calcola» durante il ragionamento non deve far comparire due volte i contatti,
+   cancellando quello che l'allevatore sta scrivendo (audit 10/11/2026) */
+let giroRagionamento = 0;
 function mostraRagionamento(r, permesso) {
+  const mio = ++giroRagionamento;
   contaPasso('calcolo');
   const n = PASSI_RAGIONAMENTO.length, passo = 950;          // 4 passi × 0,95 s, poi «fatto»
   let h = '<div class="ragiona">';
@@ -576,7 +583,7 @@ function mostraRagionamento(r, permesso) {
   const risposta = permesso
     ? Promise.race([permesso.catch(() => null), new Promise(ok => setTimeout(ok, DURATA_RAGIONAMENTO + 20000))])
     : Promise.resolve();
-  Promise.all([fineAnimazione, risposta]).then(() => mostraContatti(r));
+  Promise.all([fineAnimazione, risposta]).then(() => { if (mio === giroRagionamento) mostraContatti(r); });
 }
 
 /* --- 2. dove te lo mandiamo ------------------------------------------- */
@@ -620,7 +627,7 @@ function mostraContatti(r) {
     if (!dati.azienda) return errore(err, 'Serve la ragione sociale dell’azienda.');
     if (!dati.provincia) return errore(err, 'Serve la provincia.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dati.email || '')) return errore(err, 'Serve un indirizzo e-mail valido.');
-    if (!dati.telefono) return errore(err, 'Serve il telefono: ti chiamiamo solo per il risultato e i consigli.');
+    if (!dati.telefono) return errore(err, 'Serve il telefono, per il risultato e per qualsiasi chiarimento sul calcolo.');
     if (dati.telefono.replace(/\D/g, '').length < 8) return errore(err, 'Il telefono non sembra completo.');
     // facoltativa: se c'è, deve essere giusta
     if (pulisciPartitaIva(dati.piva)) {
@@ -647,6 +654,8 @@ function mostraContatti(r) {
         ? 'Sei senza rete: il risultato non è partito. I dati restano qui, riprova quando torna il segnale.'
         : e.message === 'troppe richieste'
           ? 'Troppe richieste in questo momento: riprova tra qualche minuto.'
+          : e.message === 'serve il telefono'
+          ? 'Manca il numero di telefono: scrivilo qui sopra e riprova.'
           : 'Non siamo riusciti a mandarlo: riprova tra poco. Se continua, chiama Pro Farmer al +39 376 129 6162.');
     });
   });
@@ -722,8 +731,11 @@ function passiIPhone(finale) {
   else if (b === 'safari') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> nella barra in basso.`) + passo(2, aggiungi) + passo(3, conferma);
   else if (b === 'chrome') p = passo(1, `Tocca ${ICONA_CONDIVIDI} <strong>Condividi</strong> in alto a destra, accanto all’indirizzo.`) + passo(2, aggiungi) + passo(3, conferma);
   else p = passo(1, `Apri il menu del browser e tocca ${ICONA_CONDIVIDI} <strong>«Condividi»</strong>.`) + passo(2, aggiungi) + passo(3, conferma);
+  // dentro WhatsApp, Gmail e simili il browser si presenta spesso come Safari, ma «Aggiungi alla schermata Home» lì non c'è:
+  // la via d'uscita resta sempre visibile (audit 10/11/2026)
   return '<ol class="passi-installa">' + p + '</ol>'
-    + '<p class="invito-app-come">' + (finale || 'Poi apri Riposa <strong>dall’icona</strong> e tocca «Attiva le notifiche».') + '</p>';
+    + '<p class="invito-app-come">' + (finale || 'Poi apri Riposa <strong>dall’icona</strong> e tocca «Attiva le notifiche».') + '</p>'
+    + '<p class="invito-app-come">Non trovi «Aggiungi alla schermata Home»? La pagina è aperta dentro un’altra app (WhatsApp, e-mail…): tocca <strong>«Apri in Safari»</strong> (o l’icona della bussola), oppure <button type="button" class="bottone-copia" id="copia-indirizzo">Copia l’indirizzo</button> e incollalo in Safari.</p>';
 }
 
 // la freccia in basso (o in alto, per Chrome) sul tasto da toccare
@@ -1147,8 +1159,8 @@ function inviaLead(dati, r) {
     capiZona:       d.capiZona || '',
     cellule:        d.cellule || '',
     prodotto:       r.prodotto.nome || '',
-    dose:           r.superficie ? `${r.dosePerMq} kg/m²`
-                    : (r.dosePerCuccetta ? `${r.dosePerCuccetta} kg/cuccetta` : ''),
+    dose:           r.superficie ? `${String(r.dosePerMq).replace('.', ',')} kg/m²`
+                    : (r.dosePerCuccetta ? `${String(r.dosePerCuccetta).replace('.', ',')} kg/cuccetta` : ''),
     frequenza:      r.etichettaFrequenza || '',
     kgPassaggio:    r.kgApplicazione ? Math.round(r.kgApplicazione) : '',
     kgMese:         r.kgMese ? Math.round(r.kgMese) : '',

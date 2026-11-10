@@ -72,7 +72,12 @@ self.addEventListener('fetch', ev => {
         }
         return r;
       } catch (e) {
-        return (await caches.match(req)) || (await caches.match(pagina));
+        // senza rete: la copia di quella pagina; la pagina del calcolo solo per l'app (audit 10/11: /serata/ non è il calcolo)
+        const copia = await caches.match(req);
+        if (copia) return copia;
+        if (/^\/(pro\/?)?(index\.html)?$/.test(url.pathname)) return caches.match(pagina);
+        return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><p style="font:16px system-ui;padding:24px">Sei senza rete: questa pagina si apre quando torna il segnale.</p>',
+          { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
       }
     })());
     return;
@@ -83,7 +88,15 @@ self.addEventListener('fetch', ev => {
     const c = await caches.match(req);
     if (c) return c;
     const r = await fetch(req);
-    if (r.ok && !url.pathname.endsWith('.pdf')) (await caches.open(CACHE)).put(req, r.clone());
+    if (r.ok && !url.pathname.endsWith('.pdf')) {
+      const cache = await caches.open(CACHE);
+      // una versione nuova (?v=) prende il posto delle vecchie dello stesso file (audit 10/11: la copia cresceva sempre)
+      if (url.search) for (const k of await cache.keys()) {
+        const u = new URL(k.url);
+        if (u.pathname === url.pathname && u.search !== url.search) await cache.delete(k);
+      }
+      await cache.put(req, r.clone());
+    }
     return r;
   })());
 });

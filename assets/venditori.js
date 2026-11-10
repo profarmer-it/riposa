@@ -45,8 +45,9 @@ const Venditori = (() => {
   let stato = statoVuoto();
   let suggeriti = null;     // le quantità proposte dal calcolo, per capire se le ha cambiate
   /* Il modulo serve per un ordine o per un preventivo (tessera «Nuovo preventivo»,
-     26/10/2026). Pro Farmer crea subito il preventivo in Fatture in Cloud; agenti e
-     rivenditori mostrano l'anteprima al cliente e lo mandano da approvare. */
+     26/10/2026). Pro Farmer crea subito il preventivo in Fatture in Cloud; gli agenti
+     mostrano l'anteprima al cliente e lo mandano da approvare. I rivenditori
+     mandano solo ordini (10/11/2026). */
   let modo = 'ordine';
 
   const RUOLI = { agente: 'agente', rivenditore: 'rivenditore', interno: 'Pro Farmer' };
@@ -653,6 +654,7 @@ const Venditori = (() => {
     calcolo: '<path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h2M12 18h4"/>',
     diretto: '<path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
     preventivo: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+    contatti: '<path d="M4 5h16v14H4z"/><circle cx="9.5" cy="10.5" r="2.3"/><path d="M5.8 17c.6-2 2-3.2 3.7-3.2s3.1 1.2 3.7 3.2M15 9.5h3M15 13h3"/>',
     clienti: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 14.5c1.8.8 3 2.6 3 4.5"/>',
     diamanti: '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 6 3-6M12 9v12"/>',
     mappa: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
@@ -664,7 +666,7 @@ const Venditori = (() => {
     gestione: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="7" cy="18" r="1.8"/>'
   };
   function icona(id) {
-    return `<svg class="tessera-icona" viewBox="0 0 24 24" aria-hidden="true">${ICONE[id]}</svg>`;
+    return `<svg class="tessera-icona" viewBox="0 0 24 24" aria-hidden="true">${ICONE[id] || ''}</svg>`;
   }
 
   /* La testata dell'account: sempre in alto quando si è dentro. Fuori dalla
@@ -736,7 +738,9 @@ const Venditori = (() => {
         d ? `${d.saldo} diamanti${posizioneInClassifica(d) ? ' · ' + posizioneInClassifica(d) + '° in classifica' : ''}` : 'Traguardi, buoni e classifica', false, true]);
     }
     if (cond.ruolo === 'interno') tessere.splice(1, 0, ['gestione', 'Cruscotto e gestione', 'Cosa succede oggi: ordini, lead, allevatori, venditori', false, true]);
-    tessere.splice(1, 0, ['preventivo', 'Nuovo preventivo', cond.ruolo === 'interno'
+    /* I rivenditori mandano solo ordini: un loro preventivo in Gestione non si
+       approva (audit 10/11/2026). Il preventivo resta a Pro Farmer e agenti. */
+    if (puoPreventivo()) tessere.splice(1, 0, ['preventivo', 'Nuovo preventivo', cond.ruolo === 'interno'
       ? 'Subito in Fatture in Cloud' : 'Anteprima per il cliente, poi lo approva Pro Farmer', false]);
     let h = '<h2 class="area-titolo">La mia area</h2>';
     if (cond.daAggiornare) {
@@ -767,7 +771,7 @@ const Venditori = (() => {
 
   function apri(id) {
     if (id === 'diretto') return ordineDiretto();
-    if (id === 'preventivo') return ordineDiretto(undefined, 'preventivo');
+    if (id === 'preventivo') return ordineDiretto(undefined, puoPreventivo() ? 'preventivo' : 'ordine');
     if (id === 'calcolo') modo = 'ordine';
     scheda = id;
     disegnaBarra();
@@ -857,12 +861,14 @@ const Venditori = (() => {
     ordineDiretto(ancora ? o.clienteId : '');
   }
 
+  const puoPreventivo = () => !!cond && cond.ruolo !== 'rivenditore';
+
   function ordineDiretto(clienteId, m) {
     ultimoCalcolo = null;
     suggeriti = null;
     if (clienteId !== undefined) stato.clienteId = clienteId;
     apri('calcolo');
-    modo = m || 'ordine';   // dopo apri('calcolo'), che lo rimette a «ordine»
+    modo = m === 'preventivo' && puoPreventivo() ? 'preventivo' : 'ordine';   // dopo apri('calcolo'), che lo rimette a «ordine»
     // nell'ordine diretto si vede solo l'ordine: il calcolatore della stalla
     // non c'entra, e scorrendo in su non deve ricomparire
     modulo.hidden = true;
@@ -1147,6 +1153,10 @@ const Venditori = (() => {
   const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
   const nonTrovati = new Set();   // in questa visita non li cerchiamo di nuovo
   let mappa = null;
+  /* Un solo giro di ricerca delle posizioni alla volta (Nominatim: al massimo
+     una richiesta al secondo). Se si lascia la Mappa il giro si ferma; se si
+     rientra mentre aspetta, continua sulla mappa nuova (audit 10/11/2026). */
+  let giroPosizioni = false;
 
   function caricaLeaflet() {
     if (window.L) return Promise.resolve();
@@ -1214,11 +1224,7 @@ const Venditori = (() => {
       }).addTo(mappa);
       const conPos = area.clienti.filter(c => c.lat && c.lng);
       conPos.forEach(aggiungiSegnaposto);
-      const inquadra = () => {
-        const tutti = area.clienti.filter(c => c.lat && c.lng);
-        if (tutti.length) mappa.fitBounds(tutti.map(c => [c.lat, c.lng]), { padding: [30, 30], maxZoom: 13 });
-      };
-      inquadra();
+      inquadraMappa();
       document.getElementById('m-io').addEventListener('click', () => {
         if (!navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(p => {
@@ -1228,33 +1234,52 @@ const Venditori = (() => {
         }, () => { stato.textContent = 'Non ho il permesso di sapere dove sei: lo dai nelle impostazioni del telefono.'; });
       });
       // la posizione di chi non ce l'ha ancora: una ricerca al secondo
-      const daCercare = area.clienti.filter(c => !(c.lat && c.lng) && !nonTrovati.has(c.id) && (c.indirizzo || c.comune));
-      const riassunto = () => {
-        const n = area.clienti.filter(c => c.lat && c.lng).length;
-        stato.textContent = area.clienti.length
-          ? `${n} ${n === 1 ? 'cliente' : 'clienti'} sulla mappa su ${area.clienti.length}. Tocca un cliente per il navigatore.`
-          : 'Non hai ancora clienti: compaiono qui quando li aggiungi.';
-        const senza = area.clienti.filter(c => !(c.lat && c.lng));
-        document.getElementById('m-senza').innerHTML = senza.length
-          ? '<p class="aiuto m-senza-titolo">Senza posizione: manca l’indirizzo, o non l’abbiamo trovato. Completalo da Clienti → Modifica.</p><ul class="m-senza">'
-            + senza.map(c => `<li>${esc(c.ragione)}<small>${esc(indirizzoDi(c) || 'nessun indirizzo')}</small></li>`).join('') + '</ul>'
-          : '';
-      };
-      riassunto();
-      let i = 0;
-      const prossimo = () => {
-        if (!document.getElementById('v-mappa') || i >= daCercare.length) { riassunto(); inquadra(); return; }
-        const c = daCercare[i++];
-        stato.textContent = `Cerco la posizione dei clienti: ${i} di ${daCercare.length}…`;
-        cercaPosizione(c).then(pos => {
-          if (!pos) { nonTrovati.add(c.id); return; }
-          Object.assign(c, pos);
-          aggiungiSegnaposto(c);
-          return collegamento().from('clienti').update(pos).eq('id', c.id);
-        }).catch(() => nonTrovati.add(c.id)).then(() => setTimeout(prossimo, 1100));
-      };
-      if (daCercare.length) prossimo();
+      riassuntoMappa();
+      if (!giroPosizioni) {
+        const daCercare = area.clienti.filter(c => !(c.lat && c.lng) && !nonTrovati.has(c.id) && (c.indirizzo || c.comune));
+        if (daCercare.length) { giroPosizioni = true; cercaPosizioni(daCercare); }
+      }
     }).catch(() => { stato.textContent = 'La mappa non si carica: controlla la connessione e riprova.'; });
+  }
+
+  /* Il riassunto sotto la mappa e l'inquadratura: escono senza far niente se
+     la Mappa non è più aperta. */
+  function riassuntoMappa() {
+    const stato = document.getElementById('m-stato'), senzaEl = document.getElementById('m-senza');
+    if (!stato || !senzaEl) return;
+    const n = area.clienti.filter(c => c.lat && c.lng).length;
+    stato.textContent = area.clienti.length
+      ? `${n} ${n === 1 ? 'cliente' : 'clienti'} sulla mappa su ${area.clienti.length}. Tocca un cliente per il navigatore.`
+      : 'Non hai ancora clienti: compaiono qui quando li aggiungi.';
+    const senza = area.clienti.filter(c => !(c.lat && c.lng));
+    senzaEl.innerHTML = senza.length
+      ? '<p class="aiuto m-senza-titolo">Senza posizione: manca l’indirizzo, o non l’abbiamo trovato. Completalo da Clienti → Modifica.</p><ul class="m-senza">'
+        + senza.map(c => `<li>${esc(c.ragione)}<small>${esc(indirizzoDi(c) || 'nessun indirizzo')}</small></li>`).join('') + '</ul>'
+      : '';
+  }
+  function inquadraMappa() {
+    if (!mappa || !document.getElementById('v-mappa')) return;
+    const tutti = area.clienti.filter(c => c.lat && c.lng);
+    if (tutti.length) mappa.fitBounds(tutti.map(c => [c.lat, c.lng]), { padding: [30, 30], maxZoom: 13 });
+  }
+  function cercaPosizioni(daCercare) {
+    let i = 0;
+    const prossimo = () => {
+      // lasciata la Mappa: il giro finisce qui, senza toccare la pagina
+      if (!document.getElementById('v-mappa')) { giroPosizioni = false; return; }
+      if (i >= daCercare.length) { giroPosizioni = false; riassuntoMappa(); inquadraMappa(); return; }
+      const c = daCercare[i++];
+      if (c.lat && c.lng) return prossimo();
+      const stato = document.getElementById('m-stato');
+      if (stato) stato.textContent = `Cerco la posizione dei clienti: ${i} di ${daCercare.length}…`;
+      cercaPosizione(c).then(pos => {
+        if (!pos) { nonTrovati.add(c.id); return; }
+        Object.assign(c, pos);
+        if (mappa && document.getElementById('v-mappa')) aggiungiSegnaposto(c);
+        return collegamento().from('clienti').update(pos).eq('id', c.id);
+      }).catch(() => nonTrovati.add(c.id)).then(() => setTimeout(prossimo, 1100));
+    };
+    prossimo();
   }
 
   /* ---------------------------------------------------------------- clienti */
@@ -1759,9 +1784,9 @@ const Venditori = (() => {
   /* --------------------------------------------------- le foto per i social
      Dal 27/10/2026 (29-foto-social.sql, regole di Giulio del 26/10/2026).
      Agenti e rivenditori mandano foto di piùLact in uso, scattate da loro o
-     dagli allevatori. Valgono quando Pro Farmer le approva: 1 💎 a foto (dal
-     29/10/2026, la storia non c'è più); ai rivenditori lo stesso valore come
-     sconto sul prossimo ordine.
+     dagli allevatori. Valgono quando Pro Farmer le approva: 1 💎 a foto agli
+     agenti (dal 29/10/2026, la storia non c'è più). Ai rivenditori le foto non
+     danno premi né sconti (dal 9/11/2026, 69-foto-rivenditori-senza-sconto.sql).
      Il telefono porta il lato lungo a 2048 px e ricodifica in JPEG, così
      spariscono i dati nascosti dello scatto, GPS compreso. Le foto vanno nello
      spazio PRIVATO «foto-social», nella cartella di chi le manda. La
@@ -1803,15 +1828,12 @@ const Venditori = (() => {
   }
 
   function premioFoto(d) {
-    const v = d.valori || {}, r = d.regole || {}, m = d.mese || {}, eur = Number(d.euro) || 4;
+    const v = d.valori || {}, r = d.regole || {}, m = d.mese || {};
     if (d.ruolo === 'agente') {
       return `<p class="aiuto">Ogni foto usabile vale <strong>${v.foto || 1} 💎</strong>, quando Pro Farmer l’approva. `
         + `Questo mese: ${m.foto || 0} di ${r.tetto_foto_mese || 10} 💎 dalle foto.</p>`;
     }
-    if (d.ruolo === 'rivenditore') {
-      return `<p class="aiuto">Ogni foto usabile vale <strong>${(v.foto || 1) * eur} €</strong> di sconto sul tuo prossimo ordine, quando Pro Farmer l’approva. `
-        + `Questo mese: ${(m.foto || 0) * eur} di ${(r.tetto_foto_mese || 10) * eur} € dalle foto.</p>`;
-    }
+    if (d.ruolo === 'rivenditore') return '<p class="aiuto">Le foto non danno premi né sconti.</p>';
     return '<p class="aiuto">Per i clienti diretti: le foto servono per i social di piùLact.</p>';
   }
 
@@ -1894,7 +1916,7 @@ const Venditori = (() => {
     if ((d.invii || []).length) {
       h += '<div class="blocco"><h3>Le tue foto</h3><ul class="lista-clienti">';
       d.invii.forEach(x => {
-        const premio = x.diamanti ? (d.ruolo === 'rivenditore' ? ` · +${x.diamanti * (Number(d.euro) || 4)} €` : ` · +${x.diamanti} 💎`) : '';
+        const premio = x.diamanti && d.ruolo !== 'rivenditore' ? ` · +${x.diamanti} 💎` : '';
         h += `<li><div class="cliente-testa"><strong>${esc(x.cliente)}</strong><span class="stato stato-${x.stato === 'da_vedere' ? 'inviato' : x.diamanti ? 'pagato' : 'confermato'}">`
           + `${x.stato === 'da_vedere' ? 'Da vedere' : 'Vista'}</span></div>`
           + `<p class="cliente-dati">${x.tipo === 'storia' ? 'Storia' : 'Foto'} del ${esc(x.data)} · ${(x.foto || []).length} foto${premio}</p>`
@@ -2407,7 +2429,7 @@ const Venditori = (() => {
 
   function invia(f, tipo) {
     leggiStato(f);
-    const prev = tipo === 'preventivo';
+    const prev = tipo === 'preventivo' && puoPreventivo();
     const err = document.getElementById('ordine-errore');
     const conto = contoOrdine(cond, righeOrdine(), stato);
     const errore = t => { err.textContent = t; err.hidden = false; };
