@@ -1243,12 +1243,12 @@ const ProFarmer = (() => {
     const daVedere = F.invii.filter(i => i.stato === 'da_vedere');
     let h = '<div class="blocco"><h3>Foto da vedere</h3>'
       + `<p class="aiuto">Togli la spunta alle foto che non vanno (sfocate, doppioni, senza prodotto, volti senza liberatoria) e salva. `
-      + `I 💎 e gli sconti si danno da soli: al massimo ${F.regole.tetto_foto_mese} 💎 al mese dalle foto per venditore.</p>`;
+      + `I 💎 agli agenti partono da soli, al massimo ${F.regole.tetto_foto_mese} al mese dalle foto; i rivenditori non hanno premi né sconti.</p>`;
     if (!daVedere.length) h += '<p class="aiuto">Nessuna foto da vedere.</p>';
     h += '<ul class="lista-clienti">';
     daVedere.forEach(i => {
       h += `<li><form class="pf-foto" data-id="${esc(i.id)}" novalidate>`
-        + `<div class="cliente-testa"><strong>${esc(i.cliente)}</strong><span class="pf-proprietario${i.tipo === 'storia' ? ' diretto' : ''}">${i.tipo === 'storia' ? 'Storia' : 'Foto'}</span></div>`
+        + `<div class="cliente-testa"><strong>${esc(i.cliente)}</strong><span class="pf-proprietario">${esc(RUOLI[i.ruolo] || i.ruolo)}</span></div>`
         + `<p class="cliente-dati">${esc(i.venditore)} (${esc(RUOLI[i.ruolo] || i.ruolo)}) · ${esc(dataIt(i.creato_il))} · ${esc([i.comune, i.provincia].filter(Boolean).join(' '))}</p>`
         + `<p class="cliente-dati">Scattate da ${esc(AUTORE[i.autore] || i.autore)} · volti: ${i.volti ? '<strong>sì</strong>' : 'no'} · nome dell’azienda: ${i.nome_azienda ? 'sì' : '<strong>no</strong>'}</p>`
         + `<p class="cliente-dati">Liberatorie: ${righeLiberatorie(i.liberatorie)}</p>`
@@ -1270,7 +1270,7 @@ const ProFarmer = (() => {
     if (!usabili.length) h += '<p class="aiuto">Per ora nessuna.</p>';
     h += '<ul class="lista-clienti pf-usabili">' + usabili.map(({ f, i }) =>
       `<li><div class="pf-usabile"><a target="_blank" rel="noopener"><img data-percorso="${esc(f.percorso)}" alt="" loading="lazy"></a><div>`
-      + `<p class="cliente-dati"><strong>${esc(i.cliente)}</strong> · ${esc(i.venditore)} · ${esc(dataIt(i.creato_il))}${i.tipo === 'storia' ? ' · storia' : ''}</p>`
+      + `<p class="cliente-dati"><strong>${esc(i.cliente)}</strong> · ${esc(i.venditore)} · ${esc(dataIt(i.creato_il))}</p>`
       + `<p class="cliente-dati">Volti: ${i.volti ? 'sì' : 'no'} · nome dell’azienda: ${i.nome_azienda ? 'sì' : 'no'} · ${righeLiberatorie(i.liberatorie)}</p>`
       + (i.testo ? `<p class="cliente-note">«${esc(i.testo)}»</p>` : '')
       + (f.pubblicata_il
@@ -1278,12 +1278,11 @@ const ProFarmer = (() => {
         : `<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-pubblicata="${esc(f.id)}">Pubblicata</button></div>`)
       + '</div></div></li>').join('') + '</ul></div>';
 
-    // gli sconti da usare
-    h += '<div class="blocco"><h3>Sconti da usare</h3><p class="aiuto">Quelli degli allevatori dei clienti diretti e degli agenti '
-      + 'si applicano da soli nel preventivo FiC («Approva e crea preventivo»). Quelli dei rivenditori, e dei loro allevatori, '
-      + 'vanno sull’ordine del rivenditore: mettili in FiC e segnali qui.</p>';
-    if (!F.sconti.length) h += '<p class="aiuto">Nessuno sconto in attesa.</p>';
-    h += '<ul class="lista-clienti">' + F.sconti.map(s =>
+    // gli sconti foto non si danno più (storia tolta il 29/10, rivenditori il 9/11/2026):
+    // il riquadro compare solo se ne è rimasto qualcuno di prima, da chiudere
+    if (F.sconti.length) h += '<div class="blocco"><h3>Sconti rimasti</h3><p class="aiuto">Sconti foto nati con le regole di prima: '
+      + 'non se ne danno più. Usali nel preventivo FiC o segnali come usati.</p>'
+      + '<ul class="lista-clienti">' + F.sconti.map(s =>
       `<li><div class="cliente-testa"><strong>${euro(s.euro)} · ${esc(s.per)}</strong><span class="pf-proprietario">entro il ${esc(s.scade)}</span></div>`
       + `<p class="cliente-dati">${esc(s.motivo)}${s.tramite ? ` · tramite ${esc(s.tramite)}: sull’ordine del rivenditore` : ''}${s.perRivenditore ? ' · sul suo prossimo ordine' : ''}</p>`
       + `<p class="errore" hidden></p><div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-usa-sconto="${esc(s.id)}">Segna usato</button></div></li>`).join('')
@@ -1303,7 +1302,8 @@ const ProFarmer = (() => {
       + `<label>Tetto 💎 al mese dalle foto<input name="tetto_foto_mese" type="number" min="0" max="200" step="1" value="${R.tetto_foto_mese}"></label>`
       // la storia non c'è più (29/10/2026): storie_mese e sconto_allevatore restano a 0
       + '<input type="hidden" name="storie_mese" value="0"><input type="hidden" name="sconto_allevatore" value="0">'
-      + `<label>Validità dello sconto (mesi)<input name="mesi_validita" type="number" min="1" max="36" step="1" value="${R.mesi_validita}"></label>`
+      // gli sconti foto non ci sono più (9/11/2026): la validità resta com'è, nascosta
+      + `<input type="hidden" name="mesi_validita" value="${R.mesi_validita}">`
       + '</div><p class="errore" hidden></p><div class="azioni pf-azioni"><button type="submit" class="bottone">Salva</button></div></form></div>';
 
     // le ultime viste

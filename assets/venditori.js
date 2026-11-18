@@ -790,7 +790,10 @@ const Venditori = (() => {
     } else if (cond.ruolo === 'rivenditore') {
       // prima gli acquisti, il margine in secondo piano (18/11/2026)
       const a = validi.reduce((x, o) => x + (o.totaleRivenditore || 0), 0);
-      soldi = nO ? `${euro(a)} acquistati da Pro Farmer` : 'Li vedrai dal primo ordine';
+      // un ordine senza prezzo (condizioni non ancora inserite) non è uno zero (audit 18/11/2026)
+      const manca = validi.some(o => o.totaleRivenditore == null);
+      soldi = !nO ? 'Li vedrai dal primo ordine' : manca && !a ? 'Importi da definire con Pro Farmer'
+        : `${euro(a)} acquistati da Pro Farmer${manca ? ' (in parte da definire)' : ''}`;
     } else {
       soldi = nO ? `${euro(validi.reduce((x, o) => x + (o.totaleCliente || 0), 0))} venduti` : 'Dal primo ordine';
     }
@@ -1198,8 +1201,10 @@ const Venditori = (() => {
   /* Il regolamento per i rivenditori (Giulio, 9/11/2026): i Diamanti sono solo degli agenti;
      i rivenditori non hanno Diamanti né premi sulle foto (69-foto-rivenditori-senza-sconto.sql). */
   function legendaRivenditore() {
-    return '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Diamanti piùLact</h3>'
+    // titolo «Premi e foto» (audit del 18/11/2026): «Diamanti piùLact» faceva pensare a un premio che i rivenditori non hanno
+    return '<details class="blocco legenda" id="legenda-diamanti"><summary><h3>Premi e foto</h3>'
       + '<span>Cosa vale per te come rivenditore</span></summary><div class="legenda-corpo"><ul>'
+      + '<li>I tuoi <strong>clienti sono tuoi</strong>: li fatturi tu, e a Pro Farmer arriva solo dove consegnare.</li>'
       + '<li>I <strong>Diamanti piùLact</strong> sono il premio degli agenti di Pro Farmer: si vincono con i clienti nuovi, i riordini, i feedback positivi dei clienti e le foto. <strong>I rivenditori non hanno Diamanti.</strong></li>'
       + '<li>Le <strong>foto per i social</strong> puoi mandarle lo stesso, se ti va: aiutano a far conoscere piùLact ai tuoi clienti. Per i rivenditori non danno premi né sconti. Le regole sono nel Regolamento foto, in «Foto per i social».</li>'
       + '<li>I tuoi prezzi e sconti sono qui sotto, in «Le tue condizioni»: li decide Pro Farmer con te.</li>'
@@ -1395,7 +1400,7 @@ const Venditori = (() => {
       h += '<p class="aiuto">Non hai ancora clienti. Aggiungili qui, oppure si aggiungono da soli quando mandi un ordine '
         + 'con un cliente nuovo.</p>';
     }
-    if (area.clienti.length > 5) h += casellaCerca('v-clienti', 'Cerca cliente, P.IVA, comune');
+    if (area.clienti.length > 5) h += casellaCerca('v-clienti', (rivenditore() ? 'Cerca cliente o comune' : 'Cerca cliente, P.IVA, comune'));
     h += '<ul class="lista-clienti" data-lista-di="v-clienti">';
     area.clienti.slice().sort((a, b) => a.ragione.localeCompare(b.ragione, 'it')).forEach(c => {
       const ord = ordiniDelCliente(c.id);
@@ -1417,7 +1422,7 @@ const Venditori = (() => {
           : `<p class="cliente-compleanno">🎂 ${c.compleanno_giorno} ${MESI[c.compleanno_mese - 1]}${c.referente ? ' · ' + esc(c.referente) : ''}</p>`;
       }
       // l'ultima chiamata di Pro Farmer al cliente: esito, voto e (se condivisa) la nota
-      if (c.feedback) {
+      if (c.feedback && !rivenditore()) {   // i clienti dei rivenditori Pro Farmer non li chiama (18/11/2026)
         const ESITO = { positivo: 'Positivo', neutro: 'Neutro', negativo: 'Negativo' };
         h += `<p class="cliente-feedback feedback-${esc(c.feedback.esito)}"><strong>Feedback Pro Farmer: ${esc(ESITO[c.feedback.esito] || c.feedback.esito)} · ${c.feedback.voto}/5</strong>`
           + `<span>dopo il ${c.feedback.dopo_ordine}° ordine, ${esc(c.feedback.data)}${c.feedback.nota ? ' · «' + esc(c.feedback.nota) + '»' : ''}</span></p>`;
@@ -1441,9 +1446,7 @@ const Venditori = (() => {
       // le foto per i social (29-foto-social.sql): liberatorie firmate e sconto da usare
       const lib = area.foto && (area.foto.liberatorie || {})[c.id];
       if (lib && lib.length) h += `<p class="cliente-dati">Liberatoria foto: ${esc(lib.map(l => l.nome + (l.ruolo === 'titolare' ? ' (titolare)' : '')).join(', '))}</p>`;
-      (area.foto && area.foto.sconti || []).filter(x => x.clienteId === c.id).forEach(x => {
-        h += `<p class="cliente-sconto">Sconto foto: ${num(x.euro, 0)} € sul prossimo ordine, entro il ${esc(x.scade)}</p>`;
-      });
+      // gli sconti foto non si danno più (29/10 e 9/11/2026): niente riga «Sconto foto» nella scheda
       if (validaCliente(c)) h += `<p class="sotto-minimo">${rivenditore() ? 'Indirizzo di consegna da completare' : 'Dati per la fattura da completare'}: tocca Modifica.</p>`;
       const comeFattura = !ord.length && u && Object.keys(u.voci || {}).length;
       h += '<div class="azioni">'
@@ -1648,7 +1651,8 @@ const Venditori = (() => {
       return h + '<p class="aiuto">Non hai ancora mandato ordini. Li trovi qui dal primo che invii.</p></div>';
     }
     h += '<p class="aiuto">Lo stato lo aggiorna Pro Farmer: inviato, confermato, consegnato, pagato. '
-      + 'I preventivi da approvare diventano ordini quando Pro Farmer li conferma.</p>';
+      + (rivenditore() ? 'Pro Farmer fattura a te: il cliente in stalla lo fatturi tu.</p>'
+        : 'I preventivi da approvare diventano ordini quando Pro Farmer li conferma.</p>');
     const etSoldi = cond.ruolo === 'agente' ? 'provvigione' : cond.ruolo === 'rivenditore' ? 'margine' : '';
     if (area.ordini.length > 5) h += casellaCerca('v-ordini', 'Cerca cliente o numero');
     h += '<ul class="lista-ordini" data-lista-di="v-ordini">';

@@ -127,12 +127,14 @@ modulo.addEventListener('change', e => {
    max dei campi non li guarda nessuno, e parseInt legge «1e3» come 1 e «1.200»
    come 1. Vuoto → null; non intero, sotto 1 o sopra il tetto → l'errore. */
 function intero(v, max, nome) {
-  const t = String(v == null ? '' : v).trim();
+  let t = String(v == null ? '' : v).trim();
   if (!t) return { n: null };
+  // il punto delle migliaia (audit del 18/11/2026): «2.000» erano 2 cuccette, senza avviso
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
   const n = Number(t);
-  if (!Number.isInteger(n)) return { errore: `${nome}: scrivi un numero intero, senza punti né virgole.` };
+  if (!Number.isInteger(n)) return { errore: `${nome}: scrivi un numero intero, senza virgole.` };
   if (n < 1) return { errore: `${nome}: deve essere almeno 1.` };
-  if (n > max) return { errore: `${nome}: il numero è troppo grande (al massimo ${max.toLocaleString('it-IT')}).` };
+  if (n > max) return { errore: `${nome}: il numero è troppo grande (al massimo ${num(max)}).` };
   return { n };
 }
 
