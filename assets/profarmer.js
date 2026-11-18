@@ -87,8 +87,11 @@ const ProFarmer = (() => {
       (ve.data || []).forEach(x => { x.note = noteV.get(x.id) || null; });
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
       if (err) throw new Error(err.error.message);
+      // il cliente del rivenditore è suo (Giulio, 18/11/2026): la Gestione non lo mostra
+      // (né in Clienti, né nel Cruscotto, né nei riordini); sull'ordine resta l'indirizzo di consegna
+      const rivenditori = new Set((ve.data || []).filter(x => x.ruolo === 'rivenditore').map(x => x.id));
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
-               allevatori: al.data || [], messaggi: me.data || [], clienti: cl.data || [],
+               allevatori: al.data || [], messaggi: me.data || [], clienti: (cl.data || []).filter(x => !rivenditori.has(x.venditore_id)),
                diamanti: di.data || { agenti: [], cessati: [], movimenti: [], richieste: [] }, traguardi: tr.data || [],
                chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [],
                passaggi: (!pa.error && pa.data) || null,
@@ -389,14 +392,19 @@ const ProFarmer = (() => {
     const soldi = o.ruolo === 'agente' ? `provvigione ${euro(o.provvigione)}`
       : o.ruolo === 'rivenditore' ? `al rivenditore ${euro(o.totale_rivenditore)} · margine ${euro(o.margine)}` : '';
     let h = `<div class="pf-ordine-scheda" data-id="${esc(o.id)}">`
-      + `<div class="cliente-testa"><strong>${esc(o.cliente || (o.ruolo === 'rivenditore' ? 'Magazzino del rivenditore' : '—'))}</strong>`
+      + `<div class="cliente-testa"><strong>${esc(o.ruolo === 'rivenditore' ? (vend.nome || 'Rivenditore') : (o.cliente || '—'))}</strong>`
       + `<span>${o.tipo === 'preventivo' ? '<em class="pf-etichetta">Preventivo</em> ' : ''}n. ${esc(o.numero)} · ${esc(dataIt(o.creato_il))}</span></div>`
       + `<p class="cliente-dati">${esc(vend.nome || '')} (${esc(RUOLI[o.ruolo] || o.ruolo)}) · ${esc(pezzi(o))}`
       + ` · ${num(o.t, 1)} t`
       + (o.totale_cliente !== null && o.totale_cliente !== undefined ? ` · al cliente ${euro(o.totale_cliente)}` : '') + (soldi ? ' · ' + soldi : '') + '</p>';
     const cd = o.cliente_dati || {};
-    const fatt = [cd.piva && 'P.IVA ' + cd.piva, cd.pec && 'PEC ' + cd.pec, cd.sdi && 'SDI ' + cd.sdi, cd.telefono, cd.indirizzo, cd.comune, cd.provincia].filter(Boolean);
-    if (fatt.length) h += `<p class="cliente-dati">${esc(fatt.join(' · '))}</p>`;
+    // il cliente del rivenditore è suo (18/11/2026): si fattura al rivenditore, qui solo dove consegnare
+    const fatt = o.ruolo === 'rivenditore'
+      ? [o.cliente && 'presso ' + o.cliente, cd.indirizzo, [cd.cap, cd.comune].filter(Boolean).join(' '), cd.provincia, cd.telefono && 'tel. ' + cd.telefono].filter(Boolean)
+      : [cd.piva && 'P.IVA ' + cd.piva, cd.pec && 'PEC ' + cd.pec, cd.sdi && 'SDI ' + cd.sdi, cd.telefono, cd.indirizzo, cd.comune, cd.provincia].filter(Boolean);
+    if (o.ruolo === 'rivenditore') h += `<p class="cliente-dati"><strong>${o.cliente ? 'Consegna in stalla' : 'Consegna al magazzino del rivenditore'}</strong>`
+      + `${fatt.length ? ': ' + esc(fatt.join(' · ')) : ''} · si fattura al rivenditore</p>`;
+    else if (fatt.length) h += `<p class="cliente-dati">${esc(fatt.join(' · '))}</p>`;
     if (o.note) h += `<p class="cliente-note">Nota del venditore: ${esc(o.note)}</p>`;
     // i documenti di Fatture in Cloud e la consegna
     const doc = [];
@@ -1162,7 +1170,8 @@ const ProFarmer = (() => {
     const lista = dati.clienti.filter(c => diChi(c.venditore_id));
     const nDiretti = dati.clienti.filter(c => diretti.has(c.venditore_id)).length;
     let h = '<div class="blocco"><div class="pannello-testa"><h3>Clienti</h3></div>'
-      + `<p class="aiuto">${dati.clienti.length} clienti: ${nDiretti} diretti di Pro Farmer, ${dati.clienti.length - nDiretti} di agenti e rivenditori. `
+      + `<p class="aiuto">${dati.clienti.length} clienti: ${nDiretti} diretti di Pro Farmer, ${dati.clienti.length - nDiretti} degli agenti. `
+      + 'I clienti dei rivenditori non sono qui: sono loro e li fatturano loro; sui loro ordini c’è solo dove consegnare. '
       + 'I clienti diretti li segue Pro Farmer: li aggiungete e ordinate da «La mia area», come un venditore. '
       + 'Spostare un cliente vale per i prossimi ordini; quelli già fatti restano a chi li ha mandati.</p>'
       + '<div class="pf-filtri"><label>Di chi' + selectVenditore('pf-di-chi', filtroVenditore, true).replace('<select ', '<select id="pf-di-chi-clienti" ') + '</label>'
