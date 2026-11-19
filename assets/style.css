@@ -861,6 +861,20 @@ textarea,.venditori-ordine textarea,.contatti textarea,.cliente-modulo textarea{
    Una riga per prodotto: cosa, formato e minimo a sinistra; a destra il
    contatore − numero unità +, grande per il pollice. */
 .righe-ordine{display:grid;gap:0;margin:0 0 6px}
+/* rivenditore con magazzino: il bilico con un tocco (19/11/2026) */
+.bilici{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:4px 0 6px}
+.bilico{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:16px 18px;min-height:76px;
+  border:2px solid var(--bordo,#D6CDB9);border-radius:var(--raggio);background:var(--bianco);color:var(--testo);font:inherit;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:border-color .15s ease,background-color .15s ease,transform .1s ease}
+.bilico strong{font-size:1.05rem}
+.bilico span{color:var(--testo-2);font-size:.92rem}
+.bilico:active{transform:scale(.98)}
+.bilico[aria-pressed="true"]{border-color:var(--navy);background:var(--navy);color:#fff}
+.bilico[aria-pressed="true"] span{color:var(--oro-chiaro,#F4CF7A)}
+.bilico[aria-pressed="true"] strong::before{content:"✓ "}
+.altre-quantita{margin:8px 0 10px}
+.altre-quantita summary{cursor:pointer;color:var(--testo-2);font-size:.95rem;padding:8px 0}
+.altre-quantita[open] summary{margin-bottom:6px}
 .riga-ordine{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--crema-2)}
 .riga-ordine:first-child{padding-top:4px}
 .riga-cosa{display:flex;flex-direction:column;min-width:0}
@@ -1015,6 +1029,10 @@ html.con-apertura .apertura-pro{background:radial-gradient(120% 90% at 30% 18%,#
 .apertura-pro .apertura-sotto{color:#E9D3A0}
 .apertura-versione{position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));margin:0;text-align:center;font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.45)}
 .pedana-versione{margin:14px 0 0;font-size:12px;color:rgba(255,255,255,.4)}
+/* le novità dell'ultima versione, per l'allevatore (19/11/2026) */
+.pedana-novita{margin:6px auto 0;max-width:420px;font-size:13px;color:rgba(255,255,255,.65);text-align:left}
+.pedana-novita summary{cursor:pointer;text-align:center;color:rgba(255,255,255,.75);padding:10px 0;min-height:44px;box-sizing:border-box}
+.pedana-novita ul{margin:4px 0 0;padding-left:18px;line-height:1.5}
 
 /* Riposa Pro sul computer: chi lavora dal portatile ha più spazio (24/10/2026).
    Sul telefono non cambia niente. */
@@ -1492,3 +1510,24 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 .cerca-piva-esito{margin:6px 0 0}
 .cerca-piva-esito:empty{display:none}
 .cerca-piva-esito.errore-testo{color:#C0392B}
+
+/* versione e novità in Riposa Pro (19/11/2026) */
+.avviso-novita ul{margin:6px 0 10px;padding-left:18px;line-height:1.5}
+.avviso-novita .bottone{min-height:44px}
+.novita-versione{border-top:1px solid var(--linea, #E2E6EC);padding:4px 0}
+.novita-versione summary{cursor:pointer;font-weight:600;padding:10px 0;min-height:44px;box-sizing:border-box}
+.novita-versione ul{margin:0 0 8px;padding-left:18px;line-height:1.5}
+
+/* il risultato in breve nella conferma dell'allevatore (19/11/2026) */
+.trovato-sintesi{margin:16px auto 6px;max-width:420px;text-align:left;display:grid;gap:8px}
+.trovato-sintesi div{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:10px 14px;border-radius:12px;background:rgba(47,134,224,.08)}
+.trovato-sintesi dt{margin:0;font-size:14px;color:var(--testo-2)}
+.trovato-sintesi dd{margin:0;font-size:16px;font-weight:600;overflow-wrap:anywhere}
+
+/* provvigioni da fatturare, ordine per ordine (19/11/2026) */
+.soldi-titolo{margin:18px 0 8px;font-size:1rem}
+.soldi-ordini .ordine-testa b{white-space:nowrap}
+.soldi-totale{display:flex;justify-content:space-between;gap:12px;margin:8px 0 4px;padding:10px 0 0;border-top:2px solid var(--bordo,#D6CDB9);font-weight:600}
+.pf-provv-dettaglio td{padding-top:0}
+.pf-provv-dettaglio summary{cursor:pointer;color:var(--testo-2);padding:6px 0}
+.pf-provv-ordini{list-style:none;margin:6px 0 10px;padding:0;display:grid;gap:6px}

@@ -18,6 +18,19 @@ const boxRis    = document.getElementById('risultato');
   if (!m) return;
   const testo = `versione ${+m[3]}/${+m[2]}/${m[1]}${m[4] ? ' ' + m[4] : ''}`;
   ['apertura-versione', 'pedana-versione'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = testo; });
+  /* Le novità dell'ultimo aggiornamento per l'allevatore, in fondo alla pagina (assets/novita.js,
+     19/11/2026): ogni aggiornamento ha la sua versione e si vede cosa è cambiato. In Riposa Pro
+     le novità dei venditori le mostra venditori.js (home e Profilo). */
+  const ped = document.getElementById('pedana-versione');
+  const pro = /\/pro\/|collaudo-pro/.test(location.pathname);   // RIPOSA_PRO arriva dopo questo file
+  const voce = typeof NOVITA !== 'undefined' && !pro && NOVITA.find(x => x.allevatori && x.allevatori.length);
+  if (ped && voce) {
+    const d = document.createElement('details');
+    d.className = 'pedana-novita';
+    d.innerHTML = `<summary>Novità della versione ${nomeVersione(voce.v)}</summary><ul>`
+      + voce.allevatori.map(t => '<li>' + String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</li>').join('') + '</ul>';
+    ped.after(d);
+  }
 })();
 const boxRiemp  = document.getElementById('blocco-riempimento');
 const boxSup    = document.getElementById('blocco-superficie');
@@ -813,6 +826,20 @@ function mostraConferma(esito) {
   // il motivo vero, se l'e-mail non è partita (audit 28/10/2026); il titolo non deve dire il contrario (7/11/2026)
   const perche = esito && esito.email === false ? (esito.perche || 'recente') : null;
   h += `<h2>${perche && perche !== 'recente' ? 'Abbiamo ricevuto la tua richiesta' : 'Te l’abbiamo mandato per e-mail'}</h2>`;
+  /* Il risultato in breve, a schermo (controllo del 19/11/2026, via di Giulio): i contatti li ha
+     già lasciati, e se l'e-mail finisce nello spam per lui il calcolo non è mai esistito.
+     Tre righe: prodotto, dose e quanto ordinare. Il dettaglio resta nell'e-mail. */
+  const r = ultimoRisultato;
+  if (r && r.prodotto) {
+    const dose = r.superficie ? `${num(r.dosePerMq, 2)} kg al m²` : (r.dosePerCuccetta ? `${kg(r.dosePerCuccetta)} kg a cuccetta` : '');
+    const forn = fornituraConsigliata(r);
+    h += '<dl class="trovato-sintesi">'
+      + `<div><dt>Prodotto</dt><dd>${esc(r.prodotto.nome)}</dd></div>`
+      + (dose ? `<div><dt>Dose</dt><dd>${esc(dose)}${r.etichettaFrequenza ? ', ' + esc(r.etichettaFrequenza) : ''}</dd></div>` : '')
+      + (r.kgMese ? `<div><dt>Al mese</dt><dd>circa ${esc(migliaia(r.kgMese))} kg</dd></div>` : '')
+      + (forn && forn.testo ? `<div><dt>Da ordinare</dt><dd>${esc(forn.testo)}</dd></div>` : '')
+      + '</dl>';
+  }
   h += `<p>${perche === 'recente'
     ? 'Questo stesso calcolo te l’abbiamo già mandato pochi minuti fa a ' + esc(datiContatto.email) + ': controlla la casella e la posta indesiderata.'
     : perche

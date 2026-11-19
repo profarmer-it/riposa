@@ -790,6 +790,53 @@ const Venditori = (() => {
      accettati dal cliente no (audit 28/10/2026). */
   const conta = o => o.stato !== 'annullato' && o.tipo !== 'preventivo';
 
+
+  /* ------------------------------------------------- versione e novità
+     Regola di Giulio (19/11/2026): a ogni aggiornamento una versione, ed è
+     evidente a chi usa l'app. La versione è il ?v= di questo file; le novità
+     stanno in assets/novita.js. Dopo un aggiornamento la home mostra una volta
+     cosa è cambiato; il Profilo mostra sempre versione, novità e
+     «Scrivi un suggerimento» (con la versione già scritta, per i feedback). */
+  function versioneApp() {
+    const src = [...document.scripts].map(x => x.src).find(x => /venditori\.js\?v=/.test(x)) || '';
+    return (src.split('v=')[1] || '').replace(/[^0-9a-z]/g, '');
+  }
+  const CHIAVE_NOVITA = 'riposa-pro-novita-vista';
+  function novitaDi(v) {
+    return typeof NOVITA === 'undefined' ? null : NOVITA.find(x => x.v === v && x.venditori && x.venditori.length) || null;
+  }
+  function avvisoNovita() {
+    const v = versioneApp(), n = novitaDi(v);
+    if (!n) return '';
+    let vista = '';
+    try { vista = localStorage.getItem(CHIAVE_NOVITA) || ''; } catch (e) {}
+    if (vista === v) return '';
+    return `<div class="avviso avviso-novita" role="status"><span class="avviso-icona">✨</span><span><strong>Riposa Pro è aggiornata: versione ${esc(nomeVersione(v))}.</strong>`
+      + '<ul>' + n.venditori.map(t => `<li>${esc(t)}</li>`).join('') + '</ul>'
+      + `<button type="button" class="bottone bottone-fantasma" data-novita-vista="${esc(v)}">Ho visto</button></span></div>`;
+  }
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest && ev.target.closest('[data-novita-vista]');
+    if (!b) return;
+    try { localStorage.setItem(CHIAVE_NOVITA, b.dataset.novitaVista); } catch (e) {}
+    const box = b.closest('.avviso-novita'); if (box) box.remove();
+  });
+  function bloccoVersione() {
+    const v = versioneApp();
+    const elenco = typeof NOVITA === 'undefined' ? [] : NOVITA.filter(x => x.venditori && x.venditori.length).slice(0, 4);
+    const tel = String(PRO_FARMER.tel || '').replace(/\D/g, '');
+    const testoWa = `Suggerimento per Riposa Pro (versione ${nomeVersione(v)}, ${RUOLI[cond.ruolo] || cond.ruolo}): `;
+    let h = `<div class="blocco blocco-versione"><h3>Versione ${esc(nomeVersione(v))}</h3>`
+      + '<p class="aiuto">Ogni aggiornamento ha la sua versione. Qui sotto cosa è cambiato nelle ultime.</p>';
+    elenco.forEach(x => {
+      h += `<details class="novita-versione"${x.v === v ? ' open' : ''}><summary>${esc(nomeVersione(x.v))}${x.v === v ? ' · quella che stai usando' : ''}</summary><ul>`
+        + x.venditori.map(t => `<li>${esc(t)}</li>`).join('') + '</ul></details>';
+    });
+    h += '<p class="aiuto">Hai un’idea o qualcosa non va? Scrivicelo: ogni suggerimento diventa un aggiornamento.</p>'
+      + `<div class="azioni"><a class="bottone" href="https://wa.me/${tel}?text=${encodeURIComponent(testoWa)}" target="_blank" rel="noopener">Scrivi un suggerimento</a></div></div>`;
+    return h;
+  }
+
   function disegnaHome() {
     const validi = area.ordini.filter(conta);
     const ultimo = validi[0];
@@ -843,6 +890,7 @@ const Venditori = (() => {
       h += '<div class="avviso"><span class="avviso-icona">⚠</span><span>Promemoria: le tue condizioni su piùLact '
         + `erano valide fino al ${esc(cond.validoFino)} e sono da aggiornare con Pro Farmer. Intanto restano quelle.</span></div>`;
     }
+    h += avvisoNovita();
     const festeggiati = area.clienti.filter(compieOggi);
     if (festeggiati.length) {
       h += '<button type="button" class="avviso avviso-compleanni" data-apri="clienti"><span class="avviso-icona">🎂</span><span><strong>Oggi è il compleanno di '
@@ -955,7 +1003,7 @@ const Venditori = (() => {
     stato = statoVuoto();
     VOCI.forEach(v => { stato[v.id] = o[v.id] ? String(o[v.id]) : ''; });
     const ancora = area.clienti.some(c => c.id === o.clienteId);   // il cliente c'è ancora in lista?
-    ordineDiretto(ancora ? o.clienteId : (rivenditore() && !o.cliente ? 'magazzino' : ''));
+    ordineDiretto(ancora ? o.clienteId : (rivenditore() && cond.magazzino !== false && !o.cliente ? 'magazzino' : ''));
   }
 
   const puoPreventivo = () => !!cond && cond.ruolo !== 'rivenditore';
@@ -1714,6 +1762,16 @@ const Venditori = (() => {
       h += `<p class="aiuto">La provvigione si calcola quando mandi l’ordine. Quando Pro Farmer riceve il pagamento del cliente diventa da fatturare: `
         + 'mandaci la fattura e la saldiamo appena arriva nel cassetto fiscale. '
         + 'Gli ordini annullati e i preventivi non ancora accettati non contano.</p>';
+      // ordine per ordine (19/11/2026): cosa mettere in fattura, senza fare i conti a mano
+      if (maturate.length) {
+        h += '<h4 class="soldi-titolo">Da fatturare, ordine per ordine</h4><ul class="lista-ordini soldi-ordini">';
+        maturate.forEach(o => {
+          h += `<li class="ordine"><div class="ordine-testa"><strong>${esc(o.cliente || '')}</strong><b>${euro(soldiOrdine(o))}</b></div>`
+            + `<p class="ordine-dati">n. ${esc(o.numero)} del ${esc(o.data)} · ${esc(descriviPezzi(o))} · importo ${euro(importoOrdine(o))}</p></li>`;
+        });
+        h += `</ul><p class="soldi-totale">Totale da fatturare <b>${euro(somma(maturate))}</b></p>`
+          + '<p class="aiuto">In fattura scrivi i numeri degli ordini: Pro Farmer li ritrova subito.</p>';
+      }
     } else if (cond.ruolo === 'rivenditore') {
       h += '<p class="aiuto">Quanto hai acquistato da Pro Farmer, mese per mese; accanto, in piccolo, il margine che ti resterebbe rivendendo a listino. '
         + 'È una stima: il margine vero dipende dal prezzo a cui rivendi. Gli ordini annullati e i preventivi non ancora accettati non contano.</p>';
@@ -2312,6 +2370,7 @@ const Venditori = (() => {
 
     h += bloccoNotifiche();
 
+    h += bloccoVersione();
     h += '<div class="blocco"><h3>Pro Farmer</h3><p>'
       + `<a href="mailto:${PRO_FARMER.email}">${PRO_FARMER.email}</a> · <a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a>`
       + '</p>'
@@ -2349,7 +2408,8 @@ const Venditori = (() => {
 
   function mostraOrdine(r) {
     ultimoCalcolo = r;
-    if (r) {
+    // il rivenditore con magazzino non prende le quantità del calcolo: ordina il bilico (19/11/2026)
+    if (r && !(cond.ruolo === 'rivenditore' && cond.magazzino !== false)) {
       const nuovi = pezziDaCalcolo(r);
       // le quantità del calcolo prendono il posto delle vecchie solo se il
       // venditore non le aveva toccate
@@ -2359,10 +2419,29 @@ const Venditori = (() => {
     }
 
     const rivend = cond.ruolo === 'rivenditore';
+    /* Il rivenditore con magazzino ordina solo il bilico (Giulio, 19/11/2026):
+       48 big bag (28,8 t) o 36 ballette. Due pulsanti; le quantità libere stanno
+       chiuse sotto, per i casi particolari (consegna in stalla). */
+    const bilico = rivend && cond.magazzino !== false;
+    if (bilico && !stato.bilicoVisto) {   // solo la prima volta per questo ordine
+      if (!stato.clienteId) stato.clienteId = 'magazzino';
+      stato.bilicoVisto = true;
+    }
     let h = '<div class="blocco venditori-ordine" id="blocco-ordine">';
     const prev = modo === 'preventivo';
     h += `<h3>${prev ? 'Il preventivo' : 'L’ordine'}</h3>`;
     h += '<form id="form-ordine" novalidate>';
+
+    if (bilico) {
+      h += '<div class="bilici" role="group" aria-label="Cosa ordini">'
+        + `<button type="button" class="bilico" data-bilico="bigbag" data-pezzi="48" aria-pressed="${String(stato.bigbag) === '48'}">`
+        + '<strong>Un bilico di piùLact</strong><span>48 big bag · 28,8 t</span></button>'
+        + `<button type="button" class="bilico" data-bilico="ballette" data-pezzi="36" aria-pressed="${String(stato.ballette) === '36'}">`
+        + '<strong>Un bilico di ballette</strong><span>36 ballette piùLact Pronto</span></button></div>'
+        + '<p class="aiuto">Tocca per scegliere, tocca di nuovo per togliere. Si possono scegliere tutti e due.</p>';
+      const libere = VOCI.some(v => stato[v.id] && !(v.id === 'bigbag' && String(stato[v.id]) === '48') && !(v.id === 'ballette' && String(stato[v.id]) === '36'));
+      h += `<details class="altre-quantita"${libere ? ' open' : ''}><summary>Altre quantità (casi particolari, per esempio una consegna in stalla)</summary>`;
+    }
 
     /* Una riga per prodotto (24/10/2026): a sinistra cosa e in che formato,
        a destra quante, con − e + e l'unità di misura scritta accanto. */
@@ -2378,13 +2457,15 @@ const Venditori = (() => {
         + `<button type="button" class="contatore-passo" data-passo="1" data-voce="${v.id}" aria-label="Un ${esc(v.una)} in più">+</button></div></div>`;
     });
     h += '</div>';
+    if (bilico) h += '</details>';
 
     h += '<div id="ordine-conto"></div>';
 
     h += `<h3 style="margin-top:22px">${rivend ? 'Dove consegnare' : 'Il cliente'}</h3>`;
     h += '<div class="campo"><label for="o-scegli">Dalla tua lista</label><select id="o-scegli" name="clienteId">'
       // il rivenditore sceglie sempre dove: «Al mio magazzino» è una voce a sé, mai un ripiego (controllo 19/11/2026)
-      + (rivend ? `<option value="magazzino"${stato.clienteId === 'magazzino' ? ' selected' : ''}>Al mio magazzino</option>` : '')
+      // chi non ha il magazzino (85) consegna sempre in stalla: la voce non c'è
+      + (rivend && cond.magazzino !== false ? `<option value="magazzino"${stato.clienteId === 'magazzino' ? ' selected' : ''}>Al mio magazzino</option>` : '')
       + `<option value=""${!stato.clienteId ? ' selected' : ''}>${rivend ? 'In stalla da un cliente nuovo: lo scrivo qui sotto' : 'Cliente nuovo: lo scrivo qui sotto'}</option>`
       + area.clienti.slice().sort((a, b) => a.ragione.localeCompare(b.ragione, 'it'))
           .map(c => `<option value="${esc(c.id)}"${stato.clienteId === c.id ? ' selected' : ''}>${rivend ? 'In stalla: ' : ''}${esc(c.ragione)}${c.comune ? ' — ' + esc(c.comune) : ''}</option>`).join('')
@@ -2429,6 +2510,15 @@ const Venditori = (() => {
       campo.value = n ? String(n) : '';
       campo.dispatchEvent(new Event('input', { bubbles: true }));
     }));
+    // i due bilici: mettono o tolgono la quantità intera; restano accesi finché la quantità è quella
+    const bilici = f.querySelectorAll('[data-bilico]');
+    const accendi = () => bilici.forEach(b => b.setAttribute('aria-pressed', String(f.elements[b.dataset.bilico].value === b.dataset.pezzi)));
+    bilici.forEach(b => b.addEventListener('click', () => {
+      const campo = f.elements[b.dataset.bilico];
+      campo.value = campo.value === b.dataset.pezzi ? '' : b.dataset.pezzi;
+      campo.dispatchEvent(new Event('input', { bubbles: true }));
+    }));
+    if (bilici.length) f.addEventListener('input', accendi);
     disegnaConto();
   }
 
@@ -2565,9 +2655,11 @@ const Venditori = (() => {
     const scelto = stato.clienteId && area.clienti.find(c => c.id === stato.clienteId);
     if (!conto.righe.length) return errore('Indica almeno una quantità.');
     // il rivenditore che ordina per il magazzino non indica un cliente: è l'unico caso
-    const perMagazzino = cond.ruolo === 'rivenditore' && stato.clienteId === 'magazzino';
+    const perMagazzino = cond.ruolo === 'rivenditore' && cond.magazzino !== false && stato.clienteId === 'magazzino';
     if (cond.ruolo === 'rivenditore' && !scelto && !perMagazzino && !campiOrdine().some(k => stato[k])) {
-      return errore('Dove consegniamo? Scegli «Al mio magazzino» oppure scrivi i dati della stalla del cliente.');
+      return errore(cond.magazzino === false
+        ? 'Dove consegniamo? Scegli il cliente dalla lista oppure scrivi nome, telefono e indirizzo della stalla.'
+        : 'Dove consegniamo? Scegli «Al mio magazzino» oppure scrivi i dati della stalla del cliente.');
     }
     if (!perMagazzino) {
       if (scelto && validaCliente(scelto)) {

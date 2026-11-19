@@ -25,6 +25,17 @@ function cambia(cosa, con, nome) {
   if (h === prima) throw new Error(`genera-pro: non trovo "${nome}" in index.html`);
 }
 
+// 0. la versione ha la sua voce nelle novità (Giulio, 19/11/2026: ogni aggiornamento
+//    è una versione, e chi usa l'app deve vedere cosa è cambiato)
+{
+  const v = (h.match(/assets\/app\.js\?v=([0-9a-z]+)/) || [])[1];
+  const nov = readFileSync(join(radice, 'assets', 'novita.js'), 'utf8');
+  if (!v) throw new Error('genera-pro: non trovo la versione di app.js in index.html');
+  if (!nov.includes(`v: '${v}'`)) throw new Error(`genera-pro: manca la voce della versione ${v} in assets/novita.js. Scrivi cosa cambia per chi usa l'app, poi rilancia.`);
+  const tutte = [...h.matchAll(/\?v=([0-9a-z]+)"/g)].map(m => m[1]);
+  if (tutte.some(x => x !== v)) throw new Error(`genera-pro: in index.html ci sono versioni diverse (${[...new Set(tutte)].join(', ')}): alzale tutte insieme.`);
+}
+
 // 1. i percorsi: la pagina sta un livello più giù
 h = h.replace(/(href|src)="assets\//g, '$1="../assets/');
 cambia(`register('sw.js')`, `register('../sw.js')`, 'registrazione del service worker');

@@ -341,6 +341,9 @@ const ProFarmer = (() => {
   const FASI = { approvare: 'Da approvare', attesa: 'In attesa del cliente', preparare: 'Da preparare', consegna: 'In consegna',
                  fatturare: 'Da fatturare', incassare: 'Da incassare', chiusi: 'Chiusi' };
   const APERTE = ['approvare', 'attesa', 'preparare', 'consegna', 'fatturare', 'incassare'];
+  // unità del preventivo FiC: ballette in €/q, il resto in €/t (19/11/2026)
+  const UNITA_FIC = { bigbag: '€/t', sacchi: '€/t', ballette: '€/q' };
+  const prezzoT = (x, val) => { const n = Number(val); return x === 'ballette' ? n * 10 : n; };
   const VOCI_FIC = { bigbag: 'piùLact big bag', sacchi: 'piùLact sacchi', ballette: 'Ballette piùLact Pronto' };
   let schedaAperta = null;      // l'ordine con la scheda del preventivo aperta
   function fase(o) {
@@ -561,9 +564,13 @@ const ProFarmer = (() => {
           + `${ult.pagamento ? ', ' + esc(ult.pagamento) : ''}.</p>`;
       }
       h += '<div class="pf-campi">';
+      /* Le ballette in €/q, come le scrive Elsa e come stanno in FiC (controllo 19/11/2026):
+         in €/t si rischiava di scrivere 22,5 al posto di 225. Si converte all'invio. */
       ['bigbag', 'sacchi', 'ballette'].filter(x => o[x]).forEach(x => {
-        h += `<label>${esc(VOCI_FIC[x])} €/t<input type="number" step="0.01" min="0" name="p_${x}" value="${esc(prezzo(x))}" required></label>`
-          + `<label>Prezzo prima dello sconto €/t<input type="number" step="0.01" min="0" name="pp_${x}"></label>`
+        const u = UNITA_FIC[x], p0 = prezzo(x);
+        const mostra = p0 === '' ? '' : (x === 'ballette' ? Math.round(Number(p0) / 10 * 100) / 100 : p0);
+        h += `<label>${esc(VOCI_FIC[x])} ${u}<input type="number" step="0.01" min="0" name="p_${x}" value="${esc(mostra)}" required></label>`
+          + `<label>Prezzo prima dello sconto ${u}<input type="number" step="0.01" min="0" name="pp_${x}"></label>`
           + `<p class="aiuto pf-largo" data-sconto="${x}">${SCONTO_VUOTO}</p>`;
       });
       // cliente di un agente: sconto al massimo del 10%, diviso a metà con l'agente (Giulio, 28/10/2026)
@@ -572,12 +579,13 @@ const ProFarmer = (() => {
         + `<label>Trasportatore<select name="trasportatore" class="pf-select"><option value="">Generico</option>`
         + s.trasportatori.map(t => `<option${t === (o.trasportatore || ult.trasportatore) ? ' selected' : ''}>${esc(t)}</option>`).join('') + '</select></label>'
         + '<label>Pagamento<select name="pagamento" class="pf-select">'
+        + (s.metodi.some(m => m.nome === pagamentoAbituale) ? '' : '<option value="">Scegli il pagamento</option>')
         + s.metodi.map(m => `<option value="${m.id}"${m.nome === pagamentoAbituale ? ' selected' : ''}>${esc(m.nome)}</option>`).join('') + '</select></label>'
         + `<label>Consegna prevista<input type="date" name="consegna" value="${esc(v(o.consegna_prevista))}"></label>`
         + (s.sconti || []).map(x => `<label class="pf-spunta pf-largo"><input type="checkbox" name="sconto" value="${esc(x.id)}" checked> `
           + `Sconto foto nel preventivo: −${euro(x.euro)} <small>(${esc(x.motivo)})</small></label>`).join('')
         + '<label class="pf-largo">Note in fondo al preventivo <small>(facoltativo: le quantità spiegate le scrive Riposa)</small><textarea name="note" rows="2"></textarea></label>'
-        + '</div><p class="errore" hidden></p><div class="azioni pf-azioni">'
+        + '</div><div class="pf-riepilogo-fic" data-riepilogo></div><p class="errore" hidden></p><div class="azioni pf-azioni">'
         + '<button type="submit" class="bottone">Crea il preventivo in FiC</button>'
         + '<button type="button" class="bottone bottone-fantasma" data-chiudi>Annulla</button></div>'
         + '<p class="aiuto">Il cliente in FiC si cerca per P.IVA: se manca si crea, se c’è si aggiornano contatti e dati SDI. '
@@ -588,9 +596,10 @@ const ProFarmer = (() => {
          la riga ha il prezzo prima dello sconto e lo sconto % evidenziato. Qui si vede subito lo sconto. */
       const mostraSconto = () => f.querySelectorAll('[data-sconto]').forEach(p => {
         const x = p.dataset.sconto, pr = Number(f.elements['p_' + x].value), pp = Number(f.elements['pp_' + x].value);
+        const u = x === 'ballette' ? '/q' : '/t';
         if (pp > 0 && pr > 0 && pp > pr) {
           const sc = Math.round((1 - pr / pp) * 10000) / 100;
-          p.textContent = `Nel preventivo: ${euro(pp)}/t con sconto del ${sc.toLocaleString('it-IT')}% evidenziato, quindi ${euro(pr)}/t.`;
+          p.textContent = `Nel preventivo: ${euro(pp)}${u} con sconto del ${sc.toLocaleString('it-IT')}% evidenziato, quindi ${euro(pr)}${u}.`;
         } else if (pp > 0 && pr > 0) p.textContent = 'Il prezzo prima dello sconto deve essere più alto del prezzo al cliente, se no non c\'è sconto.';
         else p.textContent = SCONTO_VUOTO;
       });
@@ -599,7 +608,7 @@ const ProFarmer = (() => {
         if (!p) return;
         let sconto = 0, oltre = '';
         ((o.conto || {}).righe || []).forEach(r => {
-          const L = Number(r.clienteT), x = Number((f.elements['p_' + r.voce] || {}).value);
+          const L = Number(r.clienteT), x = prezzoT(r.voce, (f.elements['p_' + r.voce] || {}).value);
           if (!(L > 0) || !(x > 0) || x >= L) return;
           if (1 - x / L > 0.10 + 1e-6) oltre = `${VOCI_FIC[r.voce]}: sotto ${euro(L * 0.9)}/t lo sconto supera il 10% e il preventivo non parte. `;
           sconto += (L - x) * Number(r.t || 0);
@@ -610,21 +619,51 @@ const ProFarmer = (() => {
           ? `Cliente di un agente: sconto di ${euro(sconto)} sul listino, diviso a metà. Provvigione da ${euro(base)} a ${euro(Math.max(0, base - sconto / 2))}.`
           : `Cliente di un agente: puoi scontare al massimo il 10% sul listino; lo sconto si divide a metà con l’agente. Provvigione ${euro(base)}.`);
       };
-      mostraProvv();
-      f.addEventListener('input', () => { mostraSconto(); mostraProvv(); });
+      /* Il riepilogo come in FiC (controllo 19/11/2026): righe, trasporto, sconti, imponibile, IVA e totale,
+         con gli avvisi su trasporto a zero e pagamento non scelto. */
+      const tDi = x => { const r = ((o.conto || {}).righe || []).find(y => y.voce === x); return r ? Number(r.t) : 0; };
+      const mostraRiepilogo = () => {
+        const box = f.querySelector('[data-riepilogo]');
+        let imp = 0, righe = '';
+        ['bigbag', 'sacchi', 'ballette'].filter(x => o[x]).forEach(x => {
+          const pT = prezzoT(x, f.elements['p_' + x].value), t = tDi(x), q = t * pT;
+          imp += q;
+          righe += `<tr><td>${esc(VOCI_FIC[x])}</td><td>${(x === 'ballette' ? (t * 10).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' q' : t.toLocaleString('it-IT', { maximumFractionDigits: 2 }) + ' t')}</td><td>${q ? euro(q) : '—'}</td></tr>`;
+        });
+        const tr = Number(f.elements.trasporto.value) || 0;
+        imp += tr;
+        righe += `<tr><td>Trasporto</td><td></td><td>${euro(tr)}</td></tr>`;
+        f.querySelectorAll('[name=sconto]:checked').forEach(c => { const sc = (s.sconti || []).find(y => String(y.id) === c.value); if (sc) { imp -= Number(sc.euro); righe += `<tr><td>Sconto foto</td><td></td><td>−${euro(sc.euro)}</td></tr>`; } });
+        const avvisi = [];
+        if (!tr) avvisi.push('Trasporto a 0 €: è giusto?');
+        if (!f.elements.pagamento.value) avvisi.push('Scegli il pagamento.');
+        box.innerHTML = '<table class="tabella pf-tabella-fic"><tbody>' + righe + '</tbody><tfoot>'
+          + `<tr><th colspan="2">Imponibile</th><td>${euro(imp)}</td></tr><tr><th colspan="2">IVA 22%</th><td>${euro(imp * 0.22)}</td></tr>`
+          + `<tr class="totale"><th colspan="2">Totale</th><td>${euro(imp * 1.22)}</td></tr></tfoot></table>`
+          + (avvisi.length ? `<p class="aiuto errore">${esc(avvisi.join(' '))}</p>` : '')
+          + '<p class="aiuto">Ballette: importo stimato sul peso medio, in fattura il peso reale.</p>';
+      };
+      mostraProvv(); mostraRiepilogo();
+      f.addEventListener('input', () => { mostraSconto(); mostraProvv(); mostraRiepilogo(); });
+      f.addEventListener('change', mostraRiepilogo);
       f.querySelector('[data-chiudi]').addEventListener('click', () => { schedaAperta = null; mostra(); });
       f.addEventListener('submit', ev => {
         ev.preventDefault();
         const d = new FormData(f);
         const prezzi = {};
         const partenza = {};
+        const err = f.querySelector('.errore');
+        // le ballette si scrivono a quintale: un numero da tonnellata lì è un errore (controllo 19/11/2026)
+        if (d.has('p_ballette') && Number(d.get('p_ballette')) >= 100) {
+          err.textContent = 'Le ballette si scrivono a quintale: per esempio 25 (€/q), non 250.'; err.hidden = false; return;
+        }
         ['bigbag', 'sacchi', 'ballette'].forEach(x => {
-          if (d.has('p_' + x)) prezzi[x] = Number(d.get('p_' + x));
-          const pp = Number(d.get('pp_' + x));
+          if (d.has('p_' + x)) prezzi[x] = prezzoT(x, d.get('p_' + x));
+          const pp = prezzoT(x, d.get('pp_' + x));
           if (pp > prezzi[x]) partenza[x] = pp;
         });
-        const err = f.querySelector('.errore');
-        if (Object.values(prezzi).some(x => !(x > 0))) { err.textContent = 'Scrivi tutti i prezzi a tonnellata.'; err.hidden = false; return; }
+        if (!d.get('pagamento')) { err.textContent = 'Scegli il pagamento.'; err.hidden = false; return; }
+        if (Object.values(prezzi).some(x => !(x > 0))) { err.textContent = 'Scrivi tutti i prezzi (big bag e sacchi a tonnellata, ballette a quintale).'; err.hidden = false; return; }
         /* Prezzi a tonnellata, non a quintale (controllo 19/11/2026): 22,5 scritto per sbaglio
            al posto di 225 farebbe un preventivo dieci volte più basso. Sotto i 50 €/t si ferma;
            oltre il 30% dal listino chiede conferma. */
@@ -1611,7 +1650,7 @@ const ProFarmer = (() => {
     const agenti = dati.venditori.filter(x => x.ruolo === 'agente');
     let h = '<div class="blocco"><h3>Provvigioni degli agenti</h3>'
       + '<p class="aiuto">In attesa di pagamento: il cliente non ha ancora pagato Pro Farmer. Da fatturare: ha pagato, l’agente ha avuto la notifica e manda la fattura. '
-      + 'Quando la fattura arriva nel cassetto fiscale, «Saldate oggi» mette la data di oggi su tutte quelle da fatturare di quell’agente.</p>'
+      + 'Quando la fattura arriva nel cassetto fiscale, apri «Ordine per ordine», lascia spuntati gli ordini che la fattura comprende e tocca «Saldate oggi».</p>'
       + '<div class="ordine-scorri"><table class="tabella ordine-conto"><thead><tr><th>Agente</th><th>In attesa di pagamento</th><th>Da fatturare</th><th>Saldate</th><th></th></tr></thead><tbody>';
     agenti.forEach(a => {
       const suoi = dati.ordini.filter(o => o.venditore_id === a.id && vendita(o));
@@ -1620,13 +1659,23 @@ const ProFarmer = (() => {
       const mat = suoi.filter(o => o.stato === 'pagato' && !o.provvigione_liquidata_il);
       const inc = suoi.filter(o => o.stato !== 'pagato' && !o.provvigione_liquidata_il);
       h += `<tr><th>${esc(a.nome)}</th><td>${euro(somma(inc))}</td><td><strong>${euro(somma(mat))}</strong></td><td>${euro(somma(liq))}</td>`
-        + `<td>${mat.length ? `<button type="button" class="bottone bottone-fantasma pf-piccolo" data-liquida="${esc(a.id)}">Saldate oggi</button>` : ''}</td></tr>`;
+        + '<td></td></tr>';
+      /* ordine per ordine (19/11/2026): si saldano solo quelli della fattura arrivata */
+      if (mat.length) {
+        h += `<tr class="pf-provv-dettaglio"><td colspan="5"><details><summary>Ordine per ordine: ${mat.length} da fatturare</summary><ul class="pf-provv-ordini">`
+          + mat.map(o => `<li><label class="pf-spunta"><input type="checkbox" data-provv="${esc(a.id)}" value="${esc(o.id)}" checked> `
+            + `n. ${esc(o.numero)} del ${esc(dataIt(o.creato_il))} · ${esc(o.cliente || '—')} · <strong>${euro(o.provvigione)}</strong></label></li>`).join('')
+          + `</ul><button type="button" class="bottone bottone-fantasma pf-piccolo" data-liquida="${esc(a.id)}">Saldate oggi</button></details></td></tr>`;
+      }
     });
     h += '</tbody></table></div><p class="errore" hidden></p></div>';
     corpo.innerHTML = h;
     corpo.querySelectorAll('[data-liquida]').forEach(b => b.addEventListener('click', () => {
-      const ids = dati.ordini.filter(o => o.venditore_id === b.dataset.liquida && vendita(o) && o.stato === 'pagato' && !o.provvigione_liquidata_il).map(o => o.id);
-      if (!confirm(`Fattura ricevuta: segno saldate ${ids.length} ${ids.length === 1 ? 'provvigione' : 'provvigioni'} con la data di oggi?`)) return;
+      const ids = [...corpo.querySelectorAll(`[data-provv="${b.dataset.liquida}"]:checked`)].map(c => c.value);
+      const tot = dati.ordini.filter(o => ids.includes(String(o.id))).reduce((s, o) => s + Number(o.provvigione || 0), 0);
+      const err = corpo.querySelector('.errore');
+      if (!ids.length) { err.textContent = 'Spunta almeno un ordine.'; err.hidden = false; return; }
+      if (!confirm(`Fattura ricevuta: segno saldate ${ids.length} ${ids.length === 1 ? 'provvigione' : 'provvigioni'} (${euro(tot)}) con la data di oggi?`)) return;
       salva(b, () => sb.from('ordini').update({ provvigione_liquidata_il: oggi() }).in('id', ids));
     }));
   }
@@ -1650,6 +1699,9 @@ const ProFarmer = (() => {
       + campo('provvigione_perc', 'Provvigione piùLact %', x.provvigione_perc, 'number', ' step="0.1" min="0" max="100"', 'solo-agente')
       + campo('valide_fino', 'Condizioni valide fino al', x.valide_fino, 'date', '', 'non-interno')
       + `<label class="pf-spunta"><input type="checkbox" name="attivo"${x.attivo !== false ? ' checked' : ''}> Attivo (può entrare)</label>`
+      // 85 e 83 (19/11/2026): rivenditore con o senza magazzino; agente senza i prezzi del piùLact
+      + `<label class="pf-spunta solo-rivenditore"><input type="checkbox" name="magazzino"${x.magazzino !== false ? ' checked' : ''}> Ha un magazzino (se no, ordina solo con la consegna in stalla)</label>`
+      + `<label class="pf-spunta solo-agente"><input type="checkbox" name="piulact_senza_prezzi"${x.piulact_senza_prezzi ? ' checked' : ''}> Senza i prezzi del piùLact (li indica Pro Farmer)</label>`
       + campo('province', 'Zona: province o regioni (es. LO, CR, Emilia-Romagna)', (x.province || []).join(', '), 'text', '', 'non-interno')
       + '<label class="solo-agente">Presentato da <small>(l’agente che l’ha portato: vale per i Diamanti)</small><select name="presentato_da" class="pf-select">'
       + '<option value="">Nessuno</option>' + dati.venditori.filter(a => a.ruolo === 'agente' && a.id !== x.id)
@@ -1722,6 +1774,8 @@ const ProFarmer = (() => {
             provvigione_perc: nulloSeVuoto(d.get('provvigione_perc')),
             valide_fino: nulloSeVuoto(d.get('valide_fino')),
             attivo: d.get('attivo') === 'on',
+            magazzino: d.get('ruolo') === 'rivenditore' ? d.get('magazzino') === 'on' : true,
+            piulact_senza_prezzi: d.get('ruolo') === 'agente' ? d.get('piulact_senza_prezzi') === 'on' : false,
             presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null,
             // le zone dell'agente: i lead di queste province gli vengono proposti (22-lead-agli-agenti.sql)
             province: d.get('ruolo') === 'interno' ? [] : leggiZona(d.get('province')).zona
