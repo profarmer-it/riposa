@@ -56,8 +56,8 @@ const Venditori = (() => {
       prodotto: 'piùLact', formato: 'Big bag da 600 kg', una: 'big bag' },
     { id: 'sacchi',   nome: 'piùLact, bancali di sacchi da 25 kg (1,2 t)', unita: 'bancali',
       prodotto: 'piùLact', formato: 'Bancale di sacchi da 25 kg (1,2 t)', una: 'bancale' },
-    { id: 'ballette', nome: 'piùLact Pronto, ballette da circa 850 kg', unita: 'ballette',
-      prodotto: 'piùLact Pronto', formato: 'Ballette da circa 850 kg', una: 'balletta' }
+    { id: 'ballette', nome: 'piùLact Pronto, ballette da circa 810 kg', unita: 'ballette',
+      prodotto: 'piùLact Pronto', formato: 'Ballette da circa 810 kg', una: 'balletta' }
   ];
   const STATI = {
     inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato',
@@ -2490,7 +2490,7 @@ const Venditori = (() => {
     // le condizioni del conto, sotto le cifre a cui si riferiscono
     h += '<ul class="note-conto"><li>Prezzi franco partenza, IVA esclusa.</li>'
       + (conto.righe.some(r => r.voce === 'ballette')
-        ? '<li>Ballette: importo stimato su 850 kg a balletta; si fattura il peso reale.</li>' : '')
+        ? '<li>Ballette: importo stimato su 810 kg a balletta; si fattura il peso reale.</li>' : '')
       + '</ul>';
     box.innerHTML = h;
   }
@@ -2504,7 +2504,7 @@ const Venditori = (() => {
     if (!conto.righe.length) { alert('Indica almeno una quantità.'); return; }
     const c = (stato.clienteId && area.clienti.find(x => x.id === stato.clienteId)) || stato;
     const oggi = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Rome' });
-    const nomi = { bigbag: 'piùLact, big bag da 600 kg', sacchi: 'piùLact, sacchi da 25 kg su bancale da 1,2 t', ballette: 'piùLact Pronto, ballette da circa 850 kg' };
+    const nomi = { bigbag: 'piùLact, big bag da 600 kg', sacchi: 'piùLact, sacchi da 25 kg su bancale da 1,2 t', ballette: 'piùLact Pronto, ballette da circa 810 kg' };
     const imponibile = conto.totale.cliente;
     let h = '<div class="anteprima-foglio" role="document">'
       + `<div class="anteprima-testa"><img src="${esc((document.querySelector('img.logo-profarmer') || {}).src || '')}" alt="Pro Farmer" class="anteprima-logo">`
@@ -2518,7 +2518,7 @@ const Venditori = (() => {
       + `<tr><th colspan="3">IVA 22%</th><td>${euro(imponibile * 0.22)}</td></tr>`
       + `<tr class="totale"><th colspan="3">Totale</th><td>${euro(imponibile * 1.22)}</td></tr></tfoot></table>`
       + '<ul class="note-conto"><li>Prezzi di listino franco partenza, trasporto escluso, IVA esclusa.</li>'
-      + (conto.righe.some(r => r.voce === 'ballette') ? '<li>Ballette: importo stimato su 850 kg a balletta; si fattura il peso reale al carico.</li>' : '')
+      + (conto.righe.some(r => r.voce === 'ballette') ? '<li>Ballette: importo stimato su 810 kg a balletta; si fattura il peso reale al carico.</li>' : '')
       + (conto.righe.some(r => r.senzaPrezzo) ? '<li>Il prezzo del piùLact è su richiesta: lo trovi nel preventivo di Pro Farmer.</li>' : '')
       // il rivenditore vende lui al suo cliente (18/11/2026): il preventivo vero è suo, non di Pro Farmer
       + (cond.ruolo === 'rivenditore'

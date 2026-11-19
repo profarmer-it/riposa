@@ -964,7 +964,7 @@ const ProFarmer = (() => {
     }));
   }
   /* Statistiche: ultimi 12 mesi, tonnellate mese per mese, formati, da chi. */
-  const KG = { bigbag: 600, sacchi: 1200, ballette: 850 };
+  const KG = { bigbag: 600, sacchi: 1200, ballette: 810 };   // balletta 810 kg (Giulio, 19/11/2026; prima 850)
   function statistiche(validi, t) {
     const oggiD = new Date();
     const mesi = [];

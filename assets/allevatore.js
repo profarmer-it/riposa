@@ -18,7 +18,7 @@ const Allevatore = (() => {
   const CHIAVE = 'riposa-allevatore';
   const URL = 'https://gmhmxybqmkcmnbjdnslz.supabase.co/functions/v1/allevatore';
   const VAPID = 'BBMiPSY2ADgUWEiZE7vpPz6aJLnfxfM-rUjhZKuNp2nQh8nv7NSMChvyL_MMjIEUnc1c3CZO_OflRINeQX_nZo4';
-  const UNITA = { 25: 'sacchi da 25 kg', 600: 'big bag', 850: 'ballette' };
+  const UNITA = { 25: 'sacchi da 25 kg', 600: 'big bag', 810: 'ballette', 850: 'ballette' };   // 810 kg dal 19/11/2026 (850 per i dati di prima)
 
   const leggi = () => { try { return JSON.parse(localStorage.getItem(CHIAVE) || 'null'); } catch (e) { return null; } };
   const scrivi = d => { try { localStorage.setItem(CHIAVE, JSON.stringify(d)); } catch (e) {} };

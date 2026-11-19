@@ -96,7 +96,7 @@ const TRASPORTO = {
      si dà sul MESE e non sul trimestre (confermato il 25/10): con 35 kg a
      cuccetta a settimana una stalla media consuma una ventina di ballette al
      mese, e tre mesi di ballette sono un fienile. */
-  ballettaKg: 850,
+  ballettaKg: 810,        // 810 kg (Giulio, 19/11/2026; prima 850)
   balletteMinimo: 10,
   ballettePerBancale: 2,
   ballettePerMotrice: 18,
@@ -126,7 +126,7 @@ const PRODOTTI = {
     tagline: 'in ballette, pronto all’uso',
     sintesi: 'Paglia e piùLact già miscelati, per la cuccetta a buca e per il materassino. piùLact, paglia macinata depolverizzata, acqua e acqua di calce, miscelati da noi con il carro e confezionati in ballette fasciate. In azienda non si prepara niente: si apre la balletta e si distribuisce.',
     confezioni: [
-      { etichetta: 'ballette da circa 850 kg', kg: 850 }
+      { etichetta: 'ballette da circa 810 kg', kg: 810 }
     ]
   }
 };
