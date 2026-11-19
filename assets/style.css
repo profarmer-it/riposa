@@ -458,7 +458,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 /* ------------------------------------------------------------ area agente */
 body.in-area-venditori .eroe{display:none}
 /* frase per l'allevatore sotto «Calcola»: nell'area venditori il risultato compare subito (controllo 19/11/2026) */
-body.in-area-venditori .solo-allevatore{display:none}
+body.in-area-venditori .solo-allevatore,.app-pro .solo-allevatore{display:none}
 .venditori-schede{display:flex;gap:6px;flex-wrap:wrap;margin-top:18px}
 .venditori-schede button{font:inherit;font-size:14px;font-weight:500;padding:9px 14px;border-radius:99px;
   border:1px solid var(--crema-2);background:var(--bianco);color:var(--testo);cursor:pointer}
@@ -550,7 +550,7 @@ body.in-area-venditori main{padding-top:24px}
 
 /* La home: le tessere delle sezioni */
 .area-titolo{font-family:Fraunces,Georgia,serif;font-size:26px;margin:22px 4px 14px}
-.tessere{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.tessere{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:dense;gap:12px;margin-top:14px}
 @media (min-width:640px){ .tessere{grid-template-columns:repeat(3,minmax(0,1fr))} }
 .tessera{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
   min-height:132px;padding:16px;font:inherit;color:var(--testo);background:var(--bianco);
@@ -1520,7 +1520,7 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 
 /* il risultato in breve nella conferma dell'allevatore (19/11/2026) */
 .trovato-sintesi{margin:16px auto 6px;max-width:420px;text-align:left;display:grid;gap:8px}
-.trovato-sintesi div{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:10px 14px;border-radius:12px;background:rgba(47,134,224,.08)}
+.trovato-sintesi div{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:10px 14px;border-radius:12px;background:rgba(47,134,224,.08)}
 .trovato-sintesi dt{margin:0;font-size:14px;color:var(--testo-2)}
 .trovato-sintesi dd{margin:0;font-size:16px;font-weight:600;overflow-wrap:anywhere}
 
@@ -1543,3 +1543,13 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
   .pf-layout > .pf-schede .pf-scheda.attiva{background:var(--navy);color:var(--bianco)}
   .pf-layout > #pf-corpo > .blocco:first-child{margin-top:0}
 }
+
+/* controllo 19/11/2026: «e-mail» non va a capo sul trattino; il periodo sotto «Da ordinare» */
+.unito{white-space:nowrap}
+.trovato-sintesi dd small{display:block;margin-top:2px;font-size:13px;font-weight:400;color:var(--testo-2)}
+
+/* controllo 19/11/2026: in «Da preparare» il campo non esce dal riquadro sul telefono; importi senza «€» a capo */
+.pf-inline{min-width:0}
+.pf-inline input{width:100%;min-width:0;box-sizing:border-box}
+.pf-tabella-fic td{white-space:nowrap}
+.conferma-nota a{color:var(--blu);font-weight:600;text-decoration:none;white-space:nowrap}

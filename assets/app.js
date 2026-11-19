@@ -27,7 +27,7 @@ const boxRis    = document.getElementById('risultato');
   if (ped && voce) {
     const d = document.createElement('details');
     d.className = 'pedana-novita';
-    d.innerHTML = `<summary>Novità della versione ${nomeVersione(voce.v)}</summary><ul>`
+    d.innerHTML = `<summary>Ultime novità (${nomeVersione(voce.v)})</summary><ul>`
       + voce.allevatori.map(t => '<li>' + String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</li>').join('') + '</ul>';
     ped.after(d);
   }
@@ -154,7 +154,9 @@ function intero(v, max, nome) {
 /* Quanto dura l'ordine minimo, detto in modo leggibile (7/11/2026):
    per una stalla piccolissima «ti copre circa 320 mesi» non ha senso. */
 function copre(mesi) {
-  return mesi > 24 ? 'ti basta per più di due anni' : `ti copre circa ${num(mesi, 1)} mesi`;
+  if (mesi > 24) return 'ti basta per più di due anni';
+  const m = Math.round(mesi * 10) / 10;   // «16 mesi», non «16,0 mesi» (controllo 19/11/2026)
+  return m === 1 ? 'ti copre circa un mese' : `ti copre circa ${Number.isInteger(m) ? m : num(m, 1)} mesi`;
 }
 
 function leggiModulo() {
@@ -513,10 +515,10 @@ function testoConfezione(c) {
 /* --- 1. il ragionamento ------------------------------------------------- */
 
 const PASSI_RAGIONAMENTO = [
-  'Leggo le caratteristiche della tua stalla…',
-  'Metto a confronto con le scelte di altri allevatori…',
-  'Calcolo il dosaggio e la frequenza…',
-  'Verifico le disponibilità…'
+  'Leggo i dati della tua stalla…',
+  'Scelgo il prodotto e la dose…',
+  'Calcolo quanto ne serve al mese…',
+  'Preparo quanto ordinare…'
 ];
 
 /* 4,5 secondi (Giulio, 25/10/2026): i passi si spuntano uno alla volta, la
@@ -607,8 +609,8 @@ function mostraContatti(r) {
   contaPasso('contatti');
   let h = '<div class="trovato trovato-contatti">';
   h += '<span class="trovato-spunta">✓</span>';
-  h += '<h2>Il calcolatore ha trovato la soluzione ideale per la tua realtà</h2>';
-  h += '<p>Dove te la mandiamo? Ti arriva per e-mail tra pochi secondi.</p>';
+  h += '<h2>Il calcolo è pronto</h2>';
+  h += '<p>Dove te lo mandiamo? Ti arriva per <span class="unito">e-mail</span> in pochi secondi.</p>';
   h += '<form id="modulo-contatti" class="contatti" novalidate>';
   h += campoTesto('nome', 'Nome e cognome', 'text', true);
   h += campoTesto('azienda', 'Ragione sociale', 'text', true);
@@ -793,8 +795,7 @@ function invitoInstalla() {
   let h = '<div class="invito-app">';
   h += '<img src="assets/icone/icona-192.png" alt="" width="64" height="64" class="invito-app-icona">';
   h += '<div><p class="invito-app-titolo">Tieni Riposa sul telefono</p>';
-  h += '<p>Si apre dall’icona, come un’app. Quando Pro Farmer conferma un tuo ordine, ti avvisiamo prima che finisca, '
-    + 'e rifai il calcolo in un attimo, anche in stalla senza campo.</p>';
+  h += '<p>Si apre dall’icona, come un’app. Quando Pro Farmer conferma un tuo ordine, ti avvisiamo prima che finisca.</p>';
   h += '<div class="invito-app-azioni">';
   h += '<button type="button" class="bottone" id="btn-installa">Installa Riposa</button>';
   h += '<button type="button" class="invito-app-no" id="btn-installa-no">Non ora</button></div></div></div>';
@@ -825,7 +826,7 @@ function mostraConferma(esito) {
   h += '<span class="trovato-spunta">✓</span>';
   // il motivo vero, se l'e-mail non è partita (audit 28/10/2026); il titolo non deve dire il contrario (7/11/2026)
   const perche = esito && esito.email === false ? (esito.perche || 'recente') : null;
-  h += `<h2>${perche && perche !== 'recente' ? 'Abbiamo ricevuto la tua richiesta' : 'Te l’abbiamo mandato per e-mail'}</h2>`;
+  h += `<h2>${perche && perche !== 'recente' ? 'Abbiamo ricevuto la tua richiesta' : 'Te l’abbiamo mandato per <span class="unito">e-mail</span>'}</h2>`;
   /* Il risultato in breve, a schermo (controllo del 19/11/2026, via di Giulio): i contatti li ha
      già lasciati, e se l'e-mail finisce nello spam per lui il calcolo non è mai esistito.
      Tre righe: prodotto, dose e quanto ordinare. Il dettaglio resta nell'e-mail. */
@@ -837,7 +838,9 @@ function mostraConferma(esito) {
       + `<div><dt>Prodotto</dt><dd>${esc(r.prodotto.nome)}</dd></div>`
       + (dose ? `<div><dt>Dose</dt><dd>${esc(dose)}${r.etichettaFrequenza ? ', ' + esc(r.etichettaFrequenza) : ''}</dd></div>` : '')
       + (r.kgMese ? `<div><dt>Al mese</dt><dd>circa ${esc(migliaia(r.kgMese))} kg</dd></div>` : '')
-      + (forn && forn.testo ? `<div><dt>Da ordinare</dt><dd>${esc(forn.testo)}</dd></div>` : '')
+      + (forn && forn.testo ? `<div><dt>Da ordinare</dt><dd>${esc(forn.testo)}<small>${esc(forn.minimo
+          ? 'ordine minimo, ' + copre(forn.copre)
+          : forn.mesi === 1 ? 'per circa un mese' : 'per circa ' + forn.mesi + ' mesi')}</small></dd></div>` : '')
       + '</dl>';
   }
   h += `<p>${perche === 'recente'
@@ -851,8 +854,8 @@ function mostraConferma(esito) {
   h += '<div class="azioni">';
   h += '<button type="button" class="bottone bottone-fantasma" id="btn-ricomincia">Fai un altro calcolo</button>';
   h += '</div>';
-  h += '<p class="conferma-nota">Se hai bisogno di una mano ti richiamiamo noi: '
-    + 'un tecnico Pro Farmer può fare il punto sulla tua stalla.</p>';
+  h += '<p class="conferma-nota">Hai bisogno di una mano? Chiama Pro Farmer al <a href="tel:+393761296162">+39&nbsp;376&nbsp;129&nbsp;6162</a>: '
+    + 'un tecnico può fare il punto sulla tua stalla.</p>';
   h += '</div>';
   // le notifiche si chiedono subito, qui (Giulio, 7/11/2026); su iPhone senza l'app c'è l'invito a installarla
   h += typeof Allevatore !== 'undefined' ? Allevatore.invitoNotifiche() : '';

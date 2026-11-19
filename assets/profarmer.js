@@ -599,7 +599,7 @@ const ProFarmer = (() => {
         + '<button type="submit" class="bottone">Crea il preventivo in FiC</button>'
         + '<button type="button" class="bottone bottone-fantasma" data-chiudi>Annulla</button></div>'
         + '<p class="aiuto">Il cliente in FiC si cerca per P.IVA: se manca si crea, se c’è si aggiornano contatti e dati SDI. '
-        + 'L’ordine passa a «confermato». La fattura la fai in FiC come sempre.</p></form>';
+        + 'Un preventivo va in «In attesa del cliente», un ordine in «Da preparare». La fattura la fai in FiC come sempre.</p></form>';
       box.innerHTML = h;
       const f = box.querySelector('form');
       /* Prezzo di partenza (27/10/2026): se è più alto del prezzo al cliente, nel preventivo
@@ -620,7 +620,7 @@ const ProFarmer = (() => {
         ((o.conto || {}).righe || []).forEach(r => {
           const L = Number(r.clienteT), x = prezzoT(r.voce, (f.elements['p_' + r.voce] || {}).value);
           if (!(L > 0) || !(x > 0) || x >= L) return;
-          if (1 - x / L > 0.10 + 1e-6) oltre = `${VOCI_FIC[r.voce]}: sotto ${euro(L * 0.9)}/t lo sconto supera il 10% e il preventivo non parte. `;
+          if (1 - x / L > 0.10 + 1e-6) oltre = `${VOCI_FIC[r.voce]}: sotto ${r.voce === 'ballette' ? euro(L * 0.09) + '/q' : euro(L * 0.9) + '/t'} lo sconto supera il 10% e il preventivo non parte. `;
           sconto += (L - x) * Number(r.t || 0);
         });
         const base = Number(o.provvigione || 0);
@@ -679,7 +679,7 @@ const ProFarmer = (() => {
            oltre il 30% dal listino chiede conferma. */
         const piccoli = Object.keys(prezzi).filter(x => prezzi[x] < 50);
         if (piccoli.length) {
-          err.textContent = `Il prezzo va scritto a tonnellata: ${piccoli.map(x => VOCI_FIC[x]).join(', ')} sotto i 50 €/t non è possibile. Esempio: 25 €/q = 250 €/t.`;
+          err.textContent = `${piccoli.map(x => VOCI_FIC[x]).join(', ')}: big bag e sacchi si scrivono a tonnellata (per esempio 211), le ballette a quintale (per esempio 25).`;
           err.hidden = false; return;
         }
         const lontani = Object.keys(prezzi).filter(x => listino[x] > 0 && Math.abs(prezzi[x] / listino[x] - 1) > 0.3);
@@ -921,7 +921,7 @@ const ProFarmer = (() => {
         return leadNuovi.length ? `${no} senza l’ok a ricontattarli · ${gia} già clienti` : 'allevatori che hanno fatto il calcolo';
       })()],
       ['allevatori', caldi.length, 'allevatori a fine scorta', 'avviso entro 14 giorni: chiamarli'],
-      ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare dalla scheda Ordini'],
+      ['ordini', senzaMail.length, 'e-mail d’ordine non partite', 'da rimandare da «Da eseguire»'],
       ['premi', (dati.diamanti && dati.diamanti.richieste || []).filter(r => r.stato === 'richiesto').length, 'buoni da approvare', 'richieste degli agenti con i diamanti'],
       ['foto', (dati.foto && dati.foto.invii || []).filter(i => i.stato === 'da_vedere').length, 'foto da vedere', 'per i social, da agenti e rivenditori']
     ];

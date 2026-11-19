@@ -13,6 +13,15 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261119g', data: '19/11/2026',
+    venditori: [
+      'Nei clienti contano solo gli ordini veri: i preventivi non ancora accettati non compaiono più come ordini.',
+      'Testi più chiari in diversi punti, e sul telefono la Gestione non esce più dai bordi.'
+    ],
+    allevatori: [
+      'Sotto «Da ordinare» ora c’è anche per quanto tempo basta.',
+      'Il numero di Pro Farmer si tocca per chiamare.'
+    ] },
   { v: '20261119f', data: '19/11/2026',
     venditori: [
       'Gli importi degli ordini sono quelli di Fatture in Cloud: il preventivo, poi la fattura con il peso reale delle ballette.'

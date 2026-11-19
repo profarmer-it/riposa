@@ -177,8 +177,8 @@ const Venditori = (() => {
       const form = campo('piva').form;
       if (form) form.dispatchEvent(new Event('input', { bubbles: true }));
       dici(messi.length
-        ? `Trovata: «${data.ragione || 'azienda attiva'}». Ho compilato ${messi.join(', ')}. Controlla, poi aggiungi PEC o codice univoco e il telefono.`
-        : `Trovata: «${data.ragione || 'azienda attiva'}». I campi erano già scritti: li ho lasciati come sono.`);
+        ? `Trovata: «${data.ragione || 'azienda attiva'}». Abbiamo compilato ${messi.join(', ')}. Controlla, poi aggiungi PEC o codice univoco e il telefono.`
+        : `Trovata: «${data.ragione || 'azienda attiva'}». I campi erano già scritti: li abbiamo lasciati come sono.`);
     }).catch(e => dici(e.message, true)).finally(() => { b.disabled = false; b.textContent = testo; });
   }
   document.addEventListener('click', ev => {
@@ -832,7 +832,7 @@ const Venditori = (() => {
       h += `<details class="novita-versione"${x.v === v ? ' open' : ''}><summary>${esc(nomeVersione(x.v))}${x.v === v ? ' · quella che stai usando' : ''}</summary><ul>`
         + x.venditori.map(t => `<li>${esc(t)}</li>`).join('') + '</ul></details>';
     });
-    h += '<p class="aiuto">Hai un’idea o qualcosa non va? Scrivicelo: ogni suggerimento diventa un aggiornamento.</p>'
+    h += '<p class="aiuto">Hai un’idea o qualcosa non va? Scrivicelo: li leggiamo tutti.</p>'
       + `<div class="azioni"><a class="bottone" href="https://wa.me/${tel}?text=${encodeURIComponent(testoWa)}" target="_blank" rel="noopener">Scrivi un suggerimento</a></div></div>`;
     return h;
   }
@@ -1450,7 +1450,7 @@ const Venditori = (() => {
   }
 
   function ordiniDelCliente(id) {
-    return area.ordini.filter(o => o.clienteId === id && o.stato !== 'annullato');
+    return area.ordini.filter(o => o.clienteId === id && conta(o));   // come la home: niente annullati né preventivi non accettati (19/11/2026)
   }
 
   function disegnaClienti() {
@@ -1717,7 +1717,7 @@ const Venditori = (() => {
     }
     h += '<p class="aiuto">Lo stato lo aggiorna Pro Farmer: inviato, confermato, consegnato, pagato. '
       + (rivenditore() ? 'Pro Farmer fattura a te: il cliente in stalla lo fatturi tu.</p>'
-        : 'I preventivi da approvare diventano ordini quando Pro Farmer li conferma.</p>');
+        : 'Un preventivo diventa ordine quando il cliente lo accetta.</p>');
     const etSoldi = cond.ruolo === 'agente' ? 'provvigione' : cond.ruolo === 'rivenditore' ? 'margine' : '';
     if (area.ordini.length > 5) h += casellaCerca('v-ordini', 'Cerca cliente o numero');
     h += '<ul class="lista-ordini" data-lista-di="v-ordini">';
@@ -1776,7 +1776,7 @@ const Venditori = (() => {
       }
     } else if (cond.ruolo === 'rivenditore') {
       h += '<p class="aiuto">Quanto hai acquistato da Pro Farmer, mese per mese; accanto, in piccolo, il margine che ti resterebbe rivendendo a listino. '
-        + 'È una stima: il margine vero dipende dal prezzo a cui rivendi. Gli ordini annullati e i preventivi non ancora accettati non contano.</p>';
+        + 'È una stima: il margine vero dipende dal prezzo a cui rivendi. Gli ordini annullati non contano.</p>';
     }
 
     // per mese
@@ -2363,9 +2363,9 @@ const Venditori = (() => {
 
     h += '<div class="blocco"><h3>Come si lavora</h3><ol class="passi">'
       + '<li><strong>Nuovo ordine</strong>: scegli il cliente e le quantità. Per un cliente che riordina, tocca il suo nome sotto <strong>Riordina</strong>: le quantità sono già quelle dell’ultima volta.</li>'
-      + '<li>Per un allevamento nuovo, <strong>Calcola una stalla</strong>: prodotto, dose e quantità sono pronti, e sotto c’è già l’ordine da mandare.</li>'
+      + '<li>Per un allevamento nuovo, <strong>Calcola una stalla</strong>: prodotto, dose e quantità sono pronti, e sotto ' + (cond.ruolo === 'rivenditore' && cond.magazzino !== false ? 'scegli il bilico o le quantità' : 'c’è già l’ordine da mandare') + '.</li>'
       + (cond.ruolo === 'rivenditore'
-        ? '<li>Pro Farmer conferma, consegna al tuo magazzino o nella stalla che hai indicato e fattura a te: lo segui in <strong>Ordini</strong>, e in <strong>Acquisti</strong> vedi quanto hai comprato.</li>'
+        ? '<li>Pro Farmer conferma, consegna ' + (cond.magazzino === false ? 'nella stalla che hai indicato' : 'al tuo magazzino o nella stalla che hai indicato') + ' e fattura a te: lo segui in <strong>Ordini</strong>, e in <strong>Acquisti</strong> vedi quanto hai comprato.</li>'
           + '<li>I tuoi clienti sono tuoi: li fatturi tu, e a Pro Farmer arriva solo l’indirizzo di consegna.</li>'
         : '<li>Pro Farmer conferma e aggiorna lo stato: lo segui in <strong>Ordini</strong>, e in <strong>' + esc(nomeSoldi()) + '</strong> vedi le tue provvigioni.</li>')
       + '</ol></div>';
@@ -2439,7 +2439,7 @@ const Venditori = (() => {
         + `<button type="button" class="bilico" data-bilico="bigbag" data-pezzi="48" aria-pressed="${String(stato.bigbag) === '48'}">`
         + '<strong>Un bilico di piùLact</strong><span>48 big bag · 28,8 t</span></button>'
         + `<button type="button" class="bilico" data-bilico="ballette" data-pezzi="36" aria-pressed="${String(stato.ballette) === '36'}">`
-        + '<strong>Un bilico di ballette</strong><span>36 ballette piùLact Pronto</span></button></div>'
+        + '<strong>Un bilico di ballette</strong><span>36 ballette · circa 29 t</span></button></div>'
         + '<p class="aiuto">Tocca per scegliere, tocca di nuovo per togliere. Si possono scegliere tutti e due.</p>';
       const libere = VOCI.some(v => stato[v.id] && !(v.id === 'bigbag' && String(stato[v.id]) === '48') && !(v.id === 'ballette' && String(stato[v.id]) === '36'));
       h += `<details class="altre-quantita"${libere ? ' open' : ''}><summary>Altre quantità (casi particolari, per esempio una consegna in stalla)</summary>`;
@@ -2491,7 +2491,7 @@ const Venditori = (() => {
       ? (interno ? 'Poi scegli prezzi, trasporto e pagamento: il preventivo si scrive in Fatture in Cloud. '
                  : 'Mostra l’anteprima al cliente, a prezzi di listino; Pro Farmer approva e manda il preventivo vero. ')
         + 'Quando il cliente accetta, diventa un ordine.'
-      : 'L’ordine arriva a Pro Farmer per e-mail, che te lo conferma. L’anteprima si mostra o si stampa subito, a prezzi di listino.') + '</p>';
+      : 'Pro Farmer riceve l’ordine per e-mail e te lo conferma. L’anteprima si mostra o si stampa subito, a prezzi di listino.') + '</p>';
     h += '</form></div>';
 
     boxRis.insertAdjacentHTML('beforeend', h);
@@ -2708,7 +2708,7 @@ const Venditori = (() => {
         + (r.copia ? 'Te ne arriva una copia per e-mail. ' : '')
         + (prev ? 'Pro Farmer lo approva e prepara il preventivo per il cliente. '
           : 'Pro Farmer ti ricontatta per la conferma e la consegna. ') + 'Lo trovi in <strong>Ordini</strong>.</p>'
-        + '<div class="azioni"><button type="button" class="bottone bottone-fantasma" id="v-nuovo">Nuovo calcolo</button>'
+        + '<div class="azioni"><button type="button" class="bottone bottone-fantasma" id="v-nuovo">Calcola un’altra stalla</button>'
         + '<button type="button" class="bottone bottone-fantasma" id="v-vedi">Vedi i miei ordini</button></div></div>';
       stato = statoVuoto();
       suggeriti = null;
