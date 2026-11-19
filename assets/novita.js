@@ -13,6 +13,10 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261119i', data: '19/11/2026',
+    venditori: [
+      'Piccoli ritocchi alla Gestione di Pro Farmer.'
+    ] },
   { v: '20261119h', data: '19/11/2026',
     venditori: [
       'Rivenditori a cui il prezzo del piùLact lo indica Pro Farmer: nel conto il totale dice «da Pro Farmer», non più 0,00 €.'

@@ -116,6 +116,7 @@ const ProFarmer = (() => {
   function bloccoSerata() {
     if (Date.now() > new Date('2026-11-20T23:59:00').getTime()) return '';
     const r = dati.serata || [];
+    if (!r.length) return '';   // senza risposte il riquadro non serve (demo della serata, 19/11/2026)
     const si = r.filter(x => x.partecipa), no = r.filter(x => !x.partecipa);
     const persone = si.reduce((t, x) => t + (x.persone || 0), 0), cena = si.filter(x => x.cena).reduce((t, x) => t + (x.persone || 0), 0);
     let h = '<div class="blocco"><h3>Serata del 19/11</h3>'
