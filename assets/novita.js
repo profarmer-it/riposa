@@ -13,6 +13,10 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261119j', data: '19/11/2026',
+    venditori: [
+      'Gestione di Pro Farmer: gli iscritti agli eventi hanno ora una pagina loro, eventi.profarmer.it/gestione/, e non compaiono più nel Cruscotto.'
+    ] },
   { v: '20261119i', data: '19/11/2026',
     venditori: [
       'Piccoli ritocchi alla Gestione di Pro Farmer.'
