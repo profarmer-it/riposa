@@ -2576,7 +2576,9 @@ const Venditori = (() => {
     });
     const t = conto.totale;
     h += `<tr class="totale"><th>Totale</th><td>${num(t.t, 1)}</td>`;
-    if (ruolo === 'rivenditore') h += `<td><strong>${euro(t.acquisto)}</strong></td>`;
+    // con voci senza prezzo il totale del rivenditore è parziale, o «da Pro Farmer» se niente ha il prezzo (controllo 19/11/2026)
+    const parziale = conto.righe.some(r => r.senzaPrezzo);
+    if (ruolo === 'rivenditore') h += `<td><strong>${!parziale ? euro(t.acquisto) : t.acquisto ? euro(t.acquisto) + '<small>+ il piùLact, da Pro Farmer</small>' : 'da Pro Farmer'}</strong></td>`;
     else if (ruolo === 'agente') {
       // con voci senza prezzo (83): il totale è parziale, o «da Pro Farmer» se non c'è niente col prezzo (controllo 19/11/2026)
       const parz = conto.righe.some(r => r.senzaPrezzo), q = x => !parz ? euro(x) : x ? euro(x) + '<small>+ il piùLact, da Pro Farmer</small>' : 'da Pro Farmer';
@@ -2584,7 +2586,7 @@ const Venditori = (() => {
     }
     else h += `<td>${euro(t.cliente)}</td>`;
     h += '</tr></tbody></table></div>';
-    if (ruolo === 'rivenditore' && t.acquisto != null) {
+    if (ruolo === 'rivenditore' && t.acquisto != null && !parziale) {
       h += `<p class="aiuto">A listino vale ${euro(t.listino)}: il margine stimato è ${euro(t.margine)}. Il prezzo al tuo cliente lo decidi tu.</p>`;
     }
     if (conto.righe.some(r => r.senzaPrezzo)) {
