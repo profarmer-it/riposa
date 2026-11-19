@@ -160,7 +160,7 @@ const Allevatore = (() => {
     let h = '<section class="tua-stalla" id="tua-stalla" aria-label="La tua stalla">';
     h += `<p class="tua-stalla-titolo">La tua stalla${d.azienda ? ' · ' + esc(d.azienda) : ''}</p>`;
     h += `<p class="tua-stalla-consumo"><strong>${esc(d.prodotto || 'piùLact')}</strong>`
-      + (d.kgMese ? `: circa <strong>${esc(Number(d.kgMese).toLocaleString('it-IT'))} kg al mese</strong>` : '') + '.</p>';
+      + (d.kgMese ? `: circa <strong>${esc(typeof num === 'function' ? num(Number(d.kgMese)) : String(Math.round(d.kgMese)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'))} kg al mese</strong>` : '') + '.</p>';
 
     // la scorta: la calcola Riposa dall'ultimo ordine confermato (7/11/2026)
     const s = d.scorta;

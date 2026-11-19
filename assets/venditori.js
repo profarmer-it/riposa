@@ -504,7 +504,7 @@ const Venditori = (() => {
       + (PRO ? '' : '<p class="soprattitolo">Riposa · area venditori</p>')
       + '<h2>Entra nella tua area</h2>'
       + '<p class="aiuto">Per agenti, rivenditori e commerciali Pro Farmer: i tuoi clienti, i tuoi ordini, '
-      + 'le tue provvigioni e i materiali da mandare ai clienti.</p>'
+      + 'provvigioni o acquisti e i materiali da mandare ai clienti.</p>'
       + '<form id="form-accesso" class="venditori-accesso" novalidate>'
       + '<label for="v-email">La tua e-mail</label>'
       + '<input id="v-email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" '
@@ -517,7 +517,8 @@ const Venditori = (() => {
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
       + (conRiprova ? '<div class="azioni"><button type="button" class="bottone" id="v-riprova">Riprova</button></div>' : '')
-      + '<p class="accesso-piede"><a href="#venditori" id="v-col-codice">Primo accesso o password dimenticata? Ricevi un codice per e-mail</a></p>'
+      // primo accesso ben visibile: stasera entrano tutti per la prima volta (controllo 19/11/2026)
+      + '<div class="azioni"><a href="#venditori" id="v-col-codice" class="bottone bottone-fantasma">Primo accesso o password dimenticata: ricevi un codice</a></div>'
       + '<p class="accesso-piede">Usa l’e-mail che hai dato a Pro Farmer. Non sei registrato? Chiama Pro Farmer: '
       + `<a href="tel:${PRO_FARMER.tel}">${PRO_FARMER.telefono}</a></p>`
       + (PRO
@@ -589,13 +590,16 @@ const Venditori = (() => {
       + '<form id="form-codice" class="venditori-accesso" novalidate>'
       + '<label for="v-codice">Il codice</label>'
       + '<input id="v-codice" name="codice" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" '
-      + 'maxlength="6" enterkeyhint="go" placeholder="123456">'
+      + 'maxlength="9" enterkeyhint="go" placeholder="123456">'
       + '<button type="submit" class="bottone bottone-grande">Avanti</button>'
       + '</form>'
       + (messaggio ? `<p class="errore">${esc(messaggio)}</p>` : '')
+      + '<p class="accesso-piede"><a href="#venditori" id="v-nuovo-codice">Non è arrivato? Mandami un altro codice</a></p>'
       + '<p class="accesso-piede"><a href="#venditori" id="v-altra-email">← Torna all’accesso</a></p>'
       + '</div>';
     document.getElementById('v-altra-email').addEventListener('click', ev => { ev.preventDefault(); mostraAccesso(); });
+    // un altro codice, alla stessa e-mail (controllo 19/11/2026); Supabase ne permette uno al minuto
+    document.getElementById('v-nuovo-codice').addEventListener('click', ev => { ev.preventDefault(); chiediCodice(emailAccesso, ev.currentTarget); });
     const campo = document.getElementById('v-codice');
     campo.focus();
     document.getElementById('form-codice').addEventListener('submit', ev => {
@@ -822,7 +826,7 @@ const Venditori = (() => {
     if (cond.ruolo === 'agente' || cond.ruolo === 'rivenditore') {
       const nuovi = (area.contatti || []).filter(x => x.stato === 'nuovo').length, tutti = (area.contatti || []).length;
       tessere.splice(nuovi ? 1 : 3, 0, ['contatti', 'Contatti da Riposa',
-        nuovi ? `${nuovi} ${nuovi === 1 ? 'allevatore da chiamare' : 'allevatori da chiamare'}` : tutti ? `${tutti} ${tutti === 1 ? 'contatto' : 'contatti'} della tua zona` : 'Gli allevatori della tua zona', false, !!nuovi]);
+        nuovi ? `${nuovi} ${nuovi === 1 ? 'allevatore da chiamare' : 'allevatori da chiamare'}` : tutti ? `${tutti} ${tutti === 1 ? 'contatto' : 'contatti'} da Riposa` : 'Gli allevatori che Pro Farmer ti passa', false, !!nuovi]);
     }
     if (cond.ruolo === 'agente') {
       const d = area.diamanti;
@@ -931,7 +935,8 @@ const Venditori = (() => {
   function riordiniVeloci() {
     const visti = new Set(), ultimi = [];
     area.ordini.forEach(o => {
-      const chi = o.clienteId || o.cliente;
+      // l'ordine per il magazzino del rivenditore non ha cliente: conta anche lui (controllo 19/11/2026)
+      const chi = o.clienteId || o.cliente || (cond.ruolo === 'rivenditore' ? 'magazzino' : '');
       if (!conta(o) || !chi || visti.has(chi) || ultimi.length >= 3) return;
       visti.add(chi);
       ultimi.push(o);
@@ -950,7 +955,7 @@ const Venditori = (() => {
     stato = statoVuoto();
     VOCI.forEach(v => { stato[v.id] = o[v.id] ? String(o[v.id]) : ''; });
     const ancora = area.clienti.some(c => c.id === o.clienteId);   // il cliente c'è ancora in lista?
-    ordineDiretto(ancora ? o.clienteId : '');
+    ordineDiretto(ancora ? o.clienteId : (rivenditore() && !o.cliente ? 'magazzino' : ''));
   }
 
   const puoPreventivo = () => !!cond && cond.ruolo !== 'rivenditore';
@@ -1509,7 +1514,7 @@ const Venditori = (() => {
     let n = String(x.telefono || '').replace(/[^\d+]/g, '');
     if (!n) return '';
     n = n.startsWith('+') ? n.slice(1) : n.startsWith('00') ? n.slice(2) : '39' + n;
-    const testo = `Buongiorno ${String(x.nome || '').split(' ')[0]}, sono ${area.profilo.nome || ''}, ${cond.ruolo === 'rivenditore' ? 'rivenditore' : 'agente'} piùLact di Pro Farmer per la sua zona. `
+    const testo = `Buongiorno ${String(x.nome || '').split(' ')[0]}, sono ${area.profilo.nome || ''}, ${cond.ruolo === 'rivenditore' ? 'rivenditore' : 'agente'} piùLact di Pro Farmer. `
       + 'Ho visto il calcolo che ha fatto con Riposa: possiamo sentirci?';
     return `https://wa.me/${n}?text=${encodeURIComponent(testo)}`;
   }
@@ -1517,15 +1522,15 @@ const Venditori = (() => {
     const lista = area.contatti || [];
     const ZONA = { materassino: 'materassino', buca: 'cuccette a buca', lettiera: 'lettiera', compost: 'compost barn' };
     const data = iso => iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
-    let h = '<div class="blocco"><h3>Contatti da Riposa</h3><p class="aiuto">Allevatori della tua zona che hanno fatto il calcolo '
-      + 'su Riposa e hanno chiesto di essere ricontattati. Te li passa Pro Farmer: chiamali e segna com’è andata.</p>';
+    let h = '<div class="blocco"><h3>Contatti da Riposa</h3><p class="aiuto">Allevatori che hanno fatto il calcolo '
+      + 'su Riposa: te li passa Pro Farmer. Chiamali e segna com’è andata.</p>';
     if (!lista.length) h += '<p class="aiuto">Per ora nessun contatto. Quando Pro Farmer te ne passa uno, ti arriva una notifica.</p>';
     h += '<ul class="lista-clienti">';
     lista.forEach(x => {
       const tel = String(x.telefono || '').replace(/[^\d+]/g, ''), wa = whatsappContatto(x);
       const stalla = [ZONA[x.zona] || x.zona, x.cuccette && `${x.cuccette} cuccette`, x.mq && `${x.mq} m²`, x.capi && `${x.capi} capi`,
         x.mungitura === 'robot' ? 'robot' : ''].filter(Boolean).join(' · ');
-      const calcolo = [x.prodotto, x.dose, x.frequenza, x.kg_mese && `${x.kg_mese} kg al mese`].filter(Boolean).join(' · ');
+      const calcolo = [x.prodotto, x.dose, x.frequenza, x.kg_mese && `${num(x.kg_mese)} kg al mese`].filter(Boolean).join(' · ');
       h += `<li class="contatto" data-id="${esc(x.id)}"><div class="cliente-testa"><strong>${esc(x.azienda)}</strong>`
         + `<span class="stato stato-${x.stato === 'nuovo' ? 'inviato' : x.stato === 'cliente' ? 'pagato' : x.stato === 'non interessato' ? 'annullato' : 'confermato'}">`
         + `${esc(x.stato === 'nuovo' ? 'Da chiamare' : ESITI_CONTATTO[x.stato] || x.stato)}</span></div>`
@@ -1644,11 +1649,13 @@ const Venditori = (() => {
   }
 
   function importoOrdine(o) {
-    return cond.ruolo === 'rivenditore' ? o.totaleRivenditore : o.totaleCliente;
+    const x = cond.ruolo === 'rivenditore' ? o.totaleRivenditore : o.totaleCliente;
+    return x === 0 && o.t > 0 ? null : x;   // zero con merce = prezzo da definire (83, controllo 19/11/2026)
   }
 
   function soldiOrdine(o) {
-    return cond.ruolo === 'agente' ? o.provvigione : cond.ruolo === 'rivenditore' ? o.margine : null;
+    const x = cond.ruolo === 'agente' ? o.provvigione : cond.ruolo === 'rivenditore' ? o.margine : null;
+    return x === 0 && o.t > 0 ? null : x;
   }
 
   /* Gli ordini come schede, non come tabella: sul telefono una tabella di sei
@@ -1953,7 +1960,7 @@ const Venditori = (() => {
     if (fotoFirma) return moduloLiberatoria(fotoFirma);
     if (!d.regolamento) {
       return '<div class="blocco"><h3>Foto per i social</h3>'
-        + '<p>Le foto vere di piùLact in stalla sono quelle che funzionano di più sui social. Manda le tue foto: Pro Farmer le guarda e premia quelle che può usare.</p>'
+        + '<p>Le foto vere di piùLact in stalla sono quelle che funzionano di più sui social. Manda le tue foto: Pro Farmer le guarda e usa quelle che vanno bene.</p>'
         + premioFoto(d) + '</div>'
         + '<div class="blocco"><h3>Il Regolamento foto</h3>' + testoRegolamentoFoto(d)
         + '<p class="errore" id="fs-errore" hidden></p><div class="azioni"><button type="button" class="bottone" id="fs-accetto">Accetto il regolamento</button></div></div>';
@@ -2195,7 +2202,7 @@ const Venditori = (() => {
       + [['titolare', 'Il titolare'], ['persona', 'Una persona nelle foto']].map(([v, t]) =>
         `<label class="esito-scelta"><input type="radio" name="ruolo" value="${v}"${l.ruolo === v ? ' checked' : ''}><span>${t}</span></label>`).join('')
       + '</div></fieldset>'
-      + `<div class="campo pieno"><label for="fs-nome">Nome e cognome</label><input id="fs-nome" name="nome" autocomplete="name" value="${esc(l.nome)}"></div>`
+      + `<div class="campo pieno"><label for="fs-nome">Nome e cognome</label><input id="fs-nome" name="nome" type="text" autocomplete="name" value="${esc(l.nome)}"></div>`
       + '<fieldset class="campo pieno"><legend>Cosa permette</legend><div class="spunte">'
       + spunta('volto', 'Il suo volto')
       + (l.ruolo === 'titolare' ? spunta('nome_azienda', 'Il nome dell’azienda') + spunta('autore', 'Le foto scattate da lui') : '')
@@ -2376,13 +2383,15 @@ const Venditori = (() => {
 
     h += `<h3 style="margin-top:22px">${rivend ? 'Dove consegnare' : 'Il cliente'}</h3>`;
     h += '<div class="campo"><label for="o-scegli">Dalla tua lista</label><select id="o-scegli" name="clienteId">'
-      + `<option value="">${rivend ? 'Al mio magazzino, o in stalla da un cliente nuovo' : 'Cliente nuovo: lo scrivo qui sotto'}</option>`
+      // il rivenditore sceglie sempre dove: «Al mio magazzino» è una voce a sé, mai un ripiego (controllo 19/11/2026)
+      + (rivend ? `<option value="magazzino"${stato.clienteId === 'magazzino' ? ' selected' : ''}>Al mio magazzino</option>` : '')
+      + `<option value=""${!stato.clienteId ? ' selected' : ''}>${rivend ? 'In stalla da un cliente nuovo: lo scrivo qui sotto' : 'Cliente nuovo: lo scrivo qui sotto'}</option>`
       + area.clienti.slice().sort((a, b) => a.ragione.localeCompare(b.ragione, 'it'))
-          .map(c => `<option value="${esc(c.id)}"${stato.clienteId === c.id ? ' selected' : ''}>${esc(c.ragione)}${c.comune ? ' — ' + esc(c.comune) : ''}</option>`).join('')
+          .map(c => `<option value="${esc(c.id)}"${stato.clienteId === c.id ? ' selected' : ''}>${rivend ? 'In stalla: ' : ''}${esc(c.ragione)}${c.comune ? ' — ' + esc(c.comune) : ''}</option>`).join('')
       + '</select></div>';
     h += `<div id="o-nuovo"${stato.clienteId ? ' hidden' : ''}>`;
-    if (rivend) h += '<p class="aiuto">Per il tuo magazzino lascia tutto vuoto. Per una consegna in stalla scrivi dove: '
-      + 'il cliente è tuo e lo fatturi tu, Pro Farmer fattura a te e vede solo l’indirizzo di consegna.</p>';
+    if (rivend) h += '<p class="aiuto">Per una consegna in stalla scrivi dove: il cliente è tuo e lo fatturi tu, '
+      + 'Pro Farmer fattura a te e vede solo l’indirizzo di consegna.</p>';
     h += '<div class="contatti">';
     campiOrdine().forEach(id => { h += campoCliente(campiCliente().find(f => f.id === id), stato[id], 'o'); });
     h += '</div><p class="aiuto">Un cliente nuovo entra da solo nella tua lista quando mandi l’ordine.</p></div>';
@@ -2476,7 +2485,11 @@ const Venditori = (() => {
     const t = conto.totale;
     h += `<tr class="totale"><th>Totale</th><td>${num(t.t, 1)}</td>`;
     if (ruolo === 'rivenditore') h += `<td><strong>${euro(t.acquisto)}</strong></td>`;
-    else if (ruolo === 'agente') h += `<td>${euro(t.cliente)}</td><td><strong>${euro(t.provvigione)}</strong></td>`;
+    else if (ruolo === 'agente') {
+      // con voci senza prezzo (83): il totale è parziale, o «da Pro Farmer» se non c'è niente col prezzo (controllo 19/11/2026)
+      const parz = conto.righe.some(r => r.senzaPrezzo), q = x => !parz ? euro(x) : x ? euro(x) + '<small>+ il piùLact, da Pro Farmer</small>' : 'da Pro Farmer';
+      h += `<td>${q(t.cliente)}</td><td><strong>${q(t.provvigione)}</strong></td>`;
+    }
     else h += `<td>${euro(t.cliente)}</td>`;
     h += '</tr></tbody></table></div>';
     if (ruolo === 'rivenditore' && t.acquisto != null) {
@@ -2506,6 +2519,8 @@ const Venditori = (() => {
     const oggi = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Rome' });
     const nomi = { bigbag: 'piùLact, big bag da 600 kg', sacchi: 'piùLact, sacchi da 25 kg su bancale da 1,2 t', ballette: 'piùLact Pronto, ballette da circa 810 kg' };
     const imponibile = conto.totale.cliente;
+    // con voci su richiesta (83) il totale è parziale, o del tutto su richiesta (controllo 19/11/2026)
+    const parz = conto.righe.some(r => r.senzaPrezzo), sr = x => !parz ? euro(x) : imponibile ? euro(x) + '<small>+ piùLact su richiesta</small>' : 'su richiesta';
     let h = '<div class="anteprima-foglio" role="document">'
       + `<div class="anteprima-testa"><img src="${esc((document.querySelector('img.logo-profarmer') || {}).src || '')}" alt="Pro Farmer" class="anteprima-logo">`
       + `<div><strong>Proposta di fornitura</strong><span>${esc(oggi)}</span></div></div>`
@@ -2514,9 +2529,9 @@ const Venditori = (() => {
       + '<table class="tabella anteprima-righe"><thead><tr><th>Prodotto</th><th>Quantità</th><th>€/t</th><th>Importo</th></tr></thead><tbody>'
       + conto.righe.map(r => `<tr><td>${esc(nomi[r.voce])}</td><td>${r.pezzi} ${esc(VOCI.find(v => v.id === r.voce).unita)}<small>${num(r.t, 1)} t</small></td>`
         + (r.senzaPrezzo ? '<td colspan="2">su richiesta</td></tr>' : `<td>${euro(r.clienteT)}</td><td>${euro(r.cliente)}</td></tr>`)).join('')
-      + `</tbody><tfoot><tr><th colspan="3">Imponibile</th><td>${euro(imponibile)}</td></tr>`
-      + `<tr><th colspan="3">IVA 22%</th><td>${euro(imponibile * 0.22)}</td></tr>`
-      + `<tr class="totale"><th colspan="3">Totale</th><td>${euro(imponibile * 1.22)}</td></tr></tfoot></table>`
+      + `</tbody><tfoot><tr><th colspan="3">Imponibile</th><td>${sr(imponibile)}</td></tr>`
+      + `<tr><th colspan="3">IVA 22%</th><td>${sr(imponibile * 0.22)}</td></tr>`
+      + `<tr class="totale"><th colspan="3">Totale</th><td>${sr(imponibile * 1.22)}</td></tr></tfoot></table>`
       + '<ul class="note-conto"><li>Prezzi di listino franco partenza, trasporto escluso, IVA esclusa.</li>'
       + (conto.righe.some(r => r.voce === 'ballette') ? '<li>Ballette: importo stimato su 810 kg a balletta; si fattura il peso reale al carico.</li>' : '')
       + (conto.righe.some(r => r.senzaPrezzo) ? '<li>Il prezzo del piùLact è su richiesta: lo trovi nel preventivo di Pro Farmer.</li>' : '')
@@ -2550,7 +2565,10 @@ const Venditori = (() => {
     const scelto = stato.clienteId && area.clienti.find(c => c.id === stato.clienteId);
     if (!conto.righe.length) return errore('Indica almeno una quantità.');
     // il rivenditore che ordina per il magazzino non indica un cliente: è l'unico caso
-    const perMagazzino = cond.ruolo === 'rivenditore' && !scelto && !campiOrdine().some(k => stato[k]);
+    const perMagazzino = cond.ruolo === 'rivenditore' && stato.clienteId === 'magazzino';
+    if (cond.ruolo === 'rivenditore' && !scelto && !perMagazzino && !campiOrdine().some(k => stato[k])) {
+      return errore('Dove consegniamo? Scegli «Al mio magazzino» oppure scrivi i dati della stalla del cliente.');
+    }
     if (!perMagazzino) {
       if (scelto && validaCliente(scelto)) {
         return errore(rivenditore()

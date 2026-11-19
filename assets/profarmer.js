@@ -486,7 +486,7 @@ const ProFarmer = (() => {
     // i passaggi che avvisano qualcuno o annullano: prima una conferma (audit 28/10/2026)
     const CONFERMA = {
       pagato: 'Segno l’ordine come pagato? Se è di un agente, gli arriva subito «Provvigione da fatturare».',
-      consegnato: 'Segno l’ordine come consegnato? Partono i diamanti dell’agente e la chiamata di feedback.',
+      consegnato: 'Segno l’ordine come consegnato? Se è di un agente partono i suoi diamanti e la chiamata di feedback; per i rivenditori arriva solo la notifica.',
       annullato: 'Lo annullo? Se c’è un preventivo in Fatture in Cloud resta lì: cancellalo a mano se serve.'
     };
     corpo.querySelectorAll('[data-passa]').forEach(b => b.addEventListener('click', () => {
@@ -625,6 +625,17 @@ const ProFarmer = (() => {
         });
         const err = f.querySelector('.errore');
         if (Object.values(prezzi).some(x => !(x > 0))) { err.textContent = 'Scrivi tutti i prezzi a tonnellata.'; err.hidden = false; return; }
+        /* Prezzi a tonnellata, non a quintale (controllo 19/11/2026): 22,5 scritto per sbaglio
+           al posto di 225 farebbe un preventivo dieci volte più basso. Sotto i 50 €/t si ferma;
+           oltre il 30% dal listino chiede conferma. */
+        const piccoli = Object.keys(prezzi).filter(x => prezzi[x] < 50);
+        if (piccoli.length) {
+          err.textContent = `Il prezzo va scritto a tonnellata: ${piccoli.map(x => VOCI_FIC[x]).join(', ')} sotto i 50 €/t non è possibile. Esempio: 25 €/q = 250 €/t.`;
+          err.hidden = false; return;
+        }
+        const lontani = Object.keys(prezzi).filter(x => listino[x] > 0 && Math.abs(prezzi[x] / listino[x] - 1) > 0.3);
+        if (lontani.length && !confirm(lontani.map(x => `${VOCI_FIC[x]}: ${euro(prezzi[x])}/t, listino ${euro(listino[x])}/t`).join('\n')
+          + '\n\nIl prezzo è lontano più del 30% dal listino. Lo confermi?')) return;
         const sel = f.querySelector('[name=pagamento]');
         const corpo = { azione: 'preventivo', ordine: o.id, prezzi, partenza, trasporto: Number(d.get('trasporto')) || 0,
           trasportatore: d.get('trasportatore') || '', pagamento: d.get('pagamento'),
@@ -695,11 +706,11 @@ const ProFarmer = (() => {
       const proposti = agentiDellaProvincia(x);
       const altri = agentiAttivi().filter(a => !proposti.includes(a));
       h += `<p class="cliente-dati">${proposti.length
-          ? `Della zona (${esc(x.provincia_sigla)}): <strong>${esc(proposti.map(a => a.nome).join(', '))}</strong>.`
-          : `Nessun agente o rivenditore ha ${esc(x.provincia_sigla || x.provincia)} nella sua zona: sceglilo dall’elenco o tienilo direzionale.`}</p>`
+          ? `Vicini (${esc(x.provincia_sigla)}): <strong>${esc(proposti.map(a => a.nome).join(', '))}</strong>. Il primo anno niente zone fisse: decidete voi.`
+          : `Scegli a chi passarlo, o tienilo direzionale. Il primo anno niente zone fisse.`}</p>`
         + '<div class="pf-campi"><label>A chi<select class="pf-select" data-agente-di="' + esc(x.id) + '">'
-        + (proposti.length ? '' : '<option value="">Scegli a chi passarlo</option>')
-        + proposti.concat(altri).map(a => `<option value="${esc(a.id)}">${esc(a.nome)} · ${a.ruolo === 'rivenditore' ? 'rivenditore' : 'agente'}${proposti.includes(a) ? ' (della zona)' : ''}</option>`).join('')
+        + '<option value="">Scegli a chi passarlo</option>'
+        + proposti.concat(altri).map(a => `<option value="${esc(a.id)}">${esc(a.nome)} · ${a.ruolo === 'rivenditore' ? 'rivenditore' : 'agente'}${proposti.includes(a) ? ' (vicino)' : ''}</option>`).join('')
         + '</select></label></div><div class="azioni pf-azioni">'
         + `<button type="button" class="bottone bottone-fantasma" data-direzionale="${esc(x.id)}" data-si="1">Direzionale: lo seguiamo noi</button>`
         + `<button type="button" class="bottone" data-passa="${esc(x.id)}">Passalo</button></div>`;
@@ -759,7 +770,7 @@ const ProFarmer = (() => {
         + esc([ZONE[x.zona] || x.zona, x.cuccette && `${x.cuccette} cuccette`, x.mq && `${x.mq} m²`,
                x.capi && `${x.capi} capi`, x.mungitura === 'robot' ? 'robot' : ''].filter(Boolean).join(' · '))
         + '</p><p class="cliente-dati">'
-        + esc([x.prodotto, x.dose, x.frequenza, x.kg_mese && `${x.kg_mese} kg al mese`].filter(Boolean).join(' · '))
+        + esc([x.prodotto, x.dose, x.frequenza, x.kg_mese && `${String(Math.round(x.kg_mese)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} kg al mese`].filter(Boolean).join(' · '))
         + '</p>'
         + `<p class="cliente-dati">E-mail: ${esc(x.esito_email || '—')} · ActiveCampaign: ${esc(x.esito_ac || '—')}</p>`
         + '<div class="pf-campi"><label>Stato<select name="stato" class="pf-select">'
@@ -893,7 +904,7 @@ const ProFarmer = (() => {
     h += `<div class="blocco"><h3>${esc(nomeMese(oggiD).replace(/^./, c => c.toUpperCase()))}</h3><dl class="numeri soldi">`
       + `<div class="numero-cella"><dt>Ordini</dt><dd>${delMese.length}<small>${esc(variazione(delMese.length, mesePrima.length).replace(/^ · /, '') || 'nel mese')}</small></dd></div>`
       + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(somma(delMese, 't'))}<small>${esc(variazione(somma(delMese, 't'), somma(mesePrima, 't')).replace(/^ · /, '') || 'ordinate nel mese')}</small></dd></div>`
-      + `<div class="numero-cella"><dt>Venduto</dt><dd>${euro(somma(delMese, 'totale_cliente'))}<small>al cliente, IVA esclusa</small></dd></div>`
+      + `<div class="numero-cella"><dt>Venduto</dt><dd>${euro(delMese.reduce((x, o) => x + Number(o.totale_cliente != null ? o.totale_cliente : (o.totale_rivenditore || 0)), 0))}<small>fatturato da Pro Farmer, IVA esclusa</small></dd></div>`
       + `<div class="numero-cella"><dt>Provvigioni</dt><dd>${euro(somma(delMese, 'provvigione'))}<small>calcolate sugli ordini del mese</small></dd></div>`
       + '</dl>';
     const pezzi = { bigbag: ['Big bag', 0], sacchi: ['Bancali di sacchi', 0], ballette: ['Ballette Pronto', 0] };
@@ -1018,7 +1029,7 @@ const ProFarmer = (() => {
   function riordini(validi) {
     const giorno = 864e5, oggiT = Date.now();
     const perCliente = new Map();
-    validi.filter(o => o.cliente_id).forEach(o => {
+    validi.filter(o => o.cliente_id && o.ruolo !== 'rivenditore').forEach(o => {   // i clienti dei rivenditori sono loro (18/11/2026)
       const l = perCliente.get(o.cliente_id) || []; l.push(o); perCliente.set(o.cliente_id, l);
     });
     const attesi = [], unaVolta = [];
@@ -1695,6 +1706,12 @@ const ProFarmer = (() => {
         f.addEventListener('submit', ev => {
           ev.preventDefault();
           const d = new FormData(f);
+          // un ruolo sbagliato costa caro: «Pro Farmer» apre tutta la Gestione (controllo 19/11/2026)
+          const prima = (dati.venditori.find(a => a.id === f.dataset.id) || {}).ruolo;
+          if (d.get('ruolo') === 'interno' && prima !== 'interno'
+              && !confirm('Ruolo «Pro Farmer»: questa persona vedrà tutta la Gestione (clienti, prezzi, provvigioni di tutti). Confermi?')) return;
+          if (prima && prima !== 'interno' && d.get('ruolo') !== prima
+              && !confirm(`Cambio il ruolo da ${RUOLI[prima]} a ${RUOLI[d.get('ruolo')]}? Cambiano le condizioni che vede e come si calcolano i suoi ordini.`)) return;
           const riga = {
             nome: String(d.get('nome') || '').trim(),
             ruolo: d.get('ruolo'),
