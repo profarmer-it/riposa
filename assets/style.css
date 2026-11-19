@@ -1531,3 +1531,15 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
 .pf-provv-dettaglio td{padding-top:0}
 .pf-provv-dettaglio summary{cursor:pointer;color:var(--testo-2);padding:6px 0}
 .pf-provv-ordini{list-style:none;margin:6px 0 10px;padding:0;display:grid;gap:6px}
+
+/* Gestione sul computer: menu a sinistra, come in Easy (19/11/2026). Sotto i 1000 px resta la fila in alto. */
+@media (min-width:1000px){
+  .contenitore:has(.pf-layout){max-width:1180px}
+  .pf-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:28px;align-items:start}
+  .pf-layout > .pf-schede{position:sticky;top:16px;flex-direction:column;gap:2px;overflow:visible;margin:0;padding:8px;
+    background:var(--bianco);border:1px solid var(--crema-2);border-radius:var(--raggio);box-shadow:var(--ombra)}
+  .pf-layout > .pf-schede .pf-scheda{width:100%;text-align:left;border:0;border-radius:10px;padding:10px 14px;background:transparent;font-size:15px}
+  .pf-layout > .pf-schede .pf-scheda:hover{background:var(--crema)}
+  .pf-layout > .pf-schede .pf-scheda.attiva{background:var(--navy);color:var(--bianco)}
+  .pf-layout > #pf-corpo > .blocco:first-child{margin-top:0}
+}

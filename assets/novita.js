@@ -13,6 +13,10 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261119f', data: '19/11/2026',
+    venditori: [
+      'Gli importi degli ordini sono quelli di Fatture in Cloud: il preventivo, poi la fattura con il peso reale delle ballette.'
+    ] },
   { v: '20261119e', data: '19/11/2026',
     venditori: [
       'In ogni aggiornamento ora vedi cosa è cambiato, qui e nel Profilo. Nel Profilo c’è anche «Scrivi un suggerimento».',

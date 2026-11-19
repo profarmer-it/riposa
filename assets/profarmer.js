@@ -90,6 +90,12 @@ const ProFarmer = (() => {
       // il cliente del rivenditore è suo (Giulio, 18/11/2026): la Gestione non lo mostra
       // (né in Clienti, né nel Cruscotto, né nei riordini); sull'ordine resta l'indirizzo di consegna
       const rivenditori = new Set((ve.data || []).filter(x => x.ruolo === 'rivenditore').map(x => x.id));
+      /* FiC è il riferimento vero (Giulio, 19/11/2026, 86): con un documento FiC
+         contano la merce e le tonnellate del documento (la fattura se c'è); se no il listino. */
+      (o.data || []).forEach(x => {
+        x.t_vero = x.fic_t != null ? Number(x.fic_t) : Number(x.t) || 0;
+        x.valore = x.fic_merce != null ? Number(x.fic_merce) : Number(x.totale_cliente != null ? x.totale_cliente : (x.totale_rivenditore || 0));
+      });
       dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
                allevatori: al.data || [], messaggi: me.data || [], clienti: (cl.data || []).filter(x => !rivenditori.has(x.venditore_id)),
                diamanti: di.data || { agenti: [], cessati: [], movimenti: [], richieste: [] }, traguardi: tr.data || [],
@@ -205,18 +211,20 @@ const ProFarmer = (() => {
   }
 
   function mostra() {
-    let h = '<h2 class="area-titolo">Gestione Pro Farmer</h2><div class="pf-schede" role="tablist">';
+    /* sul computer (da 1000 px) le schede stanno in un menu a sinistra, come in Easy (Giulio, 19/11/2026);
+       sul telefono restano la fila in alto che scorre */
+    let h = '<h2 class="area-titolo">Gestione Pro Farmer</h2><div class="pf-layout"><div class="pf-schede" role="tablist" aria-orientation="vertical">';
     Object.entries(SEZIONI).forEach(([id, nome]) => {
       h += `<button type="button" role="tab" class="pf-scheda${id === sezione ? ' attiva' : ''}" data-sezione="${id}" aria-selected="${id === sezione}">${esc(nome)}</button>`;
     });
-    h += '</div><div id="pf-corpo"></div>';
+    h += '</div><div id="pf-corpo"></div></div>';
     box.innerHTML = h;
     box.querySelectorAll('[data-sezione]').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.sezione === sezione) return;
       sezione = b.dataset.sezione; cambiata = true; mostra();
     }));
     const attiva = box.querySelector('.pf-scheda.attiva');
-    if (attiva) attiva.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (attiva && !matchMedia('(min-width: 1000px)').matches) attiva.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const corpo = document.getElementById('pf-corpo');
     if (cambiata) { corpo.classList.add('entra'); cambiata = false; }
     setTimeout(() => agganciaCerca(corpo), 0);
@@ -398,8 +406,10 @@ const ProFarmer = (() => {
       + `<div class="cliente-testa"><strong>${esc(o.ruolo === 'rivenditore' ? (vend.nome || 'Rivenditore') : (o.cliente || '—'))}</strong>`
       + `<span>${o.tipo === 'preventivo' ? '<em class="pf-etichetta">Preventivo</em> ' : ''}n. ${esc(o.numero)} · ${esc(dataIt(o.creato_il))}</span></div>`
       + `<p class="cliente-dati">${esc(vend.nome || '')} (${esc(RUOLI[o.ruolo] || o.ruolo)}) · ${esc(pezzi(o))}`
-      + ` · ${num(o.t, 1)} t`
-      + (o.totale_cliente !== null && o.totale_cliente !== undefined ? ` · al cliente ${euro(o.totale_cliente)}` : '') + (soldi ? ' · ' + soldi : '') + '</p>';
+      + ` · ${num(o.t_vero, 1)} t`
+      + (o.fic_merce != null ? ` · al cliente ${euro(o.fic_merce)} <small>(${o.fic_documento === 'fattura' ? 'fattura' : 'preventivo'} FiC, merce)</small>`
+        : o.totale_cliente !== null && o.totale_cliente !== undefined ? ` · al cliente ${euro(o.totale_cliente)} <small>(listino)</small>` : '')
+      + (soldi ? ' · ' + soldi : '') + '</p>';
     const cd = o.cliente_dati || {};
     // il cliente del rivenditore è suo (18/11/2026): si fattura al rivenditore, qui solo dove consegnare
     const fatt = o.ruolo === 'rivenditore'
@@ -942,8 +952,8 @@ const ProFarmer = (() => {
     // il mese
     h += `<div class="blocco"><h3>${esc(nomeMese(oggiD).replace(/^./, c => c.toUpperCase()))}</h3><dl class="numeri soldi">`
       + `<div class="numero-cella"><dt>Ordini</dt><dd>${delMese.length}<small>${esc(variazione(delMese.length, mesePrima.length).replace(/^ · /, '') || 'nel mese')}</small></dd></div>`
-      + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(somma(delMese, 't'))}<small>${esc(variazione(somma(delMese, 't'), somma(mesePrima, 't')).replace(/^ · /, '') || 'ordinate nel mese')}</small></dd></div>`
-      + `<div class="numero-cella"><dt>Venduto</dt><dd>${euro(delMese.reduce((x, o) => x + Number(o.totale_cliente != null ? o.totale_cliente : (o.totale_rivenditore || 0)), 0))}<small>fatturato da Pro Farmer, IVA esclusa</small></dd></div>`
+      + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(somma(delMese, 't_vero'))}<small>${esc(variazione(somma(delMese, 't_vero'), somma(mesePrima, 't_vero')).replace(/^ · /, '') || 'ordinate nel mese')}</small></dd></div>`
+      + `<div class="numero-cella"><dt>Venduto</dt><dd>${euro(somma(delMese, 'valore'))}<small>merce, IVA esclusa: da Fatture in Cloud dove c’è il documento, se no a listino</small></dd></div>`
       + `<div class="numero-cella"><dt>Provvigioni</dt><dd>${euro(somma(delMese, 'provvigione'))}<small>calcolate sugli ordini del mese</small></dd></div>`
       + '</dl>';
     const pezzi = { bigbag: ['Big bag', 0], sacchi: ['Bancali di sacchi', 0], ballette: ['Ballette Pronto', 0] };
@@ -956,7 +966,7 @@ const ProFarmer = (() => {
     const perVenditore = new Map();
     recenti.forEach(o => {
       const x = perVenditore.get(o.venditore_id) || { t: 0, n: 0, ultimo: o.creato_il };
-      x.t += Number(o.t) || 0; x.n++; if (o.creato_il > x.ultimo) x.ultimo = o.creato_il;
+      x.t += o.t_vero; x.n++; if (o.creato_il > x.ultimo) x.ultimo = o.creato_il;
       perVenditore.set(o.venditore_id, x);
     });
     const righe = dati.venditori.filter(v => v.attivo).map(v => ({ v, ...(perVenditore.get(v.id) || { t: 0, n: 0, ultimo: null }) }))
@@ -1026,10 +1036,10 @@ const ProFarmer = (() => {
     const anno = validi.filter(o => { const d = new Date(o.creato_il); return d.getFullYear() * 12 + d.getMonth() >= primo; });
     anno.forEach(o => {
       const d = new Date(o.creato_il); const m = mesi.find(x => x.chiave === d.getFullYear() * 12 + d.getMonth());
-      if (m) { m.t += Number(o.t) || 0; m.n++; }
+      if (m) { m.t += o.t_vero; m.n++; }
     });
     const max = Math.max(1, ...mesi.map(m => m.t));
-    const tot = anno.reduce((x, o) => x + (Number(o.t) || 0), 0);
+    const tot = anno.reduce((x, o) => x + o.t_vero, 0);
     let h = '<div class="blocco"><h3>Statistiche</h3><p class="aiuto">Ultimi 12 mesi, ordini non annullati (i preventivi non accettati non contano).</p>';
     h += '<div class="cr-mesi" role="img" aria-label="Tonnellate ordinate mese per mese">';
     mesi.forEach(m => {
@@ -1049,7 +1059,7 @@ const ProFarmer = (() => {
     // da chi
     const ruoloDi = o => o.ruolo === 'interno' ? 'diretti' : o.ruolo;
     const perRuolo = { diretti: 0, agente: 0, rivenditore: 0 };
-    anno.forEach(o => { perRuolo[ruoloDi(o)] = (perRuolo[ruoloDi(o)] || 0) + (Number(o.t) || 0); });
+    anno.forEach(o => { perRuolo[ruoloDi(o)] = (perRuolo[ruoloDi(o)] || 0) + o.t_vero; });
     const clientiAttivi = new Set(anno.map(o => o.cliente_id).filter(Boolean)).size;
     h += '<dl class="numeri soldi">'
       + `<div class="numero-cella"><dt>Tonnellate</dt><dd>${t(tot)}<small>in 12 mesi</small></dd></div>`

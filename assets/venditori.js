@@ -1697,6 +1697,8 @@ const Venditori = (() => {
   }
 
   function importoOrdine(o) {
+    // FiC è il riferimento vero (19/11/2026, 86): con il documento FiC, la merce del documento
+    if (cond.ruolo !== 'rivenditore' && o.importoFic != null) return Number(o.importoFic);
     const x = cond.ruolo === 'rivenditore' ? o.totaleRivenditore : o.totaleCliente;
     return x === 0 && o.t > 0 ? null : x;   // zero con merce = prezzo da definire (83, controllo 19/11/2026)
   }
@@ -1724,7 +1726,7 @@ const Venditori = (() => {
         + `<div class="ordine-testa"><strong>${esc(o.cliente || 'Il mio magazzino')}</strong>`
         + `<span class="stato stato-${esc(o.stato)}">${esc(o.tipo === 'preventivo' && o.stato === 'inviato' ? 'Preventivo da approvare'
           : o.tipo === 'preventivo' && o.stato === 'confermato' ? 'Preventivo al cliente' : (STATI[o.stato] || o.stato))}</span></div>`
-        + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.t, 1)} t</p>`
+        + `<p class="ordine-pezzi">${esc(descriviPezzi(o))} · ${num(o.tFic != null ? o.tFic : o.t, 1)} t${o.documentoFic === 'fattura' ? ' (in fattura)' : ''}</p>`
         + `<p class="ordine-dati">${esc(o.data)} · n. ${esc(o.numero)} · ${cond.ruolo === 'rivenditore' ? 'paghi' : 'importo'} `
         + `<b>${euro(importoOrdine(o))}</b>`
         + (etSoldi === 'margine' ? ` · margine stimato ${euro(soldiOrdine(o))}` : etSoldi ? ` · ${etSoldi} <b>${euro(soldiOrdine(o))}</b>` : '')
@@ -1782,7 +1784,7 @@ const Venditori = (() => {
     validi.forEach(o => {
       const m = (o.data || '').slice(3); // MM/yyyy
       mesi[m] = mesi[m] || { ordini: 0, t: 0, importo: 0, soldi: 0, chiave: m.split('/').reverse().join('') };
-      mesi[m].ordini += 1; mesi[m].t += o.t; mesi[m].importo += importoOrdine(o) || 0; mesi[m].soldi += soldiOrdine(o) || 0;
+      mesi[m].ordini += 1; mesi[m].t += o.tFic != null ? Number(o.tFic) : o.t; mesi[m].importo += importoOrdine(o) || 0; mesi[m].soldi += soldiOrdine(o) || 0;
     });
     const elenco = Object.entries(mesi).sort((a, b) => b[1].chiave.localeCompare(a[1].chiave));
     if (!elenco.length) return h + '<p class="aiuto">Qui vedrai il rendiconto mese per mese dal primo ordine.</p></div>';
