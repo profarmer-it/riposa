@@ -420,9 +420,17 @@ const Venditori = (() => {
     for (var i = 0; i < righe.length; i++) {
       var voce = righe[i].voce;
       var pezzi = Math.max(0, Math.floor(Number(righe[i].pezzi) || 0));
-      if (!pezzi || !c.listinoT[voce]) continue;
+      if (!pezzi) continue;
       var t = pezzi * c.kgPezzo[voce] / 1000;
       var listinoT = c.listinoT[voce];
+      // senza listino (piùLact per chi non ne vede i prezzi, 83, 19/11/2026): la voce resta, prezzo da definire
+      if (listinoT === null || listinoT === undefined) {
+        out.push({ voce: voce, pezzi: pezzi, t: t, listinoT: null, listino: null, senzaPrezzo: true,
+          clienteT: null, cliente: null, percProvvigione: null, provvigione: null, acquistoT: null, acquisto: null, margine: null,
+          sottoMinimo: c.minimi && pezzi < c.minimi[voce] });
+        tot.t += t; tot.daDefinire = true;
+        continue;
+      }
       var r = { voce: voce, pezzi: pezzi, t: t, listinoT: listinoT, listino: t * listinoT };
       var tipo = opz.annuale ? 'annuale' : 'standard';
 
@@ -2265,8 +2273,12 @@ const Venditori = (() => {
     h += '<div class="blocco"><h3>Le tue condizioni</h3><table class="tabella profilo"><tbody>';
     const L = cond.listinoT;
     if (cond.ruolo === 'agente') {
-      h += `<tr><th>piùLact, big bag</th><td>listino ${euro(L.bigbag)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
-      h += `<tr><th>piùLact, sacchi</th><td>listino ${euro(L.sacchi)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
+      if (cond.piulactSenzaPrezzi) {   // 83, 19/11/2026: per ora niente prezzi del piùLact
+        h += '<tr><th>piùLact, big bag e sacchi</th><td>prezzi e provvigione te li indica Pro Farmer</td></tr>';
+      } else {
+        h += `<tr><th>piùLact, big bag</th><td>listino ${euro(L.bigbag)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
+        h += `<tr><th>piùLact, sacchi</th><td>listino ${euro(L.sacchi)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
+      }
       h += `<tr><th>piùLact Pronto, ballette</th><td>listino ${euro(L.ballette / 10)}/q · provvigione ${perc(cond.ballette.provvigione.standard)}</td></tr>`;
       h += '<tr><th>Su cosa</th><td>Solo sulle tue vendite dirette al cliente finale.</td></tr>';
       h += '<tr><th>Sconti</th><td>Se Pro Farmer fa uno sconto al tuo cliente (al massimo il 10%), lo dividiamo a metà: '
@@ -2449,7 +2461,9 @@ const Venditori = (() => {
     conto.righe.forEach(r => {
       h += `<tr><th>${esc(nomi[r.voce])}${r.sottoMinimo ? ' <span class="sotto-minimo">sotto il minimo di ' + cond.minimi[r.voce] + '</span>' : ''}</th>`;
       h += `<td>${num(r.t, 1)}</td>`;
-      if (ruolo === 'rivenditore') {
+      if (r.senzaPrezzo) {   // piùLact senza prezzi (83): lo indica Pro Farmer
+        h += ruolo === 'agente' ? '<td>da Pro Farmer</td><td>—</td>' : '<td>da Pro Farmer</td>';
+      } else if (ruolo === 'rivenditore') {
         h += `<td><strong>${euro(r.acquisto)}</strong><small>${r.acquistoT == null ? '' : euro(r.acquistoT) + '/t'}</small></td>`;
       } else if (ruolo === 'agente') {
         h += `<td>${euro(r.cliente)}<small>${euro(r.clienteT)}/t</small></td>`
@@ -2468,7 +2482,9 @@ const Venditori = (() => {
     if (ruolo === 'rivenditore' && t.acquisto != null) {
       h += `<p class="aiuto">A listino vale ${euro(t.listino)}: il margine stimato è ${euro(t.margine)}. Il prezzo al tuo cliente lo decidi tu.</p>`;
     }
-    if (t.daDefinire) {
+    if (conto.righe.some(r => r.senzaPrezzo)) {
+      h += '<p class="aiuto">Il prezzo del piùLact te lo indica Pro Farmer: il totale qui comprende solo le voci con il prezzo.</p>';
+    } else if (t.daDefinire) {
       h += '<p class="aiuto">Per qualche voce le tue condizioni non sono ancora inserite: il conto lo completa Pro Farmer.</p>';
     }
     // le condizioni del conto, sotto le cifre a cui si riferiscono
@@ -2497,12 +2513,13 @@ const Venditori = (() => {
       + `${[c.piva && 'P.IVA ' + c.piva, [c.comune, c.provincia].filter(Boolean).join(' ')].filter(Boolean).map(x => '<br>' + esc(x)).join('')}</p>`
       + '<table class="tabella anteprima-righe"><thead><tr><th>Prodotto</th><th>Quantità</th><th>€/t</th><th>Importo</th></tr></thead><tbody>'
       + conto.righe.map(r => `<tr><td>${esc(nomi[r.voce])}</td><td>${r.pezzi} ${esc(VOCI.find(v => v.id === r.voce).unita)}<small>${num(r.t, 1)} t</small></td>`
-        + `<td>${euro(r.clienteT)}</td><td>${euro(r.cliente)}</td></tr>`).join('')
+        + (r.senzaPrezzo ? '<td colspan="2">su richiesta</td></tr>' : `<td>${euro(r.clienteT)}</td><td>${euro(r.cliente)}</td></tr>`)).join('')
       + `</tbody><tfoot><tr><th colspan="3">Imponibile</th><td>${euro(imponibile)}</td></tr>`
       + `<tr><th colspan="3">IVA 22%</th><td>${euro(imponibile * 0.22)}</td></tr>`
       + `<tr class="totale"><th colspan="3">Totale</th><td>${euro(imponibile * 1.22)}</td></tr></tfoot></table>`
       + '<ul class="note-conto"><li>Prezzi di listino franco partenza, trasporto escluso, IVA esclusa.</li>'
       + (conto.righe.some(r => r.voce === 'ballette') ? '<li>Ballette: importo stimato su 850 kg a balletta; si fattura il peso reale al carico.</li>' : '')
+      + (conto.righe.some(r => r.senzaPrezzo) ? '<li>Il prezzo del piùLact è su richiesta: lo trovi nel preventivo di Pro Farmer.</li>' : '')
       // il rivenditore vende lui al suo cliente (18/11/2026): il preventivo vero è suo, non di Pro Farmer
       + (cond.ruolo === 'rivenditore'
         ? '<li>Proposta indicativa a prezzi di listino: prezzo, trasporto e pagamento li concordi con il tuo rivenditore.</li></ul>'
