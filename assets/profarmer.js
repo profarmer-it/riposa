@@ -78,9 +78,12 @@ const ProFarmer = (() => {
       // le note interne sui venditori: tabella a parte, il venditore non la legge (31-regole-28-10.sql)
       sb.from('venditori_note').select('venditore_id, note'),
       // le risposte all'invito della serata del 19/11/2026 (33-serata-19-11.sql)
-      sb.from('serata_iscrizioni').select('*').order('creato_il', { ascending: false })
+      sb.from('serata_iscrizioni').select('*').order('creato_il', { ascending: false }),
+      // i telefoni degli allevatori e il collegamento agli ordini del cliente (91, 20/11/2026)
+      sb.from('allevatori_app').select('lead_id, collegato_il, scorta_pezzi, avviso_il')
       // gli iscritti agli eventi Pro Farmer non stanno più qui: eventi.profarmer.it/gestione/ (19/11/2026)
-    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn, se]) => {
+    ]).then(([o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co, pa, fo, gi, vn, se, aa]) => {
+      const appDelLead = new Map(((!aa.error && aa.data) || []).filter(x => x.lead_id).map(x => [x.lead_id, x]));
       const noteV = new Map(((!vn.error && vn.data) || []).map(x => [x.venditore_id, x.note]));
       (ve.data || []).forEach(x => { x.note = noteV.get(x.id) || null; });
       const err = [o, ve, c, m, le, al, me, cl, di, tr, ch, cf, co].find(x => x.error);
@@ -94,7 +97,7 @@ const ProFarmer = (() => {
         x.t_vero = x.fic_t != null ? Number(x.fic_t) : Number(x.t) || 0;
         x.valore = x.fic_merce != null ? Number(x.fic_merce) : Number(x.totale_cliente != null ? x.totale_cliente : (x.totale_rivenditore || 0));
       });
-      dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data,
+      dati = { ordini: o.data, venditori: ve.data, condizioni: c.data, materiali: m.data, lead: le.data, appDelLead,
                allevatori: al.data || [], messaggi: me.data || [], clienti: (cl.data || []).filter(x => !rivenditori.has(x.venditore_id)),
                diamanti: di.data || { agenti: [], cessati: [], movimenti: [], richieste: [] }, traguardi: tr.data || [],
                chiamate: ch.data || [], chiamateFatte: cf.data || [], compleanni: co.data || [],
@@ -727,6 +730,24 @@ const ProFarmer = (() => {
       + '</span>';
   }
 
+  /* Collegare il telefono dell'allevatore agli ordini del cliente (91, controllo di sicurezza del 20/11/2026):
+     prima chiunque poteva scrivere la P.IVA di un'altra azienda e vederne gli ordini. Ora il collegamento
+     lo conferma Pro Farmer; da lì Riposa conosce la scorta e manda il promemoria 15 giorni prima. */
+  function bloccoCollega(x) {
+    const a = dati.appDelLead && dati.appDelLead.get(x.id);
+    if (!a) return '';
+    const c = clienteDelLead(x);
+    if (a.collegato_il) {
+      return '<div class="pf-lead-agente"><p class="cliente-dati"><strong>Promemoria attivo:</strong> il suo telefono è collegato agli ordini del cliente'
+        + (a.avviso_il ? `, prossimo avviso il ${esc(dataIt(a.avviso_il))}` : ', in attesa di un ordine confermato') + '.</p>'
+        + `<div class="azioni pf-azioni"><button type="button" class="bottone bottone-fantasma" data-scollega="${esc(x.id)}">Scollega</button></div><p class="errore" hidden></p></div>`;
+    }
+    if (!c) return '';
+    return '<div class="pf-lead-agente"><p class="cliente-dati">Ha Riposa sul telefono e ha scritto la P.IVA o l’e-mail di '
+      + `<strong>${esc(c.ragione)}</strong>. Collegalo agli ordini solo se sei sicuro che sia davvero lui: vedrà l’ultimo ordine e riceverà il promemoria.</p>`
+      + `<div class="azioni pf-azioni"><button type="button" class="bottone" data-collega="${esc(x.id)}">Collega agli ordini del cliente</button></div><p class="errore" hidden></p></div>`;
+  }
+
   /* «Da chiamare» (lavoro n. 1 dalla Classe, 10/11/2026): con il telefono, con l'ok a
      ricontattarlo, ancora «Da richiamare» e non passato a un agente o rivenditore.
      I direzionali e i già clienti restano dentro. */
@@ -755,6 +776,7 @@ const ProFarmer = (() => {
         + `<summary><span class="pf-sommario"><strong>${esc(x.azienda)}</strong><span>${esc(sotto)}</span>${etichetteLead(x)}</span>`
         + '<svg class="pf-freccia" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>'
         + bloccoAgente(x)
+        + bloccoCollega(x)
         + `<form class="pf-lead" data-id="${esc(x.id)}" novalidate>`
         + '<p class="cliente-dati">'
         + `<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>`
@@ -789,6 +811,15 @@ const ProFarmer = (() => {
     corpo.querySelectorAll('[data-riprendi]').forEach(b => b.addEventListener('click', () => {
       if (!confirm('Riprendi il lead? Il venditore non lo vede più.')) return;
       salva(b, () => sb.rpc('assegna_lead', { p_lead: b.dataset.riprendi, p_venditore: null }), 'Lead ripreso');
+    }));
+    const esitoRpc = r => r.error ? r : (r.data && r.data.ok === false ? { error: { message: r.data.motivo } } : r);
+    corpo.querySelectorAll('[data-collega]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Collego il suo telefono agli ordini del cliente? Vedrà l’ultimo ordine confermato e riceverà il promemoria prima che finisca.')) return;
+      salva(b, () => sb.rpc('collega_allevatore', { p_lead: b.dataset.collega }).then(esitoRpc), 'Collegato: promemoria attivo', 'Non collegato: ');
+    }));
+    corpo.querySelectorAll('[data-scollega]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Scollego il suo telefono dagli ordini del cliente? Non vedrà più gli ordini e non riceverà il promemoria.')) return;
+      salva(b, () => sb.rpc('scollega_allevatore', { p_lead: b.dataset.scollega }).then(esitoRpc), 'Scollegato');
     }));
     corpo.querySelectorAll('[data-direzionale]').forEach(b => b.addEventListener('click', () => {
       const si = b.dataset.si === '1';

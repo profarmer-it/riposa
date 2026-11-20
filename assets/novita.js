@@ -13,6 +13,13 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261120d', data: '20/11/2026',
+    venditori: [
+      'Gestione di Pro Farmer: nei Lead, «Collega agli ordini del cliente». Il telefono di un allevatore vede i suoi ordini e riceve il promemoria solo dopo la vostra conferma.'
+    ],
+    allevatori: [
+      'Più controlli sui dati del calcolo, per proteggere le e-mail di Pro Farmer.'
+    ] },
   { v: '20261120c', data: '20/11/2026',
     venditori: [
       'Gestione di Pro Farmer: in Venditori c’è la spunta «Vende solo piùLact Pronto in ballette». Chi ce l’ha vede e ordina solo le ballette.'

@@ -673,6 +673,11 @@ function mostraContatti(r) {
           ? 'Troppe richieste in questo momento: riprova tra qualche minuto.'
           : e.message === 'serve il telefono'
           ? 'Manca il numero di telefono: scrivilo qui sopra e riprova.'
+          // controllo di sicurezza del 20/11/2026: nome solo lettere, niente indirizzi web o numeri lunghi nei campi
+          : e.message === 'nel nome scrivi solo nome e cognome'
+          ? 'Nel nome scrivi solo nome e cognome, con le lettere, poi riprova.'
+          : e.message === 'dati non validi'
+          ? 'In uno dei campi c’è un indirizzo web, un’e-mail o un numero lungo: toglilo e riprova.'
           : 'Non siamo riusciti a mandarlo: riprova tra poco. Se continua, chiama Pro Farmer al +39 376 129 6162.');
     });
   });
