@@ -1560,3 +1560,7 @@ img.pf-firma{display:block;max-width:320px;width:100%;margin:12px 0;border:1px s
   font-size:12.5px !important;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .invito-app-oppure{margin:12px 0 4px !important;font-size:14px !important;color:#B9CBE0 !important}
 .foglio-velo .foglio{max-height:calc(100vh - 110px);overflow-y:auto;padding-bottom:22px}
+
+/* Gestione → Venditori: «Elimina venditore» (20/11/2026) */
+.pf-elimina{margin-left:auto;min-height:44px;padding:0 6px;font:inherit;font-size:15px;font-weight:600;color:#C0392B;background:none;border:0;cursor:pointer;text-decoration:underline}
+.pf-elimina:disabled{opacity:.6}

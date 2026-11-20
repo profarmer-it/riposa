@@ -224,7 +224,7 @@ const ProFarmer = (() => {
   }
 
   /* Salva, ricarica e ridisegna; l'errore resta vicino al bottone. */
-  function salva(bottone, lavoro, conferma) {
+  function salva(bottone, lavoro, conferma, prefisso) {
     const testo = bottone.textContent;
     const err = bottone.closest('form, li, .blocco').querySelector('.errore');
     bottone.disabled = true; bottone.textContent = 'Salvo…';
@@ -233,7 +233,7 @@ const ProFarmer = (() => {
       return carica();
     }).then(() => { mostra(); avvisa(conferma || 'Salvato'); }).catch(e => {
       bottone.disabled = false; bottone.textContent = testo;
-      if (err) { err.textContent = 'Non salvato: ' + e.message; err.hidden = false; }
+      if (err) { err.textContent = (prefisso || 'Non salvato: ') + e.message; err.hidden = false; }
     });
   }
 
@@ -1670,6 +1670,8 @@ const ProFarmer = (() => {
     h += '<p class="errore" hidden></p><div class="azioni pf-azioni">'
       + `<button type="submit" class="bottone">${nuovo ? 'Aggiungi' : 'Salva'}</button>`
       + (!nuovo && x.email && x.attivo ? `<button type="button" class="bottone bottone-fantasma" data-invita>${x.invitato_il ? 'Rimanda l’invito' : 'Manda l’invito'}</button>` : '')
+      // 89 (20/11/2026): eliminare un venditore, con doppia conferma; mai un account di Pro Farmer
+      + (!nuovo && x.ruolo !== 'interno' ? '<button type="button" class="pf-elimina" data-elimina>Elimina venditore</button>' : '')
       + '</div></form>';
     return h;
   }
@@ -1679,7 +1681,7 @@ const ProFarmer = (() => {
       + '<button type="button" class="bottone" id="pf-nuovo-venditore">Aggiungi venditore</button></div>'
       + '<p class="aiuto">Si entra con l’e-mail scritta qui: senza e-mail il venditore non può entrare. '
       + 'Dopo aver messo l’e-mail, «Manda l’invito» gli crea l’accesso e gli spiega come entrare. '
-      + 'Togliere «Attivo» chiude l’accesso senza cancellare niente. Passata la data di validità non si blocca nulla: '
+      + 'Togliere «Attivo» chiude l’accesso senza cancellare niente. «Elimina venditore» lo toglie del tutto, solo se non ha ancora ordini. Passata la data di validità non si blocca nulla: '
       + 'il venditore vede solo il promemoria.</p>'
       + '<div id="pf-venditore-nuovo"></div>' + casellaCerca('venditori', 'Cerca nome o e-mail')
       + '<ul class="lista-clienti" data-lista-di="venditori">';
@@ -1752,6 +1754,23 @@ const ProFarmer = (() => {
             ? sb.from('venditori').update(riga).eq('id', id).then(conNota)
             : sb.from('venditori').insert(riga).select('id').single().then(conNota)),
             id ? `Scheda di ${riga.nome} salvata` : `${riga.nome} aggiunto ai venditori`);
+        });
+        // doppia conferma (Giulio, 20/11/2026); il controllo vero (ordini, ruolo) lo fa elimina_venditore (89)
+        const el = f.querySelector('[data-elimina]');
+        if (el) el.addEventListener('click', () => {
+          const x = dati.venditori.find(a => a.id === f.dataset.id);
+          if (!x) return;
+          const cosa = x.ruolo === 'rivenditore'
+            ? 'I suoi indirizzi di consegna si cancellano.'
+            : 'I suoi clienti passano a Pro Farmer.';
+          if (!confirm(`Elimino ${x.nome} dai venditori? ${cosa} Diamanti, notifiche e foto mandate si cancellano con lui. Se ha già degli ordini non si può: in quel caso togli «Attivo».`)) return;
+          if (!confirm(`Ultima conferma: elimino davvero ${x.nome}? Non si torna indietro.`)) return;
+          aperti.delete(x.id);
+          salva(el, () => sb.rpc('elimina_venditore', { p_id: x.id }).then(r => {
+            if (r.error) return r;
+            if (r.data && r.data.ok === false) return { error: { message: r.data.motivo } };
+            return r;
+          }), `${x.nome} eliminato dai venditori`, 'Non eliminato: ');
         });
         const inv = f.querySelector('[data-invita]');
         if (inv) inv.addEventListener('click', () => { aperti.delete(f.dataset.id); salva(inv, () =>
