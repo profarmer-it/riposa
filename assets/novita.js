@@ -13,6 +13,10 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261120c', data: '20/11/2026',
+    venditori: [
+      'Gestione di Pro Farmer: in Venditori c’è la spunta «Vende solo piùLact Pronto in ballette». Chi ce l’ha vede e ordina solo le ballette.'
+    ] },
   { v: '20261120b', data: '20/11/2026',
     venditori: [
       'Gestione di Pro Farmer: in Venditori c’è «Elimina venditore», con doppia conferma. Si può solo se non ha ancora ordini; altrimenti si toglie «Attivo».'

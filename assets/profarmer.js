@@ -1656,6 +1656,7 @@ const ProFarmer = (() => {
       + `<label class="pf-spunta"><input type="checkbox" name="attivo"${x.attivo !== false ? ' checked' : ''}> Attivo (può entrare)</label>`
       // 85 e 83 (19/11/2026): rivenditore con o senza magazzino; agente senza i prezzi del piùLact
       + `<label class="pf-spunta solo-rivenditore"><input type="checkbox" name="magazzino"${x.magazzino !== false ? ' checked' : ''}> Ha un magazzino (se no, ordina solo con la consegna in stalla)</label>`
+      + `<label class="pf-spunta solo-agente"><input type="checkbox" name="solo_ballette"${x.solo_ballette ? ' checked' : ''}> Vende solo piùLact Pronto in ballette (niente big bag né sacchi)</label>`
       + `<label class="pf-spunta solo-agente"><input type="checkbox" name="piulact_senza_prezzi"${x.piulact_senza_prezzi ? ' checked' : ''}> Senza i prezzi del piùLact (li indica Pro Farmer)</label>`
       + campo('province', 'Zona: province o regioni (es. LO, CR, Emilia-Romagna)', (x.province || []).join(', '), 'text', '', 'non-interno')
       + '<label class="solo-agente">Presentato da <small>(l’agente che l’ha portato: vale per i Diamanti)</small><select name="presentato_da" class="pf-select">'
@@ -1733,6 +1734,7 @@ const ProFarmer = (() => {
             attivo: d.get('attivo') === 'on',
             magazzino: d.get('ruolo') === 'rivenditore' ? d.get('magazzino') === 'on' : true,
             piulact_senza_prezzi: d.get('ruolo') === 'agente' ? d.get('piulact_senza_prezzi') === 'on' : false,
+            solo_ballette: d.get('ruolo') === 'agente' ? d.get('solo_ballette') === 'on' : false,   // 90 (20/11/2026)
             presentato_da: d.get('ruolo') === 'agente' ? nulloSeVuoto(d.get('presentato_da')) : null,
             // le zone dell'agente: i lead di queste province gli vengono proposti (22-lead-agli-agenti.sql)
             province: d.get('ruolo') === 'interno' ? [] : leggiZona(d.get('province')).zona

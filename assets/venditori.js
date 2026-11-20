@@ -59,6 +59,9 @@ const Venditori = (() => {
     { id: 'ballette', nome: 'piùLact Pronto, ballette da circa 810 kg', unita: 'ballette',
       prodotto: 'piùLact Pronto', formato: 'Ballette da circa 810 kg', una: 'balletta' }
   ];
+  // l'agente che vende solo piùLact Pronto in ballette (90, Giulio 20/11/2026): big bag e sacchi non ci sono
+  const soloBallette = () => !!(cond && cond.soloBallette);
+  const vociMie = () => soloBallette() ? VOCI.filter(v => v.id === 'ballette') : VOCI;
   const STATI = {
     inviato: 'Inviato', confermato: 'Confermato', consegnato: 'Consegnato',
     pagato: 'Pagato', annullato: 'Annullato'
@@ -1001,7 +1004,7 @@ const Venditori = (() => {
     const o = area.ordini.find(x => x.id === id);
     if (!o) return;
     stato = statoVuoto();
-    VOCI.forEach(v => { stato[v.id] = o[v.id] ? String(o[v.id]) : ''; });
+    vociMie().forEach(v => { stato[v.id] = o[v.id] ? String(o[v.id]) : ''; });
     const ancora = area.clienti.some(c => c.id === o.clienteId);   // il cliente c'è ancora in lista?
     ordineDiretto(ancora ? o.clienteId : (rivenditore() && cond.magazzino !== false && !o.cliente ? 'magazzino' : ''));
   }
@@ -1445,7 +1448,7 @@ const Venditori = (() => {
     const c = area.clienti.find(x => x.id === id);
     const voci = (c && c.storico && c.storico.ultimo && c.storico.ultimo.voci) || {};
     stato = statoVuoto();
-    VOCI.forEach(v => { stato[v.id] = voci[v.id] ? String(Math.round(voci[v.id])) : ''; });
+    vociMie().forEach(v => { stato[v.id] = voci[v.id] ? String(Math.round(voci[v.id])) : ''; });
     ordineDiretto(id);
   }
 
@@ -2340,7 +2343,9 @@ const Venditori = (() => {
     h += '<div class="blocco"><h3>Le tue condizioni</h3><table class="tabella profilo"><tbody>';
     const L = cond.listinoT;
     if (cond.ruolo === 'agente') {
-      if (cond.piulactSenzaPrezzi) {   // 83, 19/11/2026: per ora niente prezzi del piùLact
+      if (soloBallette()) {   // 90, 20/11/2026: vende solo le ballette
+        h += '<tr><th>Cosa vendi</th><td>solo piùLact Pronto in ballette; per big bag e sacchi chiama Pro Farmer</td></tr>';
+      } else if (cond.piulactSenzaPrezzi) {   // 83, 19/11/2026: per ora niente prezzi del piùLact
         h += '<tr><th>piùLact, big bag e sacchi</th><td>prezzi e provvigione te li indica Pro Farmer</td></tr>';
       } else {
         h += `<tr><th>piùLact, big bag</th><td>listino ${euro(L.bigbag)}/t · provvigione ${perc(cond.piulact.provvigione)}</td></tr>`;
@@ -2357,7 +2362,7 @@ const Venditori = (() => {
     } else {
       h += `<tr><th>Listini</th><td>big bag ${euro(L.bigbag)}/t · sacchi ${euro(L.sacchi)}/t · ballette ${euro(L.ballette / 10)}/q</td></tr>`;
     }
-    h += `<tr><th>Ordine minimo</th><td>${cond.minimi.bigbag} big bag · ${cond.minimi.sacchi} bancali · ${cond.minimi.ballette} ballette</td></tr>`;
+    h += `<tr><th>Ordine minimo</th><td>${soloBallette() ? `${cond.minimi.ballette} ballette` : `${cond.minimi.bigbag} big bag · ${cond.minimi.sacchi} bancali · ${cond.minimi.ballette} ballette`}</td></tr>`;
     if (cond.validoFino) h += `<tr><th>Valide fino al</th><td>${esc(cond.validoFino)}</td></tr>`;
     h += '</tbody></table><p class="aiuto">Prezzi franco partenza, IVA esclusa.</p></div>';
 
@@ -2395,6 +2400,8 @@ const Venditori = (() => {
     const q = { bigbag: '', sacchi: '', ballette: '' };
     const c = x.confezioneConsigliata;
     if (!c || !x.kgMese) return q;
+    // chi vende solo le ballette (90): niente big bag né sacchi dal calcolo
+    if (soloBallette() && c.kg !== T.ballettaKg) return q;
     if (c.kg === T.ballettaKg) {
       const servono = Math.ceil(x.kgMese * T.mesiOrizzonteBallette / T.ballettaKg);
       q.ballette = Math.max(T.balletteMinimo, Math.ceil(servono / T.ballettePerBancale) * T.ballettePerBancale);
@@ -2447,8 +2454,12 @@ const Venditori = (() => {
 
     /* Una riga per prodotto (24/10/2026): a sinistra cosa e in che formato,
        a destra quante, con − e + e l'unità di misura scritta accanto. */
+    // chi vende solo le ballette (90, Giulio 20/11/2026): una riga sola; se il calcolo consiglia piùLact, lo diciamo
+    if (soloBallette() && r && r.confezioneConsigliata && r.confezioneConsigliata.kg !== TRASPORTO.ballettaKg && !stato.ballette) {
+      h += '<p class="aiuto">Per questa stalla Riposa consiglia piùLact in big bag o sacchi, che vende Pro Farmer: chiamalo, oppure, se la stalla può usare le ballette, scrivi qui quante.</p>';
+    }
     h += '<div class="righe-ordine">';
-    VOCI.forEach(v => {
+    vociMie().forEach(v => {
       const min = cond.minimi && cond.minimi[v.id];
       h += `<div class="riga-ordine"><p class="riga-cosa"><strong>${esc(v.prodotto)}</strong> · ${esc(v.formato)}</p>`
         + `<p class="riga-minimo">${min ? `Minimo ${min} ${esc(min === 1 ? v.una : v.unita)}` : ''}</p>`
