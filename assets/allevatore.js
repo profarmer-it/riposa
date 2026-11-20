@@ -308,7 +308,9 @@ const Allevatore = (() => {
   leggiBiglietto();
   disegna();
   aggiorna();
-  foglioInstalla();
+  // il foglio che bloccava il calcolo su iPhone da Safari non parte più (Giulio, 20/11/2026: alla serata
+  // del 19/11 chi arrivava da Instagram si fermava lì). Il calcolo si fa da qualsiasi browser; l'invito a
+  // mettere Riposa sul telefono resta dopo il risultato, e si può chiudere.
 
   return { credenziali, salva, disegna, notifichePossibili, chiediNotifiche, invitoNotifiche, agganciaInvitoNotifiche, foglioInstalla };
 })();

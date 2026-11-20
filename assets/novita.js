@@ -13,6 +13,11 @@
    sempre nel Profilo; Riposa la mostra in fondo alla pagina.
    ========================================================================== */
 var NOVITA = [
+  { v: '20261120a', data: '20/11/2026',
+    allevatori: [
+      'Su iPhone il calcolo si fa subito, anche da Instagram o da WhatsApp: non serve più mettere prima Riposa sulla schermata Home.',
+      'Dopo il risultato un avviso ti spiega, passo per passo e per il tuo telefono (iPhone o Android), come mettere Riposa sulla schermata Home e avere il promemoria. Se non ti va, tocca «Non ora».'
+    ] },
   { v: '20261119j', data: '19/11/2026',
     venditori: [
       'Gestione di Pro Farmer: gli iscritti agli eventi hanno ora una pagina loro, eventi.profarmer.it/gestione/, e non compaiono più nel Cruscotto.'

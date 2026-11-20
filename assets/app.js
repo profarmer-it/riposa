@@ -690,7 +690,6 @@ function errore(el, testo) {
    se ha detto «Non ora», niente riquadro. */
 let invitoAndroid = null;
 window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); invitoAndroid = ev; });
-const CHIAVE_NON_ORA = 'riposa-installa-allevatore-no';
 
 function appInstallata() {
   return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -739,7 +738,7 @@ function passiIPhone(finale) {
   let p = '';
   if (b === 'dentro-app') {
     return '<ol class="passi-installa">'
-      + passo(1, 'Questa pagina è aperta dentro un’altra app (WhatsApp, e-mail…). Tocca il pulsante del menu di questa app e scegli <strong>«Apri in Safari»</strong>.')
+      + passo(1, `Questa pagina è aperta dentro un’altra app (Instagram, Facebook, WhatsApp…). Tocca ${ICONA_TRE_PUNTI} o il menu in alto a destra e scegli <strong>«Apri in Safari»</strong> o <strong>«Apri nel browser»</strong>.`)
       + passo(2, 'Se non lo trovi, copia l’indirizzo e incollalo in Safari: <button type="button" class="bottone-copia" id="copia-indirizzo">Copia l’indirizzo</button>')
       + passo(3, 'In Safari ti mostriamo gli ultimi due tocchi.')
       + '</ol>';
@@ -780,42 +779,85 @@ function agganciaCopia() {
   }); });
 }
 
-function invitoInstalla() {
-  if (appInstallata()) return '';
-  if (suIPhone()) {
-    // su iPhone niente «Non ora» che lo nasconde per sempre: senza l'icona non arrivano i promemoria
-    return '<div class="invito-app invito-iphone" id="invito-iphone">'
-      + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
-      + '<p class="invito-app-titolo">Ultimo passo: metti Riposa sul telefono</p></div>'
-      + passiIPhone() + '</div>';
+/* --- Android: le istruzioni secondo il browser (Giulio, 20/11/2026) --------- */
+function suAndroid() { return /Android/i.test(navigator.userAgent); }
+function browserAndroid() {
+  const ua = navigator.userAgent;
+  if (/Instagram|FBAN|FBAV|FB_IAB|Line\/|; wv\)/.test(ua)) return 'dentro-app';
+  if (/SamsungBrowser/.test(ua)) return 'samsung';
+  if (/Firefox\//.test(ua)) return 'firefox';
+  if (/EdgA|OPR\/|Opera|YaBrowser/.test(ua)) return 'altro';
+  return 'chrome';
+}
+const ICONA_PUNTI_V = '<span class="ic-punti" aria-hidden="true">⋮</span>';
+const ICONA_RIGHE = '<span class="ic-punti" aria-hidden="true">≡</span>';
+function passiAndroid() {
+  const b = browserAndroid();
+  const passo = (n, t) => `<li><span class="passo-n">${n}</span><span>${t}</span></li>`;
+  let p;
+  if (b === 'dentro-app') {
+    return '<ol class="passi-installa">'
+      + passo(1, `Questa pagina è aperta dentro un’altra app (Instagram, Facebook…). Tocca ${ICONA_PUNTI_V} o ${ICONA_TRE_PUNTI} in alto a destra e scegli <strong>«Apri in Chrome»</strong> o <strong>«Apri nel browser»</strong>.`)
+      + passo(2, 'Se non lo trovi, copia l’indirizzo e incollalo in Chrome: <button type="button" class="bottone-copia" id="copia-indirizzo">Copia l’indirizzo</button>')
+      + passo(3, 'In Chrome ti mostriamo gli ultimi due tocchi.')
+      + '</ol>';
   }
-  let nonOra = false;
-  try { nonOra = localStorage.getItem(CHIAVE_NON_ORA) === '1'; } catch (e) {}
-  if (nonOra || !invitoAndroid) return '';
-  let h = '<div class="invito-app">';
-  h += '<img src="assets/icone/icona-192.png" alt="" width="64" height="64" class="invito-app-icona">';
-  h += '<div><p class="invito-app-titolo">Tieni Riposa sul telefono</p>';
-  h += '<p>Si apre dall’icona, come un’app. Quando Pro Farmer conferma un tuo ordine, ti avvisiamo prima che finisca.</p>';
-  h += '<div class="invito-app-azioni">';
-  h += '<button type="button" class="bottone" id="btn-installa">Installa Riposa</button>';
-  h += '<button type="button" class="invito-app-no" id="btn-installa-no">Non ora</button></div></div></div>';
-  return h;
+  if (b === 'samsung') p = passo(1, `Tocca ${ICONA_RIGHE} in basso a destra.`) + passo(2, 'Tocca <strong>«Aggiungi pagina a»</strong>.') + passo(3, 'Scegli <strong>«Schermata Home»</strong> e conferma con <strong>«Aggiungi»</strong>.');
+  else if (b === 'firefox') p = passo(1, `Tocca ${ICONA_PUNTI_V} accanto all’indirizzo.`) + passo(2, 'Tocca <strong>«Aggiungi alla schermata Home»</strong> (o «Installa»).') + passo(3, 'Conferma con <strong>«Aggiungi»</strong>.');
+  else if (b === 'chrome') p = passo(1, `Tocca ${ICONA_PUNTI_V} in alto a destra, accanto all’indirizzo.`) + passo(2, 'Tocca <strong>«Aggiungi a schermata Home»</strong> (o «Installa app»).') + passo(3, 'Conferma con <strong>«Installa»</strong> o <strong>«Aggiungi»</strong>.');
+  else p = passo(1, 'Apri il menu del browser.') + passo(2, 'Cerca <strong>«Aggiungi a schermata Home»</strong> o «Installa».') + passo(3, 'Conferma.');
+  return '<ol class="passi-installa">' + p + '</ol>'
+    + '<p class="invito-app-come">Poi apri Riposa <strong>dall’icona</strong> sulla schermata Home.</p>';
 }
 
-function agganciaInvito() {
-  const box = document.querySelector('.invito-app');
-  if (!box) return;
-  const si = document.getElementById('btn-installa');
+/* L'avviso «Importante: metti Riposa sul telefono» (Giulio, 20/11/2026): dopo il risultato,
+   con le istruzioni giuste per il telefono e il browser. Si chiude con «Non ora» e resta
+   nella pagina, più piccolo, per chi ci ripensa. Su computer niente. */
+function invitoInstalla() {
+  if (appInstallata()) return '';
+  const iphone = suIPhone(), android = !iphone && suAndroid();
+  if (!iphone && !android) return '';
+  return '<div class="invito-app invito-iphone" id="invito-iphone">'
+    + '<p class="invito-importante">Importante</p>'
+    + '<div class="invito-iphone-testa"><img src="assets/icone/icona-192.png" alt="" width="52" height="52" class="invito-app-icona">'
+    + '<p class="invito-app-titolo">Metti Riposa sul telefono</p></div>'
+    + (android && invitoAndroid && browserAndroid() !== 'dentro-app' ? '<div class="invito-app-azioni"><button type="button" class="bottone" id="btn-installa">Installa Riposa</button></div><p class="invito-app-oppure">Oppure, a mano:</p>' : '')
+    + (iphone ? passiIPhone() : passiAndroid())
+    + '<div class="invito-app-azioni"><button type="button" class="invito-app-no" id="btn-installa-no-iphone">Non ora</button></div></div>';
+}
+
+// chiudi(installata): chi decide cosa succede dopo
+function agganciaInvito(radice, chiudi) {
+  if (!radice) return;
+  const si = radice.querySelector('#btn-installa');
   if (si) si.addEventListener('click', () => {
     if (!invitoAndroid) return;
     invitoAndroid.prompt();
-    invitoAndroid.userChoice.finally(() => { invitoAndroid = null; box.remove(); });
+    invitoAndroid.userChoice.then(c => { invitoAndroid = null; chiudi(c && c.outcome === 'accepted'); }, () => {});
   });
-  const no = document.getElementById('btn-installa-no');
-  if (no) no.addEventListener('click', () => {
-    try { localStorage.setItem(CHIAVE_NON_ORA, '1'); } catch (e) {}
-    box.remove();
+  const no = radice.querySelector('#btn-installa-no-iphone');
+  if (no) no.addEventListener('click', () => chiudi(false));
+  agganciaCopia();
+}
+
+// l'avviso sopra la pagina; con «Non ora» torna nella pagina, sotto la conferma
+function apriAvvisoInstalla(html) {
+  if (!html || document.getElementById('foglio-installa') || appInstallata()) return;
+  const velo = document.createElement('div');
+  velo.className = 'foglio-velo';
+  velo.id = 'foglio-installa';
+  velo.innerHTML = '<div class="foglio" role="dialog" aria-modal="true" aria-label="Metti Riposa sul telefono">' + html + '</div>';
+  document.body.appendChild(velo);
+  agganciaInvito(velo, installata => {
+    velo.remove();
+    togliFreccia();
+    const posto = document.getElementById('posto-invito');
+    if (posto && !installata) {
+      posto.innerHTML = html;
+      agganciaInvito(posto, () => { posto.innerHTML = ''; });
+    }
   });
+  if (suIPhone()) frecciaInstalla();
 }
 
 /* --- 3. la conferma ---------------------------------------------------- */
@@ -848,9 +890,9 @@ function mostraConferma(esito) {
     : perche
       ? 'L’abbiamo ricevuto, ma in questo momento l’e-mail non è partita. Ti ricontattiamo noi, oppure chiamaci al +39 376 129 6162.'
       : 'Controlla la casella di ' + esc(datiContatto.email) + '. Se non lo trovi tra qualche minuto, guarda nella posta indesiderata.'}</p>`;
-  // su iPhone senza l'icona l'invito sta qui, subito sotto la conferma (Giulio, 8/11/2026)
-  const invitoIPhone = suIPhone() ? invitoInstalla() : '';
-  h += invitoIPhone;
+  // l'avviso per mettere Riposa sul telefono si apre sopra la pagina; chiuso, torna qui (Giulio, 20/11/2026)
+  const invito = invitoInstalla();
+  h += '<div id="posto-invito"></div>';
   h += '<div class="azioni">';
   h += '<button type="button" class="bottone bottone-fantasma" id="btn-ricomincia">Fai un altro calcolo</button>';
   h += '</div>';
@@ -859,11 +901,8 @@ function mostraConferma(esito) {
   h += '</div>';
   // le notifiche si chiedono subito, qui (Giulio, 7/11/2026); su iPhone senza l'app c'è l'invito a installarla
   h += typeof Allevatore !== 'undefined' ? Allevatore.invitoNotifiche() : '';
-  if (!invitoIPhone) h += invitoInstalla();
   mostra(h);
-  agganciaInvito();
-  agganciaCopia();
-  if (invitoIPhone) frecciaInstalla();
+  if (invito) setTimeout(() => apriAvvisoInstalla(invito), 1200);
   if (typeof Allevatore !== 'undefined') Allevatore.agganciaInvitoNotifiche();
 
   const ts = document.getElementById('tua-stalla');
